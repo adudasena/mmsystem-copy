@@ -3,6 +3,7 @@
 import React, { useState, useEffect, ChangeEvent, useCallback, useRef } from 'react';
 import { AxiosError } from 'axios';
 import api from '@/services/api';
+import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 
 // ─── Interfaces e Tipagens ─────────────────────────────────────────────────
 export interface Usuario {
@@ -91,6 +92,10 @@ const TelaCondicionais: React.FC = () => {
   const [clientes, setClientes] = useState<Usuario[]>([]);
   const [produtos, setProdutos] = useState<ProdutoCondicional[]>([]);
   
+  // ─── Estados da Barra de Busca e Filtro ──────────────────────────────────
+  const [termoBusca, setTermoBusca] = useState<string>('');
+  const [statusFiltro, setStatusFiltro] = useState<string>('TODOS');
+
   // Referência para Auto-Scroll
   const tabelaRef = useRef<HTMLDivElement>(null);
 
@@ -413,9 +418,19 @@ const TelaCondicionais: React.FC = () => {
     }
   };
 
+  // ─── Filtro Local dos Condicionais ───────────────────────────────────────
   const listaFiltrada = (Array.isArray(listaCondicionais) ? listaCondicionais : []).filter(c => {
-    if (abaAtiva === 'ativas') return c.status === 'ABERTA';
-    return c.status === 'FINALIZADA' || c.status === 'DEVOLVIDA';
+    const atendeAba = abaAtiva === 'ativas' ? c.status === 'ABERTA' : (c.status === 'FINALIZADA' || c.status === 'DEVOLVIDA');
+    const atendeStatus = statusFiltro === 'TODOS' || c.status === statusFiltro;
+    
+    const termo = termoBusca.toLowerCase();
+    const nomeCliente = (c.usuario?.nome || c.cliente?.nome || '').toLowerCase();
+    const idCond = String(c.id);
+    const temProduto = (c.itens || []).some(i => (i.produto?.nome || '').toLowerCase().includes(termo));
+
+    const atendeBusca = nomeCliente.includes(termo) || idCond.includes(termo) || temProduto;
+
+    return atendeAba && atendeStatus && atendeBusca;
   });
 
   const totalElementosCalculado = listaFiltrada.length;
@@ -458,6 +473,23 @@ const TelaCondicionais: React.FC = () => {
         >
           ✅ Histórico de Finalizados ({listaCondicionais.filter(c => c.status !== 'ABERTA').length})
         </button> 
+      </div>
+
+      {/* BARRA DE BUSCA E FILTROS PADRONIZADA */}
+      <div className="mb-6 max-w-5xl">
+        <BarraBuscaFiltro
+          termoBusca={termoBusca}
+          onBuscaChange={setTermoBusca}
+          placeholder="Buscar por #código, nome do cliente ou produto..."
+          filtroValor={statusFiltro}
+          onFiltroChange={setStatusFiltro}
+          opcoesFiltro={[
+            { label: 'Todos os Status', value: 'TODOS' },
+            { label: 'Aberta', value: 'ABERTA' },
+            { label: 'Finalizada', value: 'FINALIZADA' },
+            { label: 'Devolvida', value: 'DEVOLVIDA' }
+          ]}
+        />
       </div>
 
       {/* TABELA DE REGISTROS */}

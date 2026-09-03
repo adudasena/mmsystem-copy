@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
 import api from '@/services/api';
-import { Search } from 'lucide-react';
+import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface PedidoRef {
@@ -42,7 +42,10 @@ interface ModalExcluirState {
 const TelaPagamentos: React.FC = () => {
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [pedidosOpcoes, setPedidosOpcoes] = useState<PedidoRef[]>([]);
+  
+  // ─── Estados de Filtro e Busca ───────────────────────────────────────────
   const [termoBusca, setTermoBusca] = useState<string>('');
+  const [statusFiltro, setStatusFiltro] = useState<string>('TODOS');
   const [loading, setLoading] = useState<boolean>(true);
 
   // Mensagens de Feedback
@@ -239,13 +242,18 @@ const TelaPagamentos: React.FC = () => {
     }
   };
 
+  // ─── Lógica de Filtro do Lançamento ───────────────────────────────────────
   const pagamentosFiltrados = (Array.isArray(pagamentos) ? pagamentos : []).filter((pag) => {
-    if (!termoBusca.trim()) return true;
-    const termo = termoBusca.toLowerCase();
+    const atendeStatus = statusFiltro === 'TODOS' || pag.status === statusFiltro;
+
+    const termo = termoBusca.toLowerCase().trim();
+    if (!termo) return atendeStatus;
+
     const matchId = String(pag.id).includes(termo);
     const matchPedido = pag.pedido?.id ? String(pag.pedido.id).includes(termo) : false;
     const matchMetodo = pag.metodoPagamento?.toLowerCase().includes(termo);
-    return matchId || matchPedido || matchMetodo;
+
+    return atendeStatus && (matchId || matchPedido || matchMetodo);
   });
 
   return (
@@ -258,9 +266,6 @@ const TelaPagamentos: React.FC = () => {
             <h1 className="text-3xl font-serif font-bold text-[#2d3a22]">
               Pagamentos &amp; Lançamentos
             </h1>
-            <p className="text-xs text-gray-600 mt-1">
-              Controle de contas a receber, baixas de parcelas e histórico financeiro.
-            </p>
           </div>
 
           <button
@@ -277,19 +282,20 @@ const TelaPagamentos: React.FC = () => {
           </div>
         )}
 
-        {/* Barra de Filtros */}
-        <div className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar por #ID do lançamento, pedido ref. ou método..."
-              value={termoBusca}
-              onChange={(e) => setTermoBusca(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-xs focus:outline-none focus:ring-2 focus:ring-[#2d3a22]"
-            />
-          </div>
-        </div>
+        {/* BARRA DE FILTROS E BUSCA PADRONIZADA */}
+        <BarraBuscaFiltro
+          termoBusca={termoBusca}
+          onBuscaChange={setTermoBusca}
+          placeholder="Buscar por #ID do lançamento, pedido ref. ou método..."
+          filtroValor={statusFiltro}
+          onFiltroChange={setStatusFiltro}
+          opcoesFiltro={[
+            { label: 'Todos os Status', value: 'TODOS' },
+            { label: 'Pago', value: 'PAGO' },
+            { label: 'Pendente', value: 'PENDENTE' },
+            { label: 'Atrasado', value: 'ATRASADO' }
+          ]}
+        />
 
         {/* Tabela de Lançamentos */}
         <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

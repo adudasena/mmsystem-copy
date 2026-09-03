@@ -1,5 +1,6 @@
 package com.adudasena.mmsystem.model;
 
+import com.adudasena.mmsystem.enums.Perfil;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -24,8 +25,9 @@ public class Usuario {
 
     private String senha;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String perfil; // "CLIENTE", "PROPRIETARIA", "FUNCIONARIO"
+    private Perfil perfil = Perfil.ROLE_CLIENTE;
 
     // Soft delete
     @Column(name = "deleted_at")

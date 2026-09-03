@@ -3,6 +3,7 @@
 import React, { useState, useEffect, ChangeEvent, FormEvent, useRef } from 'react';
 import { AxiosError } from 'axios';
 import api from '@/services/api';
+import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface Usuario {
@@ -86,7 +87,6 @@ const TelaUsuarios: React.FC = () => {
       } catch (err) {
         console.error('Erro ao buscar clientes:', err);
         if (montado) {
-          setErro('Não foi possível carregar a lista de clientes.');
         }
       } finally {
         if (montado) {
@@ -283,6 +283,13 @@ const TelaUsuarios: React.FC = () => {
           </div>
         </div>
 
+        {/* BARRA DE BUSCA PADRONIZADA */}
+        <BarraBuscaFiltro
+          termoBusca={busca}
+          onBuscaChange={setBusca}
+          placeholder="Buscar por nome, WhatsApp ou e-mail..."
+        />
+
         {/* MENSAGENS */}
         {mensagemSucesso && (
           <div className="bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded-lg text-xs font-bold shadow-sm">
@@ -377,13 +384,6 @@ const TelaUsuarios: React.FC = () => {
               <h2 className="text-xs font-bold uppercase tracking-wider text-gray-700">
                 Clientes Cadastrados ({totalElementos > 0 ? totalElementos : clientesFiltrados.length})
               </h2>
-              <input
-                type="text"
-                placeholder="Buscar por nome, whats ou email..."
-                value={busca}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setBusca(e.target.value)}
-                className="w-full sm:w-64 border border-gray-300 px-3 py-1.5 text-xs rounded-lg focus:outline-none focus:ring-1 focus:ring-[#3b4a28]"
-              />
             </div>
 
             {loading ? (
@@ -406,7 +406,7 @@ const TelaUsuarios: React.FC = () => {
                     {clientesFiltrados.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="p-8 text-center italic text-gray-500">
-                          Nenhum cliente cadastrado.
+                          Nenhum cliente encontrado.
                         </td>
                       </tr>
                     ) : (

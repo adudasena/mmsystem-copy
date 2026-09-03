@@ -3,9 +3,11 @@ package com.adudasena.mmsystem.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.adudasena.mmsystem.dto.UsuarioDTO;
+import com.adudasena.mmsystem.enums.Perfil;
 import com.adudasena.mmsystem.model.Usuario;
 import com.adudasena.mmsystem.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,6 +18,9 @@ public class UsuarioService {
 
     @Autowired
     private UsuarioRepository repository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public Page<Usuario> listarTodos(Pageable pageable) {
         return repository.findByDeletedAtIsNull(pageable);
@@ -53,15 +58,29 @@ public class UsuarioService {
         usuario.setTelefone(dto.getTelefone());
         usuario.setEmail(dto.getEmail());
 
-        // Define o perfil padrão como CLIENTE caso não venha informado
+        // Converte a String do DTO para o Enum Perfil ou define o valor padrão ROLE_CLIENTE
         if (dto.getPerfil() != null && !dto.getPerfil().isBlank()) {
-            usuario.setPerfil(dto.getPerfil());
-        } else {
-            usuario.setPerfil("CLIENTE");
+            try {
+                // Tenta converter diretamente (Ex: "ROLE_CLIENTE", "ROLE_PROPRIETARIA")
+                usuario.setPerfil(Perfil.valueOf(dto.getPerfil().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                // Caso venha algo como "CLIENTE" ou "PROPRIETARIA" sem o prefixo
+                String perfilFormatado = dto.getPerfil().toUpperCase().startsWith("ROLE_")
+                        ? dto.getPerfil().toUpperCase()
+                        : "ROLE_" + dto.getPerfil().toUpperCase();
+                try {
+                    usuario.setPerfil(Perfil.valueOf(perfilFormatado));
+                } catch (IllegalArgumentException ex) {
+                    usuario.setPerfil(Perfil.ROLE_CLIENTE);
+                }
+            }
+        } else if (usuario.getPerfil() == null) {
+            usuario.setPerfil(Perfil.ROLE_CLIENTE);
         }
 
+        // Criptografa a senha se ela tiver sido enviada
         if (dto.getSenha() != null && !dto.getSenha().isBlank()) {
-            usuario.setSenha(dto.getSenha());
+            usuario.setSenha(passwordEncoder.encode(dto.getSenha()));
         }
     }
 }

@@ -14,4 +14,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     List<Usuario> findByDeletedAtIsNull();
     Page<Usuario> findByDeletedAtIsNull(Pageable pageable);
     Optional<Usuario> findByIdAndDeletedAtIsNull(Long id);
+    Optional<Usuario> findByEmail(String email);
+    Optional<Usuario> findByTelefone(String telefone);
 }

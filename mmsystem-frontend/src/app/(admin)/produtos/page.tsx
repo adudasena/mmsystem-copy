@@ -4,6 +4,7 @@
 import React, { useState, useEffect, ChangeEvent, KeyboardEvent, useCallback, useRef } from 'react';
 import { AxiosError } from 'axios';
 import api from '@/services/api';
+import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────
 interface Cor {
@@ -73,10 +74,14 @@ const TelaProdutos: React.FC = () => {
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [listaProdutos, setListaProdutos] = useState<Produto[]>([]);
 
+  // ─── Estados da Barra de Busca e Filtro ──────────────────────────────────
+  const [termoBusca, setTermoBusca] = useState<string>('');
+  const [categoriaFiltro, setCategoriaFiltro] = useState<string>('TODAS');
+
   // ─── Referência para Auto-Scroll da Tabela ───────────────────────────────
   const tabelaRef = useRef<HTMLDivElement>(null);
 
-  // ─── Estados de Paginação (Ajustado para 5 por página) ─────────────────────
+  // ─── Estados de Paginação ────────────────────────────────────────────────
   const [paginaAtual, setPaginaAtual] = useState<number>(0);
   const [totalPaginas, setTotalPaginas] = useState<number>(0);
   const [totalElementos, setTotalElementos] = useState<number>(0);
@@ -398,6 +403,16 @@ const TelaProdutos: React.FC = () => {
     }
   };
 
+  // ─── Filtro Local dos Produtos ────────────────────────────────────────────
+  const produtosFiltrados = (visualizandoExcluidos ? produtosExcluidos : listaProdutos).filter((p) => {
+    const atendeCategoria = categoriaFiltro === 'TODAS' || p.categoria === categoriaFiltro;
+    const termo = termoBusca.toLowerCase();
+    const atendeBusca =
+      (p.nome || '').toLowerCase().includes(termo) ||
+      (p.categoria || '').toLowerCase().includes(termo);
+    return atendeCategoria && atendeBusca;
+  });
+
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="p-6 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
@@ -600,11 +615,26 @@ const TelaProdutos: React.FC = () => {
       </div>
 
       {/* BOTÕES DE AÇÃO */}
-      <div className="flex justify-end gap-4 mb-12 max-w-5xl">
+      <div className="flex justify-end gap-4 mb-8 max-w-5xl">
         <button onClick={resetarForm} className="px-10 py-2 bg-black text-white text-[11px] font-bold uppercase rounded-sm hover:opacity-80">Cancelar</button>
         <button onClick={salvarProduto} className="px-12 py-2 bg-[#4a5d33] text-white text-[11px] font-bold uppercase rounded-sm shadow-md hover:brightness-110">
           {editandoId ? 'Atualizar Produto' : 'Salvar Produto'}
         </button>
+      </div>
+
+      {/* BARRA DE BUSCA E FILTROS PADRONIZADA */}
+      <div className="mb-6 max-w-5xl">
+        <BarraBuscaFiltro
+          termoBusca={termoBusca}
+          onBuscaChange={setTermoBusca}
+          placeholder="Buscar por nome do produto ou categoria..."
+          filtroValor={categoriaFiltro}
+          onFiltroChange={setCategoriaFiltro}
+          opcoesFiltro={[
+            { label: 'Todas as Categorias', value: 'TODAS' },
+            ...categorias.map(cat => ({ label: cat, value: cat }))
+          ]}
+        />
       </div>
 
       {/* TABELA PRINCIPAL LIMPA */}
@@ -649,19 +679,17 @@ const TelaProdutos: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-100 text-xs">
               {(() => {
-                const dadosExibir = visualizandoExcluidos ? produtosExcluidos : listaProdutos;
-
-                if (!Array.isArray(dadosExibir) || dadosExibir.length === 0) {
+                if (!Array.isArray(produtosFiltrados) || produtosFiltrados.length === 0) {
                   return (
                     <tr>
                       <td colSpan={5} className="p-8 text-center text-gray-400 italic">
-                        {visualizandoExcluidos ? "Nenhum produto na lixeira." : "Nenhum produto cadastrado."}
+                        {visualizandoExcluidos ? "Nenhum produto na lixeira." : "Nenhum produto encontrado."}
                       </td>
                     </tr>
                   );
                 }
 
-                return dadosExibir.map(p => {
+                return produtosFiltrados.map(p => {
                   let totalCalculado = 0;
                   try {
                     const est = typeof p.estoqueDetalhado === 'string' 
