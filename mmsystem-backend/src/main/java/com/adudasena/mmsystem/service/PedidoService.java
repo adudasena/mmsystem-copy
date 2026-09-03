@@ -48,6 +48,17 @@ public class PedidoService {
 
     @Transactional
     public Pedido salvar(PedidoDTO dto) {
+        if (dto.getFkClienteId() != null && dto.getDataPedido() != null) {
+            boolean duplicado = pedidoRepository.findAll().stream().anyMatch(p ->
+                p.getCliente() != null && p.getCliente().getId().equals(dto.getFkClienteId()) &&
+                p.getDataPedido() != null && p.getDataPedido().equals(dto.getDataPedido()) &&
+                p.getValorTotal() != null && dto.getValorTotal() != null &&
+                Math.abs(p.getValorTotal() - dto.getValorTotal()) < 0.01
+            );
+            if (duplicado) {
+                throw new IllegalArgumentException("Já existe um pedido idêntico cadastrado para esta cliente nesta data.");
+            }
+        }
         Pedido pedido = new Pedido();
         preencherDadosPedido(pedido, dto);
         return pedidoRepository.save(pedido);
@@ -115,7 +126,8 @@ public class PedidoService {
                     ItemPedido item = new ItemPedido();
                     item.setPedido(pedido);
                     item.setProduto(produto);
-                    item.setQuantidade(itemDto.getQuantidade() != null ? itemDto.getQuantidade() : 1);
+                    int qtd = (itemDto.getQuantidade() != null && itemDto.getQuantidade() > 0) ? itemDto.getQuantidade() : 1;
+                    item.setQuantidade(qtd);
                     pedido.getItens().add(item);
                 }
             }

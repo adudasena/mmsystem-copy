@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
+import Paginacao from '@/components/Paginacao';
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface PedidoRef {
@@ -386,55 +387,12 @@ const TelaPagamentos: React.FC = () => {
           )}
 
           {/* BARRA DE PAGINAÇÃO NO RODAPÉ */}
-          {totalPaginas > 1 && (
-            <div className="p-4 bg-gray-50 border-t flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600">
-              <span>
-                Página <strong>{paginaAtual + 1}</strong> de <strong>{totalPaginas}</strong> (Total: {totalElementos} itens)
-              </span>
-
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => mudarPagina(paginaAtual - 1)}
-                  disabled={paginaAtual === 0}
-                  className="px-3 py-1.5 border rounded font-bold uppercase bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
-                >
-                  ← Anterior
-                </button>
-
-                {Array.from({ length: totalPaginas }, (_, index) => {
-                  if (index === 0 || index === totalPaginas - 1 || Math.abs(index - paginaAtual) <= 1) {
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => mudarPagina(index)}
-                        className={`px-3 py-1.5 border rounded font-bold text-xs cursor-pointer transition ${
-                          paginaAtual === index
-                            ? 'bg-[#4a5d33] text-white border-[#4a5d33]'
-                            : 'bg-white text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        {index + 1}
-                      </button>
-                    );
-                  } else if (
-                    (index === 1 && paginaAtual > 2) ||
-                    (index === totalPaginas - 2 && paginaAtual < totalPaginas - 3)
-                  ) {
-                    return <span key={index} className="px-1 text-gray-400">...</span>;
-                  }
-                  return null;
-                })}
-
-                <button
-                  onClick={() => mudarPagina(paginaAtual + 1)}
-                  disabled={paginaAtual >= totalPaginas - 1}
-                  className="px-3 py-1.5 border rounded font-bold uppercase bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
-                >
-                  Próxima →
-                </button>
-              </div>
-            </div>
-          )}
+          <Paginacao
+            paginaAtual={paginaAtual}
+            totalPaginas={totalPaginas}
+            totalElementos={totalElementos}
+            onMudarPagina={mudarPagina}
+          />
         </section>
 
         {/* MODAL: FORMULÁRIO DE LANÇAMENTO / EDIÇÃO DE PAGAMENTO */}

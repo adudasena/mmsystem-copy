@@ -4,6 +4,16 @@ import React, { useState, useEffect, useCallback, useRef, ChangeEvent } from 're
 import { ShoppingBag, Eye, X, User, Phone, Calendar } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
+import Paginacao from '@/components/Paginacao';
+import SelectProdutoFilter from '@/components/SelectProdutoFilter';
+
+// ─── Auxiliar de UUID ────────────────────────────────────────────────────────
+const gerarUuid = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+};
 
 // ─── Tipagens e Interfaces ──────────────────────────────────────────────────
 export type StatusPedido = 'PENDENTE' | 'PAGO' | 'ENVIADO' | 'ENTREGUE' | 'CANCELADO';
@@ -22,6 +32,7 @@ export interface ProdutoRef {
 }
 
 export interface ItemPedidoForm {
+  uuid: string;
   fkProdutoId: string | number;
   quantidade: number;
 }
@@ -91,7 +102,7 @@ const TelaPedidos: React.FC = () => {
     fkClienteId: '',
     dataPedido: new Date().toISOString().split('T')[0],
     status: 'PENDENTE',
-    itens: [{ fkProdutoId: '', quantidade: 1 }]
+    itens: [{ uuid: gerarUuid(), fkProdutoId: '', quantidade: 1 }]
   });
 
   // Referência para Auto-Scroll
@@ -194,11 +205,10 @@ const TelaPedidos: React.FC = () => {
     };
   }, [tamanhoPagina]);
 
-  // ─── Navegação da Paginação com Auto-Scroll ──────────────────────────────
+  // ─── Navegação da Paginação ─────────────────────────────────────────────
   const mudarPagina = (novaPagina: number) => {
     if (novaPagina >= 0 && novaPagina < totalPaginas) {
       buscarPedidos(novaPagina);
-      tabelaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -210,7 +220,7 @@ const TelaPedidos: React.FC = () => {
       fkClienteId: '',
       dataPedido: new Date().toISOString().split('T')[0],
       status: 'PENDENTE',
-      itens: [{ fkProdutoId: '', quantidade: 1 }]
+      itens: [{ uuid: gerarUuid(), fkProdutoId: '', quantidade: 1 }]
     });
     setModalFormAberto(true);
   };
@@ -224,30 +234,54 @@ const TelaPedidos: React.FC = () => {
       status: ped.status || 'PENDENTE',
       itens: ped.itens && ped.itens.length > 0
         ? ped.itens.map(it => ({
+            uuid: gerarUuid(),
             fkProdutoId: it.produto?.id || '',
             quantidade: it.quantidade || 1
           }))
-        : [{ fkProdutoId: '', quantidade: 1 }]
+        : [{ uuid: gerarUuid(), fkProdutoId: '', quantidade: 1 }]
     });
     setModalFormAberto(true);
   };
 
-  const handleItemChange = (index: number, campo: keyof ItemPedidoForm, valor: string | number): void => {
-    const novosItens = [...formPedido.itens];
-    novosItens[index] = { ...novosItens[index], [campo]: valor };
-    setFormPedido({ ...formPedido, itens: novosItens });
+  const handleItemChange = (uuid: string, campo: keyof ItemPedidoForm, valor: string | number): void => {
+    setFormPedido(prev => ({
+      ...prev,
+      itens: prev.itens.map(it => (it.uuid === uuid ? { ...it, [campo]: valor } : it))
+    }));
   };
+
+  const handleQuantidadeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (['-', '+', 'e', 'E', '.', ','].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleQuantidadeChange = (uuid: string, rawVal: string) => {
+    const limpo = rawVal.replace(/\D/g, '');
+    let valNum = parseInt(limpo, 10);
+    if (isNaN(valNum) || valNum < 1) {
+      valNum = 1;
+    } else if (valNum > 9999) {
+      valNum = 9999;
+    }
+    handleItemChange(uuid, 'quantidade', valNum);
+  };
+
+  const podeAdicionarItem = formPedido.itens.length === 0 || formPedido.itens.every(it => Boolean(it.fkProdutoId));
 
   const adicionarLinhaItem = (): void => {
-    setFormPedido({
-      ...formPedido,
-      itens: [...formPedido.itens, { fkProdutoId: '', quantidade: 1 }]
-    });
+    if (!podeAdicionarItem) return;
+    setFormPedido(prev => ({
+      ...prev,
+      itens: [...prev.itens, { uuid: gerarUuid(), fkProdutoId: '', quantidade: 1 }]
+    }));
   };
 
-  const removerLinhaItem = (index: number): void => {
-    const filtrados = formPedido.itens.filter((_, i) => i !== index);
-    setFormPedido({ ...formPedido, itens: filtrados });
+  const removerLinhaItem = (uuid: string): void => {
+    setFormPedido(prev => ({
+      ...prev,
+      itens: prev.itens.filter(it => it.uuid !== uuid)
+    }));
   };
 
   const calcularValorTotalPedido = (): number => {
@@ -271,6 +305,18 @@ const TelaPedidos: React.FC = () => {
     const temItemIncompleto = formPedido.itens.some(i => !i.fkProdutoId || Number(i.quantidade) <= 0);
     if (temItemIncompleto) {
       erros.push('Verifique os produtos e quantidades inseridas no pedido.');
+    }
+
+    if (!editandoId) {
+      const valorTotalAtual = calcularValorTotalPedido();
+      const pedidoDuplicado = pedidos.some(p =>
+        String(p.cliente?.id) === String(formPedido.fkClienteId) &&
+        p.dataPedido === formPedido.dataPedido &&
+        Math.abs(Number(p.valorTotal) - valorTotalAtual) < 0.01
+      );
+      if (pedidoDuplicado) {
+        erros.push('Já existe um pedido idêntico cadastrado para este cliente nesta data.');
+      }
     }
 
     if (erros.length > 0) {
@@ -301,9 +347,10 @@ const TelaPedidos: React.FC = () => {
       setModalFormAberto(false);
       buscarPedidos(paginaAtual);
       setTimeout(() => setMensagemSucesso(''), 4000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao salvar pedido:', err);
-      setErrosValidacao(['Falha ao salvar pedido na base de dados.']);
+      const msgServidor = err?.response?.data?.mensagem || 'Falha ao salvar pedido na base de dados.';
+      setErrosValidacao([msgServidor]);
     }
   };
 
@@ -425,134 +472,93 @@ const TelaPedidos: React.FC = () => {
         />
 
         {/* Tabela Principal */}
-        <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-4 border-b bg-gray-50/50 flex justify-between items-center">
-            <h2 className="text-xs font-bold uppercase text-gray-700">
-              Pedidos Registrados ({totalElementos > 0 ? totalElementos : pedidosFiltrados.length})
-            </h2>
-          </div>
+        <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col justify-between">
+          <div>
+            <div className="p-4 border-b bg-gray-50/50 flex justify-between items-center">
+              <h2 className="text-xs font-bold uppercase text-gray-700">
+                Pedidos Registrados ({totalElementos > 0 ? totalElementos : pedidosFiltrados.length})
+              </h2>
+            </div>
 
-          {loading ? (
-            <p className="p-8 text-center text-xs text-gray-500">Carregando pedidos...</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-[#cbd0c0] font-bold uppercase text-gray-700">
-                    <th className="p-3">#ID</th>
-                    <th className="p-3">Cliente</th>
-                    <th className="p-3">Data</th>
-                    <th className="p-3">Valor Total</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3 text-center">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {pedidosFiltrados.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="p-8 text-center italic text-gray-500">
-                        Nenhum pedido encontrado.
-                      </td>
+            {loading ? (
+              <p className="p-8 text-center text-xs text-gray-500">Carregando pedidos...</p>
+            ) : (
+              <div className="overflow-x-auto min-h-[360px]">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-[#cbd0c0] font-bold uppercase text-gray-700">
+                      <th className="p-3">#ID</th>
+                      <th className="p-3">Cliente</th>
+                      <th className="p-3">Data</th>
+                      <th className="p-3">Valor Total</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3 text-center">Ações</th>
                     </tr>
-                  ) : (
-                    pedidosFiltrados.map((p) => (
-                      <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="p-3 font-bold text-gray-500">#{p.id}</td>
-                        <td className="p-3 font-bold text-gray-800">{p.cliente?.nome || '—'}</td>
-                        <td className="p-3 text-gray-600">{p.dataPedido}</td>
-                        <td className="p-3 font-bold text-gray-800">
-                          R$ {Number(p.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </td>
-                        <td className="p-3">{renderBadgeStatus(p.status)}</td>
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => dispararWhatsAppComprovante(p)}
-                              className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer"
-                            >
-                              💬 Whats
-                            </button>
-                            <button
-                              onClick={() => abrirDetalhes(p)}
-                              className="p-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 transition-colors cursor-pointer"
-                              title="Ver Detalhes do Pedido"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => prepararEdicao(p)}
-                              className="p-1 hover:scale-110 transition cursor-pointer text-xs"
-                              title="Editar Pedido"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              onClick={() => setModalExcluir({ aberto: true, id: p.id })}
-                              className="text-red-500 hover:text-red-700 font-bold text-xs cursor-pointer p-1"
-                              title="Excluir Pedido"
-                            >
-                              ✕
-                            </button>
-                          </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {pedidosFiltrados.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center italic text-gray-500">
+                          Nenhum pedido encontrado.
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
+                    ) : (
+                      pedidosFiltrados.map((p) => (
+                        <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="p-3 font-bold text-gray-500">#{p.id}</td>
+                          <td className="p-3 font-bold text-gray-800">{p.cliente?.nome || '—'}</td>
+                          <td className="p-3 text-gray-600">{p.dataPedido}</td>
+                          <td className="p-3 font-bold text-gray-800">
+                            R$ {Number(p.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="p-3">{renderBadgeStatus(p.status)}</td>
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => dispararWhatsAppComprovante(p)}
+                                className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer"
+                              >
+                                💬 Whats
+                              </button>
+                              <button
+                                onClick={() => abrirDetalhes(p)}
+                                className="p-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 transition-colors cursor-pointer"
+                                title="Ver Detalhes do Pedido"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => prepararEdicao(p)}
+                                className="p-1 hover:scale-110 transition cursor-pointer text-xs"
+                                title="Editar Pedido"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() => setModalExcluir({ aberto: true, id: p.id })}
+                                className="text-red-500 hover:text-red-700 font-bold text-xs cursor-pointer p-1"
+                                title="Excluir Pedido"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
           {/* BARRA DE PAGINAÇÃO NO RODAPÉ */}
-          {totalPaginas > 1 && (
-            <div className="p-4 bg-gray-50 border-t flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600">
-              <span>
-                Página <strong>{paginaAtual + 1}</strong> de <strong>{totalPaginas}</strong> (Total: {totalElementos} itens)
-              </span>
-
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => mudarPagina(paginaAtual - 1)}
-                  disabled={paginaAtual === 0}
-                  className="px-3 py-1.5 border rounded font-bold uppercase bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
-                >
-                  ← Anterior
-                </button>
-
-                {Array.from({ length: totalPaginas }, (_, index) => {
-                  if (index === 0 || index === totalPaginas - 1 || Math.abs(index - paginaAtual) <= 1) {
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => mudarPagina(index)}
-                        className={`px-3 py-1.5 border rounded font-bold text-xs cursor-pointer transition ${
-                          paginaAtual === index
-                            ? 'bg-[#4a5d33] text-white border-[#4a5d33]'
-                            : 'bg-white text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        {index + 1}
-                      </button>
-                    );
-                  } else if (
-                    (index === 1 && paginaAtual > 2) ||
-                    (index === totalPaginas - 2 && paginaAtual < totalPaginas - 3)
-                  ) {
-                    return <span key={index} className="px-1 text-gray-400">...</span>;
-                  }
-                  return null;
-                })}
-
-                <button
-                  onClick={() => mudarPagina(paginaAtual + 1)}
-                  disabled={paginaAtual >= totalPaginas - 1}
-                  className="px-3 py-1.5 border rounded font-bold uppercase bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
-                >
-                  Próxima →
-                </button>
-              </div>
-            </div>
-          )}
+          <Paginacao
+            paginaAtual={paginaAtual}
+            totalPaginas={totalPaginas}
+            totalElementos={totalElementos}
+            onMudarPagina={mudarPagina}
+          />
         </section>
 
         {/* MODAL: FORMULÁRIO DE CADASTRO E EDIÇÃO DE PEDIDO */}
@@ -568,7 +574,7 @@ const TelaPedidos: React.FC = () => {
 
               <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
                 {errosValidacao.length > 0 && (
-                  <div className="bg-red-50 border-l-4 border-red-600 p-2.5 text-red-900 font-semibold rounded-sm">
+                  <div className="bg-red-50 border-l-4 border-red-600 p-2.5 text-red-900 font-semibold rounded-sm space-y-1">
                     {errosValidacao.map((err, i) => <p key={i}>⚠️ {err}</p>)}
                   </div>
                 )}
@@ -578,7 +584,7 @@ const TelaPedidos: React.FC = () => {
                   <select
                     value={formPedido.fkClienteId}
                     onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormPedido({ ...formPedido, fkClienteId: e.target.value })}
-                    className="w-full border p-2 bg-gray-50 text-xs outline-none focus:border-gray-400"
+                    className="w-full border border-gray-300 p-2 bg-gray-50 text-xs outline-none focus:border-[#4a5d33] rounded-md"
                   >
                     <option value="">Escolha uma cliente...</option>
                     {clientesOpcoes.map(cli => (
@@ -594,7 +600,7 @@ const TelaPedidos: React.FC = () => {
                       type="date"
                       value={formPedido.dataPedido}
                       onChange={(e: ChangeEvent<HTMLInputElement>) => setFormPedido({ ...formPedido, dataPedido: e.target.value })}
-                      className="w-full border p-2 bg-gray-50 text-xs outline-none"
+                      className="w-full border border-gray-300 p-2 bg-gray-50 text-xs outline-none rounded-md"
                     />
                   </div>
 
@@ -603,7 +609,7 @@ const TelaPedidos: React.FC = () => {
                     <select
                       value={formPedido.status}
                       onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormPedido({ ...formPedido, status: e.target.value as StatusPedido })}
-                      className="w-full border p-2 bg-gray-50 text-xs outline-none font-bold"
+                      className="w-full border border-gray-300 p-2 bg-gray-50 text-xs outline-none font-bold rounded-md"
                     >
                       <option value="PENDENTE">PENDENTE</option>
                       <option value="PAGO">PAGO</option>
@@ -618,41 +624,56 @@ const TelaPedidos: React.FC = () => {
                 <div className="border-t pt-3">
                   <div className="flex justify-between items-center mb-2">
                     <label className="block text-[10px] font-bold uppercase text-gray-500">Itens do Pedido</label>
-                    <button type="button" onClick={adicionarLinhaItem} className="text-[#4a5d33] hover:underline text-[10px] font-bold cursor-pointer">+ Adicionar Item</button>
+                    <button
+                      type="button"
+                      onClick={adicionarLinhaItem}
+                      disabled={!podeAdicionarItem}
+                      title={!podeAdicionarItem ? 'Selecione o produto do item atual antes de adicionar outro' : ''}
+                      className={`text-[10px] font-bold transition-all cursor-pointer ${
+                        podeAdicionarItem
+                          ? 'text-[#4a5d33] hover:underline'
+                          : 'text-gray-400 cursor-not-allowed opacity-60'
+                      }`}
+                    >
+                      + Adicionar Item
+                    </button>
                   </div>
 
                   <div className="space-y-2">
-                    {formPedido.itens.map((item, idx) => (
-                      <div key={idx} className="grid grid-cols-12 gap-2 bg-gray-50 p-2 border rounded-sm items-center">
+                    {formPedido.itens.map((item) => (
+                      <div key={item.uuid} className="grid grid-cols-12 gap-2 bg-gray-50 p-2 border border-gray-200 rounded-md items-center">
                         <div className="col-span-8">
-                          <select
-                            value={item.fkProdutoId}
-                            onChange={(e: ChangeEvent<HTMLSelectElement>) => handleItemChange(idx, 'fkProdutoId', e.target.value)}
-                            className="w-full border p-1 bg-white text-xs outline-none"
-                          >
-                            <option value="">Selecione o Produto...</option>
-                            {produtosOpcoes.map(p => (
-                              <option key={p.id} value={p.id}>
-                                {p.nome} — R$ {Number(p.preco || 0).toFixed(2)}
-                              </option>
-                            ))}
-                          </select>
+                          <SelectProdutoFilter
+                            produtos={produtosOpcoes}
+                            valorSelecionado={item.fkProdutoId}
+                            onChange={(valor) => handleItemChange(item.uuid, 'fkProdutoId', valor)}
+                            placeholder="Selecione o Produto..."
+                          />
                         </div>
 
                         <div className="col-span-3">
                           <input
                             type="number"
                             min="1"
+                            max="9999"
                             value={item.quantidade}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => handleItemChange(idx, 'quantidade', parseInt(e.target.value, 10) || 1)}
-                            className="w-full border p-1 text-center bg-white text-xs font-bold"
+                            onKeyDown={handleQuantidadeKeyDown}
+                            onChange={(e) => handleQuantidadeChange(item.uuid, e.target.value)}
+                            className="w-full border border-gray-300 p-2 text-center bg-white text-xs font-bold rounded-md outline-none focus:border-[#4a5d33]"
                             placeholder="Qtd"
                           />
                         </div>
 
                         <div className="col-span-1 text-center">
                           {formPedido.itens.length > 1 && (
-                            <button type="button" onClick={() => removerLinhaItem(idx)} className="text-red-600 font-bold hover:text-red-800 cursor-pointer">×</button>
+                            <button
+                              type="button"
+                              onClick={() => removerLinhaItem(item.uuid)}
+                              className="text-red-600 font-bold hover:text-red-800 cursor-pointer p-1 text-base"
+                              title="Remover Item"
+                            >
+                              ×
+                            </button>
                           )}
                         </div>
                       </div>
@@ -666,8 +687,8 @@ const TelaPedidos: React.FC = () => {
               </div>
 
               <div className="mt-4 pt-3 border-t flex justify-end gap-2">
-                <button onClick={() => setModalFormAberto(false)} className="px-4 py-2 bg-gray-200 text-gray-700 text-[10px] font-bold uppercase hover:bg-gray-300 cursor-pointer">Cancelar</button>
-                <button onClick={salvarPedido} className="px-5 py-2 bg-[#4a5d33] text-white text-[10px] font-bold uppercase hover:brightness-110 shadow-md cursor-pointer">Salvar Pedido</button>
+                <button onClick={() => setModalFormAberto(false)} className="px-4 py-2 bg-gray-200 text-gray-700 text-[10px] font-bold uppercase hover:bg-gray-300 cursor-pointer rounded-sm">Cancelar</button>
+                <button onClick={salvarPedido} className="px-5 py-2 bg-[#4a5d33] text-white text-[10px] font-bold uppercase hover:brightness-110 shadow-md cursor-pointer rounded-sm">Salvar Pedido</button>
               </div>
             </div>
           </div>
