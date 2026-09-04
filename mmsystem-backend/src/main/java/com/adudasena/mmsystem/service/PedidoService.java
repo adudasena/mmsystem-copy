@@ -2,21 +2,28 @@ package com.adudasena.mmsystem.service;
 
 import com.adudasena.mmsystem.dto.ItemPedidoDTO;
 import com.adudasena.mmsystem.dto.PedidoDTO;
+import com.adudasena.mmsystem.enums.MetodoPagamento;
 import com.adudasena.mmsystem.enums.StatusPedido;
 import com.adudasena.mmsystem.model.ItemPedido;
+import com.adudasena.mmsystem.model.Pagamento;
 import com.adudasena.mmsystem.model.Pedido;
 import com.adudasena.mmsystem.model.Produto;
 import com.adudasena.mmsystem.model.Usuario;
+import com.adudasena.mmsystem.repository.PagamentoRepository;
 import com.adudasena.mmsystem.repository.PedidoRepository;
 import com.adudasena.mmsystem.repository.ProdutoRepository;
 import com.adudasena.mmsystem.repository.UsuarioRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Map;
 
 @Service
 public class PedidoService {
@@ -29,6 +36,12 @@ public class PedidoService {
 
     @Autowired
     private ProdutoRepository produtoRepository;
+
+    @Autowired
+    private PagamentoRepository pagamentoRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public Page<Pedido> listarTodos(Pageable pageable) {
@@ -53,7 +66,7 @@ public class PedidoService {
                 p.getCliente() != null && p.getCliente().getId().equals(dto.getFkClienteId()) &&
                 p.getDataPedido() != null && p.getDataPedido().equals(dto.getDataPedido()) &&
                 p.getValorTotal() != null && dto.getValorTotal() != null &&
-                Math.abs(p.getValorTotal() - dto.getValorTotal()) < 0.01
+                Math.abs(p.getValorTotal().doubleValue() - dto.getValorTotal().doubleValue()) < 0.01
             );
             if (duplicado) {
                 throw new IllegalArgumentException("Já existe um pedido idêntico cadastrado para esta cliente nesta data.");
@@ -61,7 +74,21 @@ public class PedidoService {
         }
         Pedido pedido = new Pedido();
         preencherDadosPedido(pedido, dto);
-        return pedidoRepository.save(pedido);
+        Pedido pedidoSalvo = pedidoRepository.save(pedido);
+
+        // 1. Dá baixa no estoque para cada item do pedido criado
+        if (pedidoSalvo.getItens() != null) {
+            for (ItemPedido item : pedidoSalvo.getItens()) {
+                if (item.getProduto() != null && item.getQuantidade() != null && item.getQuantidade() > 0) {
+                    darBaixaEstoqueProduto(item.getProduto().getId(), item.getQuantidade());
+                }
+            }
+        }
+
+        // 2. Gera automaticamente um registro em Pagamentos (Contas a Receber)
+        gerarPagamentoAutomaticoParaPedido(pedidoSalvo);
+
+        return pedidoSalvo;
     }
 
     @Transactional
@@ -100,7 +127,7 @@ public class PedidoService {
 
     private void preencherDadosPedido(Pedido pedido, PedidoDTO dto) {
         pedido.setDataPedido(dto.getDataPedido() != null ? dto.getDataPedido() : LocalDate.now());
-        pedido.setValorTotal(dto.getValorTotal());
+        pedido.setValorTotal(dto.getValorTotal() != null ? dto.getValorTotal() : BigDecimal.ZERO);
 
         if (dto.getStatus() != null) {
             try {
@@ -131,6 +158,50 @@ public class PedidoService {
                     pedido.getItens().add(item);
                 }
             }
+        }
+    }
+
+    private void darBaixaEstoqueProduto(Long produtoId, int qtdVendida) {
+        try {
+            Produto produto = produtoRepository.findById(produtoId).orElse(null);
+            if (produto == null) return;
+
+            String jsonEstoque = produto.getEstoqueDetalhado();
+            if (jsonEstoque == null || jsonEstoque.trim().isEmpty()) return;
+
+            Map<String, Integer> estoque = objectMapper.readValue(
+                    jsonEstoque, new TypeReference<Map<String, Integer>>() {}
+            );
+
+            int restanteParaDeduzir = qtdVendida;
+            for (Map.Entry<String, Integer> entry : estoque.entrySet()) {
+                int saldoItem = entry.getValue() != null ? entry.getValue() : 0;
+                if (saldoItem > 0 && restanteParaDeduzir > 0) {
+                    int deduzir = Math.min(saldoItem, restanteParaDeduzir);
+                    estoque.put(entry.getKey(), saldoItem - deduzir);
+                    restanteParaDeduzir -= deduzir;
+                }
+            }
+
+            produto.setEstoqueDetalhado(objectMapper.writeValueAsString(estoque));
+            produtoRepository.saveAndFlush(produto);
+        } catch (Exception e) {
+            System.err.println("Erro ao decrementar estoque de produto avulso: " + e.getMessage());
+        }
+    }
+
+    private void gerarPagamentoAutomaticoParaPedido(Pedido pedido) {
+        try {
+            Pagamento pagamento = new Pagamento();
+            pagamento.setPedido(pedido);
+            pagamento.setValor(pedido.getValorTotal() != null ? pedido.getValorTotal() : BigDecimal.ZERO);
+            pagamento.setMetodoPagamento(MetodoPagamento.PAGAMENTO_FUTURO);
+            pagamento.setDataVencimento(pedido.getDataPedido() != null ? pedido.getDataPedido().plusDays(30) : LocalDate.now().plusDays(30));
+            pagamento.setStatus("PENDENTE");
+
+            pagamentoRepository.save(pagamento);
+        } catch (Exception e) {
+            System.err.println("Erro ao gerar pagamento automático do pedido: " + e.getMessage());
         }
     }
 }

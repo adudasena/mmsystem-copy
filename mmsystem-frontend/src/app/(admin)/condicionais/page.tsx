@@ -4,6 +4,7 @@ import React, { useState, useEffect, ChangeEvent, useCallback, useRef } from 're
 import { AxiosError } from 'axios';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
+import Paginacao from '@/components/Paginacao';
 
 // ─── Interfaces e Tipagens ─────────────────────────────────────────────────
 export interface Usuario {
@@ -202,11 +203,10 @@ const TelaCondicionais: React.FC = () => {
     };
   }, [tamanhoPagina]);
 
-  // ─── Navegação da Paginação com Auto-Scroll ──────────────────────────────
+  // ─── Navegação da Paginação ──────────────────────────────────────────────
   const mudarPagina = (novaPagina: number) => {
-    if (novaPagina >= 0 && novaPagina < totalPaginasCalculado) {
+    if (novaPagina >= 0 && novaPagina < totalPaginas) {
       buscarCondicionais(novaPagina);
-      tabelaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -390,13 +390,12 @@ const TelaCondicionais: React.FC = () => {
   const finalizarBaixaItemPorItem = async (): Promise<void> => {
     if (!sacolaParaBaixa) return;
     try {
-      const dadosParaAtualizar = {
+      const payloadFinalizar = {
         clienteId: sacolaParaBaixa.usuario?.id || sacolaParaBaixa.cliente?.id,
         dataSaida: sacolaParaBaixa.dataSaida,
         dataRetorno: sacolaParaBaixa.dataRetorno,
         status: 'FINALIZADA', 
         itens: itensBaixa.map(it => ({
-          id: it.id, 
           produtoId: it.produtoId,
           quantidade: it.quantidade,
           corEscolhida: it.corEscolhida,
@@ -405,17 +404,48 @@ const TelaCondicionais: React.FC = () => {
         }))
       };
       
-      await api.put(`/condicionais/${sacolaParaBaixa.id}`, dadosParaAtualizar);   
+      // Chama o endpoint correto de finalização que efetua a baixa real no estoque e gera Pedido + Pagamento
+      await api.put(`/condicionais/${sacolaParaBaixa.id}/finalizar`, payloadFinalizar);   
 
       setModalBaixaAberto(false);
       setSacolaParaBaixa(null);
-      setMensagemSucesso("Baixa processada e armazenada no histórico de finalizados!");
+      setMensagemSucesso("✨ Baixa concluída! Estoque atualizado e Venda/Pagamento gerados com sucesso!");
       buscarCondicionais(paginaAtual);
       setTimeout(() => setMensagemSucesso(''), 4000);
     } catch (err) {
       console.error("Erro ao finalizar baixa no Spring Boot:", err);
       alert("Não foi possível salvar o fechamento da sacola. Verifique a conexão com o servidor.");
     }
+  };
+
+  // ─── Alerta de Prazo e WhatsApp ─────────────────────────────────────────
+  const calcularPrazo = (dataRetornoStr: string) => {
+    if (!dataRetornoStr) return { status: 'NORMAL', texto: 'Sem prazo', dias: 99 };
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const dataFim = new Date(dataRetornoStr + 'T00:00:00');
+    const diffDias = Math.ceil((dataFim.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDias < 0) {
+      return { status: 'ATRASADO', texto: `Atrasado (${Math.abs(diffDias)}d)`, dias: diffDias };
+    }
+    if (diffDias === 0) {
+      return { status: 'HOJE', texto: 'Vence Hoje!', dias: 0 };
+    }
+    return { status: 'NO_PRAZO', texto: `${diffDias} dia(s) rest.`, dias: diffDias };
+  };
+
+  const enviarCobrancaWhatsApp = (c: Condicional) => {
+    const nome = c.usuario?.nome || c.cliente?.nome || 'Cliente';
+    const tel = (c.usuario?.telefone || c.cliente?.telefone || '').replace(/\D/g, '');
+    const prazo = calcularPrazo(c.dataRetorno);
+
+    const msg = `Olá, ${nome}! ✨\n\n` +
+      `Passando para lembrar da sua sacola condicional *#${c.id}* da *Maria Morena*.\n` +
+      `*Data limite para retorno:* ${c.dataRetorno} (${prazo.texto}).\n\n` +
+      `Já decidiu quais peças vai levar para arrasar? Se precisar de mais tempo, nos avise! 🛍️`;
+
+    window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   // ─── Filtro Local dos Condicionais ───────────────────────────────────────
@@ -428,59 +458,71 @@ const TelaCondicionais: React.FC = () => {
     const idCond = String(c.id);
     const temProduto = (c.itens || []).some(i => (i.produto?.nome || '').toLowerCase().includes(termo));
 
-    const atendeBusca = nomeCliente.includes(termo) || idCond.includes(termo) || temProduto;
-
-    return atendeAba && atendeStatus && atendeBusca;
+    return atendeAba && atendeStatus && (nomeCliente.includes(termo) || idCond.includes(termo) || temProduto);
   });
-
-  const totalElementosCalculado = listaFiltrada.length;
-  const totalPaginasCalculado = Math.ceil(totalElementosCalculado / tamanhoPagina) || 1;
 
   return (
     <div className="p-6 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      {/* CABEÇALHO */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 max-w-5xl">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-[#2d3a22] tracking-wide">
-            Condicionais
-          </h1>
+          <h1 className="text-3xl font-serif font-bold text-[#2d3a22]">Painel de Condicionais</h1>
+          <p className="text-xs text-gray-600 mt-1">Gerenciamento ágil de peças com saída condicional para prova domiciliar.</p>
         </div>
 
-        <button
+        <button 
           onClick={abrirNovaSacolaForm}
           className="bg-[#2d3a22] hover:bg-[#3d5427] text-white font-bold text-xs uppercase px-4 py-2.5 rounded-lg shadow-sm transition cursor-pointer self-start md:self-auto"
         >
           + Nova Sacola Condicional
         </button>
-      </header>
+      </div>
 
+      {/* FEEDBACKS */}
       {mensagemSucesso && (
-        <div className="mb-4 bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs max-w-5xl rounded-sm">
+        <div className="bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded mb-4 text-xs font-bold max-w-5xl">
           ✓ {mensagemSucesso}
         </div>
       )}
 
-      {/* SEPARADOR DE TELAS (ABAS) */}
-      <div className="flex gap-2 mb-4 max-w-5xl border-b border-gray-400">
-        <button 
-          onClick={() => { setAbaAtiva('ativas'); setPaginaAtual(0); }}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition cursor-pointer ${abaAtiva === 'ativas' ? 'border-b-2 border-[#4a5d33] text-black font-extrabold bg-white/40' : 'text-gray-500 hover:text-black'}`}
+      {errosValidacao.length > 0 && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-xs font-semibold max-w-5xl space-y-1">
+          {errosValidacao.map((e, idx) => <p key={idx}>⚠️ {e}</p>)}
+        </div>
+      )}
+
+      {/* NAVEGAÇÃO POR ABAS */}
+      <div className="flex gap-2 border-b border-gray-300 mb-4 max-w-5xl">
+        <button
+          type="button"
+          onClick={() => setAbaAtiva('ativas')}
+          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[2px] ${
+            abaAtiva === 'ativas'
+              ? 'border-[#2d3a22] text-[#2d3a22] bg-white/50'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
         >
           👜 Condicionais Ativos ({listaCondicionais.filter(c => c.status === 'ABERTA').length})
         </button>
-        <button 
-          onClick={() => { setAbaAtiva('finalizadas'); setPaginaAtual(0); }}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition cursor-pointer ${abaAtiva === 'finalizadas' ? 'border-b-2 border-[#4a5d33] text-black font-extrabold bg-white/40' : 'text-gray-500 hover:text-black'}`}
+        <button
+          type="button"
+          onClick={() => setAbaAtiva('finalizadas')}
+          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[2px] ${
+            abaAtiva === 'finalizadas'
+              ? 'border-[#2d3a22] text-[#2d3a22] bg-white/50'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
         >
-          ✅ Histórico de Finalizados ({listaCondicionais.filter(c => c.status !== 'ABERTA').length})
-        </button> 
+          📁 Histórico de Finalizados
+        </button>
       </div>
 
-      {/* BARRA DE BUSCA E FILTROS PADRONIZADA */}
+      {/* BARRA DE PESQUISA E FILTROS */}
       <div className="mb-6 max-w-5xl">
         <BarraBuscaFiltro
           termoBusca={termoBusca}
           onBuscaChange={setTermoBusca}
-          placeholder="Buscar por #código, nome do cliente ou produto..."
+          placeholder="Buscar sacola por código, cliente ou peça..."
           filtroValor={statusFiltro}
           onFiltroChange={setStatusFiltro}
           opcoesFiltro={[
@@ -493,18 +535,18 @@ const TelaCondicionais: React.FC = () => {
       </div>
 
       {/* TABELA DE REGISTROS */}
-      <section ref={tabelaRef} className="bg-white rounded-sm shadow-sm border border-gray-300 overflow-hidden max-w-5xl">
-        <div className="overflow-x-auto">
+      <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-w-5xl flex flex-col justify-between">
+        <div className="overflow-x-auto min-h-[360px]">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#cbd0c0] text-[11px] font-bold uppercase text-gray-700 border-b border-gray-300">
-                <th className="p-3 border-r border-gray-300">Código</th>
-                <th className="p-3 border-r border-gray-300">Cliente</th>
-                <th className="p-3 border-r border-gray-300">Valor Estimado</th>
-                <th className="p-3 border-r border-gray-300">Data Início</th>
-                <th className="p-3 border-r border-gray-300">Data Limite</th>
-                <th className="p-3 border-r border-gray-300">Status Sacola</th>
-                <th className="p-3 border-r border-gray-300">Peças Relacionadas (Variações)</th>
+                <th className="p-3">Código</th>
+                <th className="p-3">Cliente</th>
+                <th className="p-3">Valor Estimado</th>
+                <th className="p-3">Data Início</th>
+                <th className="p-3">Data Limite / Prazo</th>
+                <th className="p-3">Status</th>
+                <th className="p-3">Peças Relacionadas</th>
                 <th className="p-3 text-center">Ações</th>
               </tr>
             </thead>
@@ -514,99 +556,107 @@ const TelaCondicionais: React.FC = () => {
                   <td colSpan={8} className="p-8 text-center text-gray-400 italic bg-white">Nenhum registro encontrado nesta aba.</td>
                 </tr>
               ) : (
-                listaFiltrada.map((c) => (
-                  <tr key={c.id} className="hover:bg-gray-50/80 bg-white">
-                    <td className="p-3 border-r border-gray-200 font-bold text-gray-700">{String(c.id).padStart(3, '0')}</td>
-                    <td className="p-3 border-r border-gray-200 font-semibold">{c.usuario?.nome || c.cliente?.nome || '—'}</td>
-                    <td className="p-3 border-r border-gray-200 font-bold text-gray-900">R$ {Number(c.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                    <td className="p-3 border-r border-gray-200 text-gray-500">{c.dataSaida}</td>
-                    <td className="p-3 border-r border-gray-200 text-red-700 font-bold">{c.dataRetorno}</td>
-                    <td className="p-3 border-r border-gray-200 uppercase font-mono text-[10px]">
-                      <span className={`px-1.5 py-0.5 border ${c.status === 'ABERTA' ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-green-50 text-green-700 border-green-300'}`}>
-                        {c.status}
-                      </span>
-                    </td>
-                    <td className="p-3 border-r border-gray-200 text-gray-600 max-w-[240px]">
-                      <div className="space-y-1">
-                        {(c.itens || []).map((i, idx) => (
-                          <div key={idx} className="text-[11px] bg-gray-100 p-1 border rounded-sm flex justify-between items-center">
-                            <span>{i.produto?.nome} <strong>({i.corEscolhida} / {i.tamanhoEscolhido})</strong></span>
-                            <span className={`text-[9px] px-1 font-bold border uppercase ${i.statusItem === 'VENDIDO' ? 'bg-green-100 border-green-300 text-green-800' : i.statusItem === 'DEVOLVIDA' ? 'bg-blue-100 border-blue-300 text-blue-800' : 'bg-white border-gray-300 text-gray-500'}`}>
-                              {i.statusItem || 'EM COND.'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="p-3 text-center">
-                      <div className="flex justify-center items-center gap-3">
+                listaFiltrada.map((c) => {
+                  const prazo = calcularPrazo(c.dataRetorno);
+                  return (
+                    <tr key={c.id} className="hover:bg-gray-50 transition-colors bg-white">
+                      <td className="p-3 font-bold text-gray-700">#{String(c.id).padStart(3, '0')}</td>
+                      <td className="p-3">
+                        <p className="font-semibold text-gray-900">{c.usuario?.nome || c.cliente?.nome || '—'}</p>
+                        <p className="text-[10px] text-gray-500">{c.usuario?.telefone || c.cliente?.telefone || ''}</p>
+                      </td>
+                      <td className="p-3 font-bold text-gray-900">
+                        R$ {Number(c.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="p-3 text-gray-500">{c.dataSaida}</td>
+                      <td className="p-3">
+                        <span className="block font-medium text-gray-800">{c.dataRetorno}</span>
                         {c.status === 'ABERTA' && (
-                          <>
-                            <button onClick={() => prepararEdicaoLocal(c)} className="hover:scale-110 transition cursor-pointer" title="Editar Sacola">✏️</button>
-                            <button onClick={() => prepararBaixaIndividual(c)} className="text-green-600 hover:text-green-900 font-bold text-sm cursor-pointer" title="Dar Baixa nas Peças">✓</button>
-                          </>
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-0.5 border ${
+                            prazo.status === 'ATRASADO' ? 'bg-red-100 text-red-800 border-red-300' :
+                            prazo.status === 'HOJE' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                            'bg-green-100 text-green-800 border-green-300'
+                          }`}>
+                            {prazo.texto}
+                          </span>
                         )}
-                        <button onClick={() => setModalExcluir({ aberto: true, id: c.id })} className="text-red-500 hover:text-red-700 font-bold text-xs cursor-pointer" title="Excluir">✕</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="p-3 uppercase font-mono text-[10px]">
+                        <span className={`px-2 py-0.5 rounded border font-bold ${
+                          c.status === 'ABERTA' ? 'bg-amber-100 text-amber-800 border-amber-300' : 
+                          c.status === 'FINALIZADA' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                          'bg-blue-100 text-blue-800 border-blue-300'
+                        }`}>
+                          {c.status}
+                        </span>
+                      </td>
+                      <td className="p-3 text-gray-600 max-w-[240px]">
+                        <div className="space-y-1">
+                          {(c.itens || []).map((i, idx) => (
+                            <div key={idx} className="text-[11px] bg-gray-50 p-1 border rounded-sm flex justify-between items-center">
+                              <span className="truncate mr-1">{i.produto?.nome} <strong>({i.corEscolhida || '-'}/{i.tamanhoEscolhido || '-'})</strong></span>
+                              <span className={`text-[9px] px-1 font-bold border uppercase shrink-0 ${
+                                i.statusItem === 'VENDIDO' ? 'bg-green-100 border-green-300 text-green-800' : 
+                                i.statusItem === 'DEVOLVIDA' || i.statusItem === 'DISPONIVEL' ? 'bg-blue-100 border-blue-300 text-blue-800' : 
+                                'bg-white border-gray-300 text-gray-500'
+                              }`}>
+                                {i.statusItem || 'EM COND.'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="p-3 text-center">
+                        <div className="flex justify-center items-center gap-2">
+                          {c.status === 'ABERTA' && (
+                            <>
+                              <button
+                                onClick={() => enviarCobrancaWhatsApp(c)}
+                                className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer"
+                                title="Enviar lembrete no WhatsApp"
+                              >
+                                💬 Whats
+                              </button>
+                              <button 
+                                onClick={() => prepararBaixaIndividual(c)} 
+                                className="bg-[#4a5d33] hover:bg-[#3d5427] text-white px-2 py-1 rounded text-[10px] font-bold uppercase cursor-pointer transition shadow-2xs" 
+                                title="Dar Baixa nas Peças e Atualizar Estoque"
+                              >
+                                ✓ Baixa
+                              </button>
+                              <button 
+                                onClick={() => prepararEdicaoLocal(c)} 
+                                className="p-1 hover:scale-110 transition cursor-pointer text-xs" 
+                                title="Editar Sacola"
+                              >
+                                ✏️
+                              </button>
+                            </>
+                          )}
+                          <button 
+                            onClick={() => setModalExcluir({ aberto: true, id: c.id })} 
+                            className="text-red-500 hover:text-red-700 font-bold text-xs cursor-pointer p-1" 
+                            title="Excluir"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
 
         {/* BARRA DE PAGINAÇÃO NO RODAPÉ */}
-        {totalPaginasCalculado > 1 && (
-          <div className="p-4 bg-gray-50 border-t flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600">
-            <span>
-              Página <strong>{paginaAtual + 1}</strong> de <strong>{totalPaginasCalculado}</strong> (Total: {totalElementosCalculado} itens)
-            </span>
-
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => mudarPagina(paginaAtual - 1)}
-                disabled={paginaAtual === 0}
-                className="px-3 py-1.5 border rounded font-bold uppercase bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
-              >
-                ← Anterior
-              </button>
-
-              {/* Botões Numéricos de Páginas */}
-              {Array.from({ length: totalPaginasCalculado }, (_, index) => {
-                if (index === 0 || index === totalPaginasCalculado - 1 || Math.abs(index - paginaAtual) <= 1) {
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => mudarPagina(index)}
-                      className={`px-3 py-1.5 border rounded font-bold text-xs cursor-pointer transition ${
-                        paginaAtual === index
-                          ? 'bg-[#4a5d33] text-white border-[#4a5d33]'
-                          : 'bg-white text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      {index + 1}
-                    </button>
-                  );
-                } else if (
-                  (index === 1 && paginaAtual > 2) ||
-                  (index === totalPaginasCalculado - 2 && paginaAtual < totalPaginasCalculado - 3)
-                ) {
-                  return <span key={index} className="px-1 text-gray-400">...</span>;
-                }
-                return null;
-              })}
-
-              <button
-                onClick={() => mudarPagina(paginaAtual + 1)}
-                disabled={paginaAtual >= totalPaginasCalculado - 1}
-                className="px-3 py-1.5 border rounded font-bold uppercase bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
-              >
-                Próxima →
-              </button>
-            </div>
-          </div>
-        )}
+        <Paginacao
+          paginaAtual={paginaAtual}
+          totalPaginas={totalPaginas}
+          totalElementos={totalElementos}
+          onMudarPagina={mudarPagina}
+        />
       </section>
 
       {/* MODAL: FORMULÁRIO DE CRIAÇÃO E EDIÇÃO */}
@@ -618,96 +668,92 @@ const TelaCondicionais: React.FC = () => {
               <button onClick={() => setModalFormAberto(false)} className="text-gray-400 hover:text-black font-bold text-xl cursor-pointer">×</button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-              {errosValidacao.length > 0 && (
-                <div className="mb-4 bg-red-50 border-l-4 border-red-600 p-2.5 text-red-900 font-semibold text-xs rounded-sm">
-                  {errosValidacao.map((err, i) => <p key={i}>⚠️ {err}</p>)}
-                </div>
-              )}
-
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
               <div>
-                <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Selecione o Cliente</label>
-                <select 
-                  value={formCondicional.clienteId} 
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormCondicional({...formCondicional, clienteId: e.target.value})} 
-                  className="w-full border p-2 bg-gray-50 text-xs outline-none focus:border-gray-400"
+                <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Selecione a Cliente *</label>
+                <select
+                  value={formCondicional.clienteId}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormCondicional({ ...formCondicional, clienteId: e.target.value })}
+                  className="w-full border p-2 bg-gray-50 text-xs outline-none focus:border-gray-400 rounded-md"
                 >
                   <option value="">Escolha uma cliente...</option>
-                  {clientes.map(cli => <option key={cli.id} value={cli.id}>{cli.nome}</option>)}
+                  {clientes.map(cli => (
+                    <option key={cli.id} value={cli.id}>{cli.nome} {cli.telefone ? `(${cli.telefone})` : ''}</option>
+                  ))}
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Data de Retirada</label>
+                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Data de Saída</label>
                   <input 
                     type="date" 
                     value={formCondicional.dataSaida} 
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFormCondicional({...formCondicional, dataSaida: e.target.value})} 
-                    className="w-full border p-1.5 bg-gray-50 text-xs outline-none" 
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFormCondicional({ ...formCondicional, dataSaida: e.target.value })} 
+                    className="w-full border p-2 bg-gray-50 text-xs outline-none rounded-md" 
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Previsão Devolução</label>
+                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Data Limite de Retorno *</label>
                   <input 
                     type="date" 
                     value={formCondicional.dataRetorno} 
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFormCondicional({...formCondicional, dataRetorno: e.target.value})} 
-                    className="w-full border p-1.5 bg-gray-50 text-xs outline-none" 
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFormCondicional({ ...formCondicional, dataRetorno: e.target.value })} 
+                    className="w-full border p-2 bg-gray-50 text-xs outline-none rounded-md" 
                   />
                 </div>
               </div>
 
+              {/* SESSÃO DINÂMICA DE ITENS */}
               <div className="border-t pt-3">
                 <div className="flex justify-between items-center mb-2">
-                  <label className="block text-[10px] font-bold uppercase text-gray-500">Definição dos Looks e Grades</label>
-                  <button type="button" onClick={adicionarLinhaProduto} className="text-[#4a5d33] hover:underline text-[10px] font-bold cursor-pointer">+ Inserir Peça</button>
+                  <label className="block text-[10px] font-bold uppercase text-gray-500">Peças na Sacola Condicional</label>
+                  <button type="button" onClick={adicionarLinhaProduto} className="text-[#4a5d33] hover:underline text-[10px] font-bold cursor-pointer">+ Adicionar Peça</button>
                 </div>
 
                 <div className="space-y-2">
                   {formCondicional.itens.map((item, idx) => {
-                    const produtoSelecionado = produtos.find(p => String(p.id) === String(item.produtoId));
-
+                    const prodSelecionado = produtos.find(p => String(p.id) === String(item.produtoId));
                     let coresDisponiveisNoProduto: string[] = [];
-                    if (produtoSelecionado && produtoSelecionado.coresSelecionadas) {
-                      try {
-                        coresDisponiveisNoProduto = typeof produtoSelecionado.coresSelecionadas === 'string' 
-                          ? (JSON.parse(produtoSelecionado.coresSelecionadas) as string[]) 
-                          : produtoSelecionado.coresSelecionadas;
-                      } catch { coresDisponiveisNoProduto = []; }
-                    }
-
                     let tamanhosDisponiveisNoProduto: string[] = [];
-                    const estoqueBruto = produtoSelecionado?.estoque_detalhado || produtoSelecionado?.estoqueDetalhado;
-                    if (produtoSelecionado && estoqueBruto && item.corEscolhida) {
-                      try {
-                        const estoqueObj = typeof estoqueBruto === 'string' 
-                          ? (JSON.parse(estoqueBruto) as Record<string, number>) 
-                          : estoqueBruto;
-                        tamanhosDisponiveisNoProduto = Object.keys(estoqueObj)
-                          .filter(chave => chave.startsWith(`${item.corEscolhida}-`))
-                          .map(chave => chave.split('-')[1]);
-                      } catch { tamanhosDisponiveisNoProduto = []; }
+
+                    if (prodSelecionado) {
+                      const estoqueBruto = prodSelecionado.estoque_detalhado || prodSelecionado.estoqueDetalhado;
+                      if (estoqueBruto) {
+                        try {
+                          const estoque = typeof estoqueBruto === 'string' ? JSON.parse(estoqueBruto) : estoqueBruto;
+                          const chaves = Object.keys(estoque);
+                          coresDisponiveisNoProduto = Array.from(new Set(chaves.map(k => k.split('-')[0])));
+                          
+                          if (item.corEscolhida) {
+                            tamanhosDisponiveisNoProduto = chaves
+                              .filter(k => k.startsWith(item.corEscolhida + '-'))
+                              .map(k => k.split('-')[1]);
+                          }
+                        } catch (e) {
+                          console.error("Erro parsing estoque grade:", e);
+                        }
+                      }
                     }
 
                     return (
-                      <div key={idx} className="grid grid-cols-12 gap-1.5 bg-gray-50 p-2 border rounded-sm items-center">
-                        <div className="col-span-5">
+                      <div key={idx} className="grid grid-cols-12 gap-2 bg-gray-50 p-2 border rounded-md items-center">
+                        <div className="col-span-6">
                           <select 
                             value={item.produtoId} 
                             onChange={(e: ChangeEvent<HTMLSelectElement>) => handleItemChange(idx, 'produtoId', e.target.value)} 
-                            className="w-full border p-1 bg-white text-xs outline-none"
+                            className="w-full border p-1 bg-white text-xs outline-none rounded"
                           >
-                            <option value="">Selecione o Look...</option>
+                            <option value="">Selecione o Produto...</option>
                             {produtos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                           </select>
                         </div>
 
-                        <div className="col-span-3">
+                        <div className="col-span-2">
                           <select 
                             value={item.corEscolhida} 
                             onChange={(e: ChangeEvent<HTMLSelectElement>) => handleItemChange(idx, 'corEscolhida', e.target.value)} 
-                            className="w-full border p-1 bg-white text-xs outline-none" 
+                            className="w-full border p-1 bg-white text-xs outline-none rounded" 
                             disabled={!item.produtoId}
                           >
                             <option value="">Cor...</option>
@@ -719,7 +765,7 @@ const TelaCondicionais: React.FC = () => {
                           <select 
                             value={item.tamanhoEscolhido} 
                             onChange={(e: ChangeEvent<HTMLSelectElement>) => handleItemChange(idx, 'tamanhoEscolhido', e.target.value)} 
-                            className="w-full border p-1 bg-white text-xs outline-none" 
+                            className="w-full border p-1 bg-white text-xs outline-none rounded" 
                             disabled={!item.corEscolhida}
                           >
                             <option value="">Tam...</option>
@@ -733,7 +779,7 @@ const TelaCondicionais: React.FC = () => {
                             min="1" 
                             value={item.quantidade} 
                             onChange={(e: ChangeEvent<HTMLInputElement>) => handleItemChange(idx, 'quantidade', parseInt(e.target.value, 10) || 1)} 
-                            className="w-full border p-1 text-center bg-white text-xs" 
+                            className="w-full border p-1 text-center bg-white text-xs rounded" 
                           />
                         </div>
 
@@ -750,8 +796,8 @@ const TelaCondicionais: React.FC = () => {
             </div>
 
             <div className="mt-4 pt-3 border-t flex justify-end gap-2">
-              <button onClick={() => setModalFormAberto(false)} className="px-4 py-2 bg-gray-200 text-gray-700 text-[10px] font-bold uppercase hover:bg-gray-300 cursor-pointer">Cancelar</button>
-              <button onClick={salvarCondicional} className="px-5 py-2 bg-[#4a5d33] text-white text-[10px] font-bold uppercase hover:brightness-110 shadow-md cursor-pointer">Salvar Mudanças</button>
+              <button onClick={() => setModalFormAberto(false)} className="px-4 py-2 bg-gray-200 text-gray-700 text-[10px] font-bold uppercase hover:bg-gray-300 cursor-pointer rounded-sm">Cancelar</button>
+              <button onClick={salvarCondicional} className="px-5 py-2 bg-[#4a5d33] text-white text-[10px] font-bold uppercase hover:brightness-110 shadow-md cursor-pointer rounded-sm">Salvar Mudanças</button>
             </div>
           </div>
         </div>
@@ -760,41 +806,49 @@ const TelaCondicionais: React.FC = () => {
       {/* MODAL DE TRIAGEM COM SELETOR DE DEVOLUÇÃO / VENDA */}
       {modalBaixaAberto && sacolaParaBaixa && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-[#526442] text-white p-6 shadow-2xl border border-[#3e4c32] max-w-xl w-full rounded-sm">
+          <div className="bg-[#2d3a22] text-white p-6 shadow-2xl border border-[#3e4c32] max-w-xl w-full rounded-xl">
             <div className="flex justify-between items-center border-b border-white/20 pb-2 mb-4">
               <div>
-                <h3 className="font-serif text-base uppercase tracking-wider">Processar Retorno de Peças</h3>
-                <p className="text-[11px] text-gray-300">Defina o destino individualizado de cada look retornado.</p>
+                <h3 className="font-serif text-base uppercase tracking-wider">Processar Retorno de Peças (Baixa)</h3>
+                <p className="text-[11px] text-gray-300">Defina quais peças foram vendidas (baixa no estoque) e quais retornaram para a loja.</p>
               </div>
               <button onClick={() => setModalBaixaAberto(false)} className="text-white/70 hover:text-white text-xl cursor-pointer">×</button>
             </div>
 
             <div className="space-y-3 max-h-64 overflow-y-auto mb-4 pr-1">
               {itensBaixa.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between bg-[#425235] p-3 border border-[#37452c] rounded-sm gap-4">
+                <div key={idx} className="flex items-center justify-between bg-[#1f2818] p-3 border border-white/10 rounded-lg gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold truncate">{item.nome}</p>
                     <p className="text-[10px] text-gray-300">Grade: <span className="text-amber-300 font-bold">{item.corEscolhida} / {item.tamanhoEscolhido}</span> ({item.quantidade}x)</p>
                   </div>
                   
                   {/* SELETOR DE DESTINO DA PEÇA */}
-                  <div className="w-40">
+                  <div className="w-44">
                     <select
                       value={item.statusItem}
                       onChange={(e: ChangeEvent<HTMLSelectElement>) => handleStatusBaixaChange(idx, e.target.value as 'VENDIDO' | 'DEVOLVIDA')}
-                      className="w-full bg-[#526442] text-white text-xs border border-white/40 p-1.5 rounded-xs outline-none focus:border-white"
+                      className={`w-full text-xs font-bold border p-2 rounded-md outline-none cursor-pointer ${
+                        item.statusItem === 'VENDIDO' 
+                          ? 'bg-emerald-600 text-white border-emerald-400' 
+                          : 'bg-gray-700 text-gray-200 border-gray-500'
+                      }`}
                     >
-                      <option value="DEVOLVIDA">🔄 DEVOLVER (Estoque)</option>
-                      <option value="VENDIDO">💰 VENDIDO</option>
+                      <option value="DEVOLVIDA">🔄 DEVOLVER (Loja)</option>
+                      <option value="VENDIDO">💰 VENDIDO (Dar Baixa)</option>
                     </select>
                   </div>
                 </div>
               ))}
             </div>
 
+            <div className="p-3 bg-white/10 rounded-lg text-xs text-gray-200 mb-4">
+              ℹ️ As peças marcadas como <strong>VENDIDO</strong> darão baixa imediata no estoque e criarão automaticamente um <strong>Pedido de Venda</strong> e uma cobrança em <strong>Pagamentos</strong>.
+            </div>
+
             <div className="pt-3 border-t border-white/20 flex justify-end gap-2">
               <button onClick={() => setModalBaixaAberto(false)} className="px-4 py-2 text-[10px] font-bold text-white/80 uppercase hover:underline cursor-pointer">Fechar</button>
-              <button onClick={finalizarBaixaItemPorItem} className="px-5 py-2 bg-white text-gray-900 text-[10px] font-bold uppercase hover:bg-gray-100 shadow-md transition cursor-pointer">Confirmar Baixa do Estoque</button>
+              <button onClick={finalizarBaixaItemPorItem} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold uppercase rounded-md shadow-md transition cursor-pointer">Confirmar Baixa do Estoque</button>
             </div>
           </div>
         </div>

@@ -2,6 +2,9 @@ package com.adudasena.mmsystem.service;
 
 import com.adudasena.mmsystem.dto.CondicionalDTO;
 import com.adudasena.mmsystem.dto.VitrinePedidoDTO;
+import com.adudasena.mmsystem.enums.MetodoPagamento;
+import com.adudasena.mmsystem.enums.Perfil;
+import com.adudasena.mmsystem.enums.StatusPedido;
 import com.adudasena.mmsystem.model.*;
 import com.adudasena.mmsystem.repository.*;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -15,11 +18,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 @Service
 public class CondicionalService {
@@ -32,6 +35,12 @@ public class CondicionalService {
 
     @Autowired
     private ProdutoRepository produtoRepository;
+
+    @Autowired
+    private PedidoRepository pedidoRepository;
+
+    @Autowired
+    private PagamentoRepository pagamentoRepository;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -106,24 +115,26 @@ public class CondicionalService {
 
         boolean possuiVenda = false;
         boolean possuiDevolucao = false;
+        List<ItemCondicional> itensVendidos = new ArrayList<>();
 
         for (ItemCondicional itemBanco : condicional.getItens()) {
             CondicionalDTO.ItemSacolaDTO itemDto = itensEnviadosPeloFront.stream()
                     .filter(i -> i.getProdutoId().equals(itemBanco.getProduto().getId())
-                            && i.getCorEscolhida().equals(itemBanco.getCorEscolhida())
-                            && i.getTamanhoEscolhido().equals(itemBanco.getTamanhoEscolhido()))
+                            && (i.getCorEscolhida() == null || i.getCorEscolhida().equals(itemBanco.getCorEscolhida()))
+                            && (i.getTamanhoEscolhido() == null || i.getTamanhoEscolhido().equals(itemBanco.getTamanhoEscolhido())))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Item da grade não localizado na requisição."));
+                    .orElse(null);
 
-            if (itemDto.getStatusItem() != null) {
+            if (itemDto != null && itemDto.getStatusItem() != null) {
                 String acaoVendedora = itemDto.getStatusItem().toUpperCase();
 
                 if (acaoVendedora.equals("VENDIDO")) {
                     itemBanco.setStatusItem("VENDIDO");
                     possuiVenda = true;
+                    itensVendidos.add(itemBanco);
 
                     atualizarEstoqueProduto(itemBanco.getProduto(), itemBanco.getCorEscolhida(), itemBanco.getTamanhoEscolhido(), itemBanco.getQuantidade());
-                } else if (acaoVendedora.equals("DISPONIVEL") || acaoVendedora.equals("DEVOLVIDO")) {
+                } else if (acaoVendedora.equals("DISPONIVEL") || acaoVendedora.equals("DEVOLVIDO") || acaoVendedora.equals("DEVOLVIDA")) {
                     itemBanco.setStatusItem("DISPONIVEL");
                     possuiDevolucao = true;
                 }
@@ -132,11 +143,56 @@ public class CondicionalService {
 
         if (possuiVenda) {
             condicional.setStatus("FINALIZADA");
+
+            // 1. Gera Pedido de Venda associado aos itens vendidos
+            gerarPedidoEVendaParaCondicional(condicional, itensVendidos);
+
         } else if (possuiDevolucao) {
             condicional.setStatus("DEVOLVIDA");
         }
 
         return repository.save(condicional);
+    }
+
+    private void gerarPedidoEVendaParaCondicional(Condicional condicional, List<ItemCondicional> itensVendidos) {
+        try {
+            Pedido pedido = new Pedido();
+            pedido.setCliente(condicional.getUsuario());
+            pedido.setCondicional(condicional);
+            pedido.setDataPedido(LocalDate.now());
+            pedido.setStatus(StatusPedido.PENDENTE);
+
+            BigDecimal valorTotalVendido = BigDecimal.ZERO;
+            List<ItemPedido> itensPedido = new ArrayList<>();
+
+            for (ItemCondicional itemCond : itensVendidos) {
+                ItemPedido itemPed = new ItemPedido();
+                itemPed.setPedido(pedido);
+                itemPed.setProduto(itemCond.getProduto());
+                itemPed.setQuantidade(itemCond.getQuantidade() != null ? itemCond.getQuantidade() : 1);
+                itensPedido.add(itemPed);
+
+                BigDecimal precoUnit = itemCond.getProduto() != null && itemCond.getProduto().getPreco() != null 
+                        ? itemCond.getProduto().getPreco() : BigDecimal.ZERO;
+                valorTotalVendido = valorTotalVendido.add(precoUnit.multiply(BigDecimal.valueOf(itemPed.getQuantidade())));
+            }
+
+            pedido.setItens(itensPedido);
+            pedido.setValorTotal(valorTotalVendido);
+            Pedido pedidoSalvo = pedidoRepository.save(pedido);
+
+            // 2. Gera Pagamento PENDENTE para o Pedido
+            Pagamento pagamento = new Pagamento();
+            pagamento.setPedido(pedidoSalvo);
+            pagamento.setValor(valorTotalVendido);
+            pagamento.setMetodoPagamento(MetodoPagamento.PAGAMENTO_FUTURO);
+            pagamento.setDataVencimento(LocalDate.now().plusDays(30));
+            pagamento.setStatus("PENDENTE");
+            pagamentoRepository.save(pagamento);
+
+        } catch (Exception e) {
+            System.err.println("Erro ao gerar Pedido e Pagamento a partir do condicional: " + e.getMessage());
+        }
     }
 
     @Transactional
@@ -148,8 +204,36 @@ public class CondicionalService {
 
     @Transactional
     public Condicional processarPedidoVitrine(VitrinePedidoDTO dto) {
-        Usuario usuario = usuarioRepository.findById(dto.getUsuarioId())
-                .orElseThrow(() -> new RuntimeException("Cliente/Usuário não encontrado: " + dto.getUsuarioId()));
+        Usuario usuario = null;
+
+        if (dto.getUsuarioId() != null) {
+            usuario = usuarioRepository.findById(dto.getUsuarioId()).orElse(null);
+        }
+
+        if (usuario == null && dto.getTelefoneCliente() != null && !dto.getTelefoneCliente().trim().isEmpty()) {
+            Optional<Usuario> porTelefone = usuarioRepository.findByTelefone(dto.getTelefoneCliente().trim());
+            if (porTelefone.isPresent()) {
+                usuario = porTelefone.get();
+            } else {
+                Usuario novoCliente = new Usuario();
+                novoCliente.setNome(dto.getNomeCliente() != null && !dto.getNomeCliente().trim().isEmpty() ? dto.getNomeCliente().trim() : "Cliente Vitrine");
+                novoCliente.setTelefone(dto.getTelefoneCliente().trim());
+                novoCliente.setPerfil(Perfil.ROLE_CLIENTE);
+                usuario = usuarioRepository.save(novoCliente);
+            }
+        }
+
+        if (usuario == null) {
+            List<Usuario> lista = usuarioRepository.findByDeletedAtIsNull();
+            usuario = lista.stream().filter(u -> u.getPerfil() == Perfil.ROLE_CLIENTE).findFirst().orElse(null);
+            if (usuario == null && !lista.isEmpty()) {
+                usuario = lista.get(0);
+            }
+        }
+
+        if (usuario == null) {
+            throw new RuntimeException("Nenhum cliente disponível para vincular a sacola da vitrine.");
+        }
 
         Condicional condicional = new Condicional();
         condicional.setUsuario(usuario);
@@ -157,12 +241,13 @@ public class CondicionalService {
         condicional.setDataRetorno(LocalDate.now().plusDays(3));
         condicional.setStatus("ABERTA");
 
+        final Condicional condicionalRef = condicional;
         List<ItemCondicional> itens = dto.getItens().stream().map(itemDto -> {
             Produto produto = produtoRepository.findById(itemDto.getProdutoId())
                     .orElseThrow(() -> new RuntimeException("Produto não encontrado ID: " + itemDto.getProdutoId()));
 
             ItemCondicional item = new ItemCondicional();
-            item.setCondicional(condicional);
+            item.setCondicional(condicionalRef);
             item.setProduto(produto);
             item.setQuantidade(itemDto.getQuantidade() != null ? itemDto.getQuantidade() : 1);
             item.setCorEscolhida(itemDto.getCorEscolhida());
@@ -219,25 +304,35 @@ public class CondicionalService {
                     .orElseThrow(() -> new RuntimeException("Produto não localizado para atualização de estoque."));
 
             String jsonEstoque = produto.getEstoqueDetalhado();
-            if (jsonEstoque == null || jsonEstoque.isEmpty()) return;
+            if (jsonEstoque == null || jsonEstoque.trim().isEmpty()) return;
 
             Map<String, Integer> estoque = objectMapper.readValue(
                     jsonEstoque, new TypeReference<Map<String, Integer>>() {}
             );
 
-            String chaveComposta = cor + "-" + tamanho;
+            String chaveComposta = (cor != null ? cor.trim() : "") + "-" + (tamanho != null ? tamanho.trim() : "");
 
             if (estoque.containsKey(chaveComposta)) {
-                int qtdAtual = estoque.get(chaveComposta);
+                int qtdAtual = estoque.get(chaveComposta) != null ? estoque.get(chaveComposta) : 0;
                 int novaQtd = Math.max(0, qtdAtual - qtdVendida);
-
                 estoque.put(chaveComposta, novaQtd);
-
-                produto.setEstoqueDetalhado(objectMapper.writeValueAsString(estoque));
-                produtoRepository.saveAndFlush(produto);
+            } else {
+                // Caso a chave exata não exista, desconta da primeira variação disponível
+                int restante = qtdVendida;
+                for (Map.Entry<String, Integer> entry : estoque.entrySet()) {
+                    int val = entry.getValue() != null ? entry.getValue() : 0;
+                    if (val > 0 && restante > 0) {
+                        int deduzir = Math.min(val, restante);
+                        estoque.put(entry.getKey(), val - deduzir);
+                        restante -= deduzir;
+                    }
+                }
             }
+
+            produto.setEstoqueDetalhado(objectMapper.writeValueAsString(estoque));
+            produtoRepository.saveAndFlush(produto);
         } catch (Exception e) {
-            System.err.println("Falha ao atualizar estoque: " + e.getMessage());
+            System.err.println("Falha ao atualizar estoque no condicional: " + e.getMessage());
         }
     }
 }
