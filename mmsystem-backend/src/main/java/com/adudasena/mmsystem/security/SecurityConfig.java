@@ -57,6 +57,7 @@ public class SecurityConfig {
                         .requestMatchers("/vitrine/**").permitAll()
                         .requestMatchers("/pedidos/vitrine").permitAll()
                         .requestMatchers(HttpMethod.GET, "/produtos/**").permitAll()
+                        .requestMatchers("/error").permitAll()
 
                         // 3. Demais rotas administrativas restritas aos perfis PROPRIETARIA e FUNCIONARIO
                         .anyRequest().hasAnyRole("PROPRIETARIA", "FUNCIONARIO")

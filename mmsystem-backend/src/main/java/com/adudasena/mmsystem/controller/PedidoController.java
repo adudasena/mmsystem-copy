@@ -1,5 +1,8 @@
 package com.adudasena.mmsystem.controller;
 
+import com.adudasena.mmsystem.dto.VitrinePedidoDTO;
+import com.adudasena.mmsystem.model.Condicional;
+import com.adudasena.mmsystem.service.CondicionalService;
 import com.adudasena.mmsystem.dto.PedidoDTO;
 import com.adudasena.mmsystem.model.Pedido;
 import com.adudasena.mmsystem.service.PedidoService;
@@ -20,6 +23,15 @@ public class PedidoController {
 
     @Autowired
     private PedidoService service;
+
+    @Autowired
+    private CondicionalService condicionalService;
+
+    @PostMapping("/vitrine")
+    public ResponseEntity<Condicional> criarPedidoVitrine(@RequestBody VitrinePedidoDTO dto) {
+        Condicional condicionalCriada = condicionalService.processarPedidoVitrine(dto);
+        return ResponseEntity.status(201).body(condicionalCriada);
+    }
 
     @GetMapping
     public ResponseEntity<Page<Pedido>> listarTodos(

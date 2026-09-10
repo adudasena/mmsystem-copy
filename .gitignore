@@ -22,3 +22,7 @@ build/
 # Sistema
 Thumbs.db
 .DS_Store
+
+.agents
+AGENTS.md
+GEMINI.md

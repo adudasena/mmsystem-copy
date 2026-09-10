@@ -29,7 +29,7 @@ export interface ItemCondicionalForm {
   quantidade: number;
   corEscolhida: string;
   tamanhoEscolhido: string;
-  statusItem: 'EM_CONDICIONAL' | 'VENDIDO' | 'DEVOLVIDA';
+  statusItem: 'EM_CONDICIONAL' | 'VENDIDO' | 'DEVOLVIDA' | string;
 }
 
 export interface ItemCondicionalResponse {
@@ -38,7 +38,7 @@ export interface ItemCondicionalResponse {
   quantidade: number;
   corEscolhida: string;
   tamanhoEscolhido: string;
-  statusItem?: 'EM_CONDICIONAL' | 'VENDIDO' | 'DEVOLVIDA';
+  statusItem?: 'EM_CONDICIONAL' | 'VENDIDO' | 'DEVOLVIDA' | 'DISPONIVEL' | string;
 }
 
 export interface FormCondicional {

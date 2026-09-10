@@ -132,9 +132,11 @@ public class CondicionalService {
                     itemBanco.setStatusItem("VENDIDO");
                     possuiVenda = true;
                     itensVendidos.add(itemBanco);
-
-                    atualizarEstoqueProduto(itemBanco.getProduto(), itemBanco.getCorEscolhida(), itemBanco.getTamanhoEscolhido(), itemBanco.getQuantidade());
                 } else if (acaoVendedora.equals("DISPONIVEL") || acaoVendedora.equals("DEVOLVIDO") || acaoVendedora.equals("DEVOLVIDA")) {
+                    // Restaura estoque pois item saiu de EM_CONDICIONAL para DISPONIVEL
+                    if (!"DISPONIVEL".equalsIgnoreCase(itemBanco.getStatusItem())) {
+                        alterarEstoqueProduto(itemBanco.getProduto(), itemBanco.getCorEscolhida(), itemBanco.getTamanhoEscolhido(), +itemBanco.getQuantidade());
+                    }
                     itemBanco.setStatusItem("DISPONIVEL");
                     possuiDevolucao = true;
                 }
@@ -232,7 +234,11 @@ public class CondicionalService {
         }
 
         if (usuario == null) {
-            throw new RuntimeException("Nenhum cliente disponível para vincular a sacola da vitrine.");
+            Usuario fallback = new Usuario();
+            fallback.setNome(dto.getNomeCliente() != null && !dto.getNomeCliente().trim().isEmpty() ? dto.getNomeCliente().trim() : "Cliente Vitrine");
+            fallback.setTelefone(dto.getTelefoneCliente() != null && !dto.getTelefoneCliente().trim().isEmpty() ? dto.getTelefoneCliente().trim() : "00000000000");
+            fallback.setPerfil(Perfil.ROLE_CLIENTE);
+            usuario = usuarioRepository.save(fallback);
         }
 
         Condicional condicional = new Condicional();
@@ -246,12 +252,22 @@ public class CondicionalService {
             Produto produto = produtoRepository.findById(itemDto.getProdutoId())
                     .orElseThrow(() -> new RuntimeException("Produto não encontrado ID: " + itemDto.getProdutoId()));
 
+            int qtd = itemDto.getQuantidade() != null ? itemDto.getQuantidade() : 1;
+            String cor = itemDto.getCorEscolhida();
+            String tamanho = itemDto.getTamanhoEscolhido();
+
+            // 1. Valida se há saldo em estoque para a variação
+            validarEstoqueDisponivel(produto, cor, tamanho, qtd);
+
+            // 2. Abate do estoque do produto no banco
+            alterarEstoqueProduto(produto, cor, tamanho, -qtd);
+
             ItemCondicional item = new ItemCondicional();
             item.setCondicional(condicionalRef);
             item.setProduto(produto);
-            item.setQuantidade(itemDto.getQuantidade() != null ? itemDto.getQuantidade() : 1);
-            item.setCorEscolhida(itemDto.getCorEscolhida());
-            item.setTamanhoEscolhido(itemDto.getTamanhoEscolhido());
+            item.setQuantidade(qtd);
+            item.setCorEscolhida(cor);
+            item.setTamanhoEscolhido(tamanho);
             item.setStatusItem("EM_CONDICIONAL");
 
             return item;
@@ -269,13 +285,23 @@ public class CondicionalService {
             Produto produto = produtoRepository.findById(itemDTO.getProdutoId())
                     .orElseThrow(() -> new RuntimeException("Produto não encontrado: " + itemDTO.getProdutoId()));
 
+            int qtd = itemDTO.getQuantidade() != null ? itemDTO.getQuantidade() : 1;
+            String cor = itemDTO.getCorEscolhida();
+            String tamanho = itemDTO.getTamanhoEscolhido();
+            String statusItem = itemDTO.getStatusItem() != null ? itemDTO.getStatusItem().toUpperCase() : "EM_CONDICIONAL";
+
+            if (!"DISPONIVEL".equalsIgnoreCase(statusItem) && !"DEVOLVIDO".equalsIgnoreCase(statusItem) && !"DEVOLVIDA".equalsIgnoreCase(statusItem)) {
+                validarEstoqueDisponivel(produto, cor, tamanho, qtd);
+                alterarEstoqueProduto(produto, cor, tamanho, -qtd);
+            }
+
             ItemCondicional item = new ItemCondicional();
             item.setCondicional(condicional);
             item.setProduto(produto);
-            item.setQuantidade(itemDTO.getQuantidade() != null ? itemDTO.getQuantidade() : 1);
-            item.setCorEscolhida(itemDTO.getCorEscolhida());
-            item.setTamanhoEscolhido(itemDTO.getTamanhoEscolhido());
-            item.setStatusItem(itemDTO.getStatusItem() != null ? itemDTO.getStatusItem().toUpperCase() : "EM_CONDICIONAL");
+            item.setQuantidade(qtd);
+            item.setCorEscolhida(cor);
+            item.setTamanhoEscolhido(tamanho);
+            item.setStatusItem(statusItem);
 
             condicional.getItens().add(item);
         }
@@ -298,7 +324,56 @@ public class CondicionalService {
         }
     }
 
-    private void atualizarEstoqueProduto(Produto produtoOriginal, String cor, String tamanho, int qtdVendida) {
+    public int obterEstoqueDisponivel(Produto produto, String cor, String tamanho) {
+        String jsonEstoque = produto.getEstoqueDetalhado();
+        if (jsonEstoque == null || jsonEstoque.trim().isEmpty()) {
+            return 99;
+        }
+        try {
+            Map<String, Integer> estoque = objectMapper.readValue(
+                    jsonEstoque, new TypeReference<Map<String, Integer>>() {}
+            );
+            if (estoque == null || estoque.isEmpty()) return 99;
+
+            String c = cor != null ? cor.trim() : "";
+            String t = tamanho != null ? tamanho.trim() : "";
+
+            String chave1 = c + "-" + t;
+            if (estoque.containsKey(chave1)) return estoque.get(chave1) != null ? estoque.get(chave1) : 0;
+
+            String chave2 = t + "-" + c;
+            if (estoque.containsKey(chave2)) return estoque.get(chave2) != null ? estoque.get(chave2) : 0;
+
+            if (!t.isEmpty() && estoque.containsKey(t)) return estoque.get(t) != null ? estoque.get(t) : 0;
+            if (!c.isEmpty() && estoque.containsKey(c)) return estoque.get(c) != null ? estoque.get(c) : 0;
+
+            for (Map.Entry<String, Integer> entry : estoque.entrySet()) {
+                String k = entry.getKey();
+                if (k.equalsIgnoreCase(chave1) || k.equalsIgnoreCase(chave2) || k.equalsIgnoreCase(t) || k.equalsIgnoreCase(c)) {
+                    return entry.getValue() != null ? entry.getValue() : 0;
+                }
+            }
+
+            return 0;
+        } catch (Exception e) {
+            return 99;
+        }
+    }
+
+    public void validarEstoqueDisponivel(Produto produto, String cor, String tamanho, int qtdSolicitada) {
+        int disponivel = obterEstoqueDisponivel(produto, cor, tamanho);
+        if (disponivel < qtdSolicitada) {
+            String detalheVariacao = (tamanho != null && !tamanho.isEmpty() ? "Tamanho: " + tamanho : "")
+                    + (cor != null && !cor.isEmpty() ? (tamanho != null && !tamanho.isEmpty() ? ", Cor: " : "Cor: ") + cor : "");
+            if (detalheVariacao.isEmpty()) detalheVariacao = "Padrão";
+
+            throw new IllegalArgumentException("Saldo insuficiente em estoque para o produto '" 
+                    + produto.getNome() + "' (" + detalheVariacao + "). Estoque disponível: " 
+                    + disponivel + ", Solicitado: " + qtdSolicitada + ".");
+        }
+    }
+
+    private void alterarEstoqueProduto(Produto produtoOriginal, String cor, String tamanho, int deltaQtd) {
         try {
             Produto produto = produtoRepository.findById(produtoOriginal.getId())
                     .orElseThrow(() -> new RuntimeException("Produto não localizado para atualização de estoque."));
@@ -309,16 +384,34 @@ public class CondicionalService {
             Map<String, Integer> estoque = objectMapper.readValue(
                     jsonEstoque, new TypeReference<Map<String, Integer>>() {}
             );
+            if (estoque == null || estoque.isEmpty()) return;
 
-            String chaveComposta = (cor != null ? cor.trim() : "") + "-" + (tamanho != null ? tamanho.trim() : "");
+            String c = cor != null ? cor.trim() : "";
+            String t = tamanho != null ? tamanho.trim() : "";
 
-            if (estoque.containsKey(chaveComposta)) {
-                int qtdAtual = estoque.get(chaveComposta) != null ? estoque.get(chaveComposta) : 0;
-                int novaQtd = Math.max(0, qtdAtual - qtdVendida);
-                estoque.put(chaveComposta, novaQtd);
-            } else {
-                // Caso a chave exata não exista, desconta da primeira variação disponível
-                int restante = qtdVendida;
+            String chaveEncontrada = null;
+            String chave1 = c + "-" + t;
+            String chave2 = t + "-" + c;
+
+            if (estoque.containsKey(chave1)) chaveEncontrada = chave1;
+            else if (estoque.containsKey(chave2)) chaveEncontrada = chave2;
+            else if (!t.isEmpty() && estoque.containsKey(t)) chaveEncontrada = t;
+            else if (!c.isEmpty() && estoque.containsKey(c)) chaveEncontrada = c;
+            else {
+                for (String k : estoque.keySet()) {
+                    if (k.equalsIgnoreCase(chave1) || k.equalsIgnoreCase(chave2) || k.equalsIgnoreCase(t) || k.equalsIgnoreCase(c)) {
+                        chaveEncontrada = k;
+                        break;
+                    }
+                }
+            }
+
+            if (chaveEncontrada != null) {
+                int qtdAtual = estoque.get(chaveEncontrada) != null ? estoque.get(chaveEncontrada) : 0;
+                int novaQtd = Math.max(0, qtdAtual + deltaQtd);
+                estoque.put(chaveEncontrada, novaQtd);
+            } else if (deltaQtd < 0) {
+                int restante = Math.abs(deltaQtd);
                 for (Map.Entry<String, Integer> entry : estoque.entrySet()) {
                     int val = entry.getValue() != null ? entry.getValue() : 0;
                     if (val > 0 && restante > 0) {

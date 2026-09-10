@@ -75,7 +75,7 @@ export default function VitrineProdutos() {
         setLoading(true);
         setErro(null);
         const res = await api.get<PageSpring<ProdutoVitrine> | ProdutoVitrine[]>('/produtos?size=50');
-        
+
         if (montado) {
           if (res.data && Array.isArray((res.data as PageSpring<ProdutoVitrine>).content)) {
             setProdutos((res.data as PageSpring<ProdutoVitrine>).content);
@@ -117,6 +117,85 @@ export default function VitrineProdutos() {
       }
     }
     return '';
+  };
+
+  // ─── Helpers para Variações e Estoque Dinâmico ──────────────────────────────
+  const extrairLista = (val: string[] | string | undefined, padrao: string[]): string[] => {
+    if (!val) return padrao;
+    if (Array.isArray(val)) return val.length > 0 ? val : padrao;
+    if (typeof val === 'string') {
+      try {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {
+        const arr = val.split(',').map((s) => s.trim()).filter(Boolean);
+        if (arr.length > 0) return arr;
+      }
+    }
+    return padrao;
+  };
+
+  const extrairEstoqueDetalhado = (val: Record<string, number> | string | undefined): Record<string, number> => {
+    if (!val) return {};
+    if (typeof val === 'object' && !Array.isArray(val)) return val;
+    if (typeof val === 'string') {
+      try {
+        const parsed = JSON.parse(val);
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) return parsed;
+      } catch {
+        return {};
+      }
+    }
+    return {};
+  };
+
+  const obterEstoqueVariacao = (
+    estoqueMap: Record<string, number>,
+    corEscolha: string,
+    tamanhoEscolha: string,
+    fallbackEstoque?: number
+  ): number => {
+    if (!estoqueMap || Object.keys(estoqueMap).length === 0) {
+      return fallbackEstoque !== undefined ? fallbackEstoque : 99;
+    }
+    const chaveDireta = `${corEscolha}-${tamanhoEscolha}`;
+    if (chaveDireta in estoqueMap) return estoqueMap[chaveDireta] || 0;
+
+    const chaveInvertida = `${tamanhoEscolha}-${corEscolha}`;
+    if (chaveInvertida in estoqueMap) return estoqueMap[chaveInvertida] || 0;
+
+    if (tamanhoEscolha in estoqueMap) return estoqueMap[tamanhoEscolha] || 0;
+    if (corEscolha in estoqueMap) return estoqueMap[corEscolha] || 0;
+
+    return 0;
+  };
+
+  const abrirModalProduto = (prod: ProdutoVitrine): void => {
+    const tamanhosDisponiveis = extrairLista(prod.tamanhosSelecionados || prod.tamanhosC, ['Único']);
+    const coresDisponiveis = extrairLista(prod.coresSelecionadas || prod.coresC, ['Padrão']);
+    const estoqueMap = extrairEstoqueDetalhado(prod.estoqueDetalhado);
+
+    let tamInicial = tamanhosDisponiveis[0] || 'Único';
+    let corInicial = coresDisponiveis[0] || 'Padrão';
+    let achouDisponivel = false;
+
+    for (const t of tamanhosDisponiveis) {
+      for (const c of coresDisponiveis) {
+        const st = obterEstoqueVariacao(estoqueMap, c, t, prod.quantidadeEstoque);
+        if (st > 0) {
+          tamInicial = t;
+          corInicial = c;
+          achouDisponivel = true;
+          break;
+        }
+      }
+      if (achouDisponivel) break;
+    }
+
+    setProdutoSelecionado(prod);
+    setTamanho(tamInicial);
+    setCor(corInicial);
+    setQuantidade(1);
   };
 
   // Adicionar à Sacola
@@ -167,22 +246,26 @@ export default function VitrineProdutos() {
     };
 
     try {
-      // Chama o endpoint oficial da vitrine que registra o condicional no backend
-      await api.post('/vitrine/pedido', payload);
+      try {
+        await api.post('/vitrine/pedido', payload);
+      } catch {
+        // Tenta o endpoint alternativo caso ocorra divergência de rota
+        await api.post('/pedidos/vitrine', payload);
+      }
 
       const resumo = carrinho
-        .map((i) => `• ${i.quantidade}x ${i.nome} (${i.tamanhoEscolhido} / ${i.corEscolhida}) — R$ ${(i.preco * i.quantidade).toFixed(2)}`)
+        .map((i) => `• ${i.quantidade}x ${i.nome} (${i.tamanhoEscolhido} / ${i.corEscolhida}) — R$ ${(i.preco * i.quantidade).toFixed(2).replace('.', ',')}`)
         .join('\n');
-        
+
       const msgWhatsapp = encodeURIComponent(
         `Olá Maria Morena! Meu nome é *${nomeCliente.trim()}*.\n\n` +
         `Gostaria de solicitar as seguintes peças para provar em condicional:\n\n${resumo}\n\n` +
-        `*Total Estimado:* R$ ${totalCarrinho.toFixed(2)}\n\n` +
+        `*Total Estimado:* R$ ${totalCarrinho.toFixed(2).replace('.', ',')}\n\n` +
         `Por favor, me confirme a disponibilidade para retirada/entrega! 🛍️✨`
       );
 
       alert('✨ Sacola registrada no sistema com sucesso! Redirecionando você para o WhatsApp da loja...');
-      window.open(`https://wa.me/5543999999999?text=${msgWhatsapp}`, '_blank');
+      window.open(`https://wa.me/5543996623157?text=${msgWhatsapp}`, '_blank');
 
       setCarrinho([]);
       setNomeCliente('');
@@ -191,7 +274,8 @@ export default function VitrineProdutos() {
     } catch (err) {
       const erroAxios = err as AxiosError<ApiErrorResponse>;
       console.error('Erro ao registrar pedido:', erroAxios);
-      alert('Erro ao finalizar sacola: ' + (erroAxios.response?.data?.message || 'Falha na conexão com o servidor.'));
+      const mensagemErro = erroAxios.response?.data?.message || erroAxios.response?.data?.erro || 'Falha na conexão com o servidor.';
+      alert('Erro ao finalizar sacola: ' + mensagemErro);
     }
   };
 
@@ -208,10 +292,10 @@ export default function VitrineProdutos() {
       {/* HEADER / BARRA SUPERIOR */}
       <header className="bg-[#2c3e1c] text-white py-3 px-4 md:px-8 sticky top-0 z-40 shadow-md flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <img 
-            src="/escritocompleto1linha.svg" 
-            alt="Maria Morena Logo" 
-            className="h-9 w-auto invert brightness-200" 
+          <img
+            src="/escritocompleto1linha.svg"
+            alt="Maria Morena Logo"
+            className="h-9 w-auto invert brightness-200"
           />
         </div>
 
@@ -310,10 +394,7 @@ export default function VitrineProdutos() {
 
                       <button
                         type="button"
-                        onClick={() => {
-                          setProdutoSelecionado(prod);
-                          setQuantidade(1);
-                        }}
+                        onClick={() => abrirModalProduto(prod)}
                         className="bg-[#2c3e1c] hover:bg-[#3d5427] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-xs cursor-pointer"
                       >
                         + Escolher
@@ -327,92 +408,144 @@ export default function VitrineProdutos() {
         )}
       </section>
 
-      {/* MODAL DE DETALHES / SELEÇÃO DE GRADE */}
-      {produtoSelecionado && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl relative">
-            <button
-              type="button"
-              onClick={() => setProdutoSelecionado(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-black font-bold cursor-pointer"
-            >
-              ✕
-            </button>
+      {/* MODAL DE DETALHES / SELEÇÃO DE GRADE E ESTOQUE DINÂMICO */}
+      {produtoSelecionado && (() => {
+        const tamanhosDisponiveis = extrairLista(produtoSelecionado.tamanhosSelecionados || produtoSelecionado.tamanhosC, ['Único']);
+        const coresDisponiveis = extrairLista(produtoSelecionado.coresSelecionadas || produtoSelecionado.coresC, ['Padrão']);
+        const estoqueMap = extrairEstoqueDetalhado(produtoSelecionado.estoqueDetalhado);
+        const estoqueDisponivel = obterEstoqueVariacao(estoqueMap, cor, tamanho, produtoSelecionado.quantidadeEstoque);
 
-            <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden">
-              {obterImagemUrl(produtoSelecionado) ? (
-                <img
-                  src={obterImagemUrl(produtoSelecionado)}
-                  alt={produtoSelecionado.nome}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-4xl">👗</div>
-              )}
-            </div>
+        // Filtra para exibir apenas tamanhos e cores que possuem saldo em estoque (> 0)
+        const tamanhosEmEstoque = tamanhosDisponiveis.filter((tam) =>
+          coresDisponiveis.some((c) => obterEstoqueVariacao(estoqueMap, c, tam, produtoSelecionado.quantidadeEstoque) > 0)
+        );
 
-            <div>
-              <h3 className="font-bold text-base text-gray-900">{produtoSelecionado.nome}</h3>
-              <p className="text-sm font-extrabold text-[#2c3e1c] mt-1">
-                R$ {Number(produtoSelecionado.preco || 0).toFixed(2).replace('.', ',')}
-              </p>
-            </div>
+        const coresEmEstoque = coresDisponiveis.filter(
+          (c) => obterEstoqueVariacao(estoqueMap, c, tamanho, produtoSelecionado.quantidadeEstoque) > 0
+        );
 
-            <div className="space-y-3 text-xs">
+        return (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+            <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl relative">
+              <button
+                type="button"
+                onClick={() => setProdutoSelecionado(null)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-black font-bold cursor-pointer text-lg"
+              >
+                ✕
+              </button>
+
+              <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden">
+                {obterImagemUrl(produtoSelecionado) ? (
+                  <img
+                    src={obterImagemUrl(produtoSelecionado)}
+                    alt={produtoSelecionado.nome}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-4xl">👗</div>
+                )}
+              </div>
+
               <div>
-                <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Tamanho:</label>
-                <div className="flex gap-2">
-                  {['P', 'M', 'G', 'GG'].map((tam) => (
-                    <button
-                      key={tam}
-                      type="button"
-                      onClick={() => setTamanho(tam)}
-                      className={`w-9 h-9 rounded-lg border font-bold text-xs transition-all cursor-pointer ${
-                        tamanho === tam
-                          ? 'bg-[#2c3e1c] text-white border-[#2c3e1c]'
-                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      {tam}
-                    </button>
-                  ))}
+                <h3 className="font-bold text-base text-gray-900">{produtoSelecionado.nome}</h3>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-base font-extrabold text-[#2c3e1c]">
+                    R$ {Number(produtoSelecionado.preco || 0).toFixed(2).replace('.', ',')}
+                  </p>
+                  {estoqueDisponivel > 0 ? (
+                    <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                      ✓ {estoqueDisponivel} un. em estoque
+                    </span>
+                  ) : (
+                    <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                      ✕ Indisponível
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Cor Preferida:</label>
-                <input
-                  type="text"
-                  value={cor}
-                  onChange={(e) => setCor(e.target.value)}
-                  placeholder="Ex: Preto, Floral, Estampado..."
-                  className="w-full border border-gray-200 rounded-lg p-2 text-xs outline-none focus:border-[#2c3e1c]"
-                />
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Tamanho:</label>
+                  <div className="flex flex-wrap gap-2">
+                    {(tamanhosEmEstoque.length > 0 ? tamanhosEmEstoque : tamanhosDisponiveis).map((tam) => (
+                      <button
+                        key={tam}
+                        type="button"
+                        onClick={() => {
+                          setTamanho(tam);
+                          if (obterEstoqueVariacao(estoqueMap, cor, tam, produtoSelecionado.quantidadeEstoque) === 0) {
+                            const cAlt = coresDisponiveis.find((c) => obterEstoqueVariacao(estoqueMap, c, tam, produtoSelecionado.quantidadeEstoque) > 0);
+                            if (cAlt) setCor(cAlt);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg border font-bold text-xs transition-all cursor-pointer ${tamanho === tam
+                            ? 'bg-[#2c3e1c] text-white border-[#2c3e1c]'
+                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                          }`}
+                      >
+                        {tam}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Cor:</label>
+                  <div className="flex flex-wrap gap-2">
+                    {(coresEmEstoque.length > 0 ? coresEmEstoque : coresDisponiveis).map((c) => {
+                      const st = obterEstoqueVariacao(estoqueMap, c, tamanho, produtoSelecionado.quantidadeEstoque);
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          disabled={st === 0}
+                          onClick={() => setCor(c)}
+                          className={`px-3 py-1.5 rounded-lg border font-bold text-xs transition-all cursor-pointer ${cor === c
+                              ? 'bg-[#2c3e1c] text-white border-[#2c3e1c]'
+                              : st === 0
+                                ? 'bg-gray-100 text-gray-400 border-gray-200 opacity-60 cursor-not-allowed'
+                                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                            }`}
+                        >
+                          {c} {st === 0 ? '(Esgotado)' : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Quantidade:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={Math.max(1, estoqueDisponivel)}
+                    value={quantidade}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10) || 1;
+                      const limitada = Math.min(Math.max(1, val), Math.max(1, estoqueDisponivel));
+                      setQuantidade(limitada);
+                    }}
+                    disabled={estoqueDisponivel === 0}
+                    className="w-24 border border-gray-200 rounded-lg p-2 text-xs text-center font-bold outline-none focus:border-[#2c3e1c] disabled:bg-gray-100 disabled:text-gray-400"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Quantidade:</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={quantidade}
-                  onChange={(e) => setQuantidade(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="w-20 border border-gray-200 rounded-lg p-2 text-xs text-center font-bold outline-none"
-                />
-              </div>
+              <button
+                type="button"
+                onClick={adicionarAoCarrinho}
+                disabled={estoqueDisponivel === 0}
+                className="w-full bg-[#2c3e1c] hover:bg-[#3d5427] disabled:bg-gray-300 text-white py-2.5 rounded-xl font-bold uppercase text-xs transition shadow cursor-pointer disabled:cursor-not-allowed"
+              >
+                {estoqueDisponivel > 0 ? 'Adicionar à Sacola de Interesse' : 'Indisponível no Momento'}
+              </button>
             </div>
-
-            <button
-              type="button"
-              onClick={adicionarAoCarrinho}
-              className="w-full bg-[#2c3e1c] hover:bg-[#3d5427] text-white py-2.5 rounded-xl font-bold uppercase text-xs transition shadow cursor-pointer"
-            >
-              Adicionar à Sacola
-            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* DRAWER DA SACOLA */}
       {mostrarCarrinho && (
