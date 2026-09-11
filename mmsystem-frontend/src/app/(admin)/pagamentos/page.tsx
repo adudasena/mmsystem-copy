@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
+import { Pencil, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
@@ -8,6 +9,7 @@ import Paginacao from '@/components/Paginacao';
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface PedidoRef {
   id: number;
+  valorTotal?: number;
 }
 
 export interface Pagamento {
@@ -364,17 +366,17 @@ const TelaPagamentos: React.FC = () => {
                           <div className="flex justify-center items-center gap-2">
                             <button
                               onClick={() => prepararEdicao(pag)}
-                              className="hover:scale-110 transition cursor-pointer"
+                              className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
                               title="Editar Lançamento"
                             >
-                              ✏️
+                              <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => setModalExcluir({ aberto: true, id: pag.id })}
-                              className="text-red-500 hover:text-red-700 font-bold text-xs cursor-pointer"
+                              className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
                               title="Excluir Lançamento"
                             >
-                              ✕
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
@@ -415,7 +417,10 @@ const TelaPagamentos: React.FC = () => {
                 {errosValidacao.length > 0 && (
                   <div className="bg-red-50 border-l-4 border-red-600 p-2.5 text-red-900 font-semibold rounded-sm">
                     {errosValidacao.map((err, i) => (
-                      <p key={i}>⚠️ {err}</p>
+                      <p key={i} className="flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                        {err}
+                      </p>
                     ))}
                   </div>
                 )}
@@ -426,15 +431,21 @@ const TelaPagamentos: React.FC = () => {
                   </label>
                   <select
                     value={formPagamento.fkPedidoId}
-                    onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                      setFormPagamento({ ...formPagamento, fkPedidoId: e.target.value })
-                    }
-                    className="w-full border p-2 bg-gray-50 text-xs outline-none focus:border-gray-400"
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                      const pedIdStr = e.target.value;
+                      const pedEncontrado = pedidosOpcoes.find((p) => String(p.id) === pedIdStr);
+                      setFormPagamento((prev) => ({
+                        ...prev,
+                        fkPedidoId: pedIdStr,
+                        valor: pedEncontrado?.valorTotal ? String(pedEncontrado.valorTotal) : prev.valor
+                      }));
+                    }}
+                    className="w-full border p-2 bg-gray-50 text-xs outline-none focus:border-gray-400 rounded-lg"
                   >
                     <option value="">Sem Pedido Vinculado (Avulso)</option>
                     {pedidosOpcoes.map((ped) => (
                       <option key={ped.id} value={ped.id}>
-                        Pedido #{ped.id}
+                        Pedido #{ped.id} {ped.valorTotal ? `— R$ ${Number(ped.valorTotal).toFixed(2)}` : ''}
                       </option>
                     ))}
                   </select>
@@ -535,7 +546,10 @@ const TelaPagamentos: React.FC = () => {
         {modalExcluir.aberto && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white p-5 max-w-xs w-full rounded-sm border-t-4 border-red-600 shadow-2xl">
-              <h4 className="font-serif text-base text-red-700 mb-1">⚠️ Excluir Pagamento</h4>
+              <h4 className="font-serif text-base text-red-700 mb-1 flex items-center gap-1">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                Excluir Pagamento
+              </h4>
               <p className="text-xs text-gray-600 mb-4">
                 Confirma a remoção permanente deste lançamento financeiro?
               </p>

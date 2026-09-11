@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect, ChangeEvent, useCallback, useRef } from 'react';
 import { AxiosError } from 'axios';
+import { ShoppingBag, FolderCheck, MessageSquare, Pencil, Trash2, AlertCircle, CheckCircle2, Search } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
+import SystemModal from '@/components/SystemModal';
 
 // ─── Interfaces e Tipagens ─────────────────────────────────────────────────
 export interface Usuario {
@@ -427,12 +429,13 @@ const TelaCondicionais: React.FC = () => {
     const diffDias = Math.ceil((dataFim.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDias < 0) {
-      return { status: 'ATRASADO', texto: `Atrasado (${Math.abs(diffDias)}d)`, dias: diffDias };
+      const absDias = Math.abs(diffDias);
+      return { status: 'ATRASADO', texto: `Atrasado (${absDias} ${absDias === 1 ? 'dia' : 'dias'})`, dias: diffDias };
     }
     if (diffDias === 0) {
       return { status: 'HOJE', texto: 'Vence Hoje!', dias: 0 };
     }
-    return { status: 'NO_PRAZO', texto: `${diffDias} dia(s) rest.`, dias: diffDias };
+    return { status: 'NO_PRAZO', texto: `${diffDias} ${diffDias === 1 ? 'dia restante' : 'dias restantes'}`, dias: diffDias };
   };
 
   const enviarCobrancaWhatsApp = (c: Condicional) => {
@@ -440,10 +443,10 @@ const TelaCondicionais: React.FC = () => {
     const tel = (c.usuario?.telefone || c.cliente?.telefone || '').replace(/\D/g, '');
     const prazo = calcularPrazo(c.dataRetorno);
 
-    const msg = `Olá, ${nome}! ✨\n\n` +
+    const msg = `Olá, ${nome}!\n\n` +
       `Passando para lembrar da sua sacola condicional *#${c.id}* da *Maria Morena*.\n` +
       `*Data limite para retorno:* ${c.dataRetorno} (${prazo.texto}).\n\n` +
-      `Já decidiu quais peças vai levar para arrasar? Se precisar de mais tempo, nos avise! 🛍️`;
+      `Já decidiu quais peças vai levar para arrasar? Se precisar de mais tempo, nos avise!`;
 
     window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`, '_blank');
   };
@@ -496,24 +499,26 @@ const TelaCondicionais: React.FC = () => {
         <button
           type="button"
           onClick={() => setAbaAtiva('ativas')}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[2px] ${
+          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[2px] flex items-center gap-1.5 ${
             abaAtiva === 'ativas'
               ? 'border-[#2d3a22] text-[#2d3a22] bg-white/50'
               : 'border-transparent text-gray-500 hover:text-gray-800'
           }`}
         >
-          👜 Condicionais Ativos ({listaCondicionais.filter(c => c.status === 'ABERTA').length})
+          <ShoppingBag className="w-4 h-4 text-[#2d3a22]" />
+          Condicionais Ativos ({listaCondicionais.filter(c => c.status === 'ABERTA').length})
         </button>
         <button
           type="button"
           onClick={() => setAbaAtiva('finalizadas')}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[2px] ${
+          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[2px] flex items-center gap-1.5 ${
             abaAtiva === 'finalizadas'
               ? 'border-[#2d3a22] text-[#2d3a22] bg-white/50'
               : 'border-transparent text-gray-500 hover:text-gray-800'
           }`}
         >
-          📁 Histórico de Finalizados
+          <FolderCheck className="w-4 h-4 text-[#2d3a22]" />
+          Histórico de Finalizados
         </button>
       </div>
 
@@ -615,7 +620,7 @@ const TelaCondicionais: React.FC = () => {
                                 className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer"
                                 title="Enviar lembrete no WhatsApp"
                               >
-                                💬 Whats
+                                <MessageSquare className="w-3.5 h-3.5 text-white" /> Whats
                               </button>
                               <button 
                                 onClick={() => prepararBaixaIndividual(c)} 
@@ -626,19 +631,19 @@ const TelaCondicionais: React.FC = () => {
                               </button>
                               <button 
                                 onClick={() => prepararEdicaoLocal(c)} 
-                                className="p-1 hover:scale-110 transition cursor-pointer text-xs" 
+                                className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black" 
                                 title="Editar Sacola"
                               >
-                                ✏️
+                                <Pencil className="w-3.5 h-3.5" />
                               </button>
                             </>
                           )}
                           <button 
                             onClick={() => setModalExcluir({ aberto: true, id: c.id })} 
-                            className="text-red-500 hover:text-red-700 font-bold text-xs cursor-pointer p-1" 
+                            className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700" 
                             title="Excluir"
                           >
-                            ✕
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>

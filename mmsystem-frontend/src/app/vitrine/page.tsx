@@ -3,7 +3,9 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import { AxiosError } from 'axios';
+import { ShoppingBag, MessageSquare, Camera, Search, Trash2 } from 'lucide-react';
 import api from '@/services/api';
+import SystemModal, { ModalType } from '@/components/SystemModal';
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface ProdutoVitrine {
@@ -225,12 +227,30 @@ export default function VitrineProdutos() {
     setCarrinho((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Modal do sistema (substituto de alert)
+  const [modalSistema, setModalSistema] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    type?: ModalType;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    message: '',
+    type: 'info',
+  });
+
   // Finalizar e Enviar via WhatsApp e Backend Spring Boot
   const finalizarPedido = async (): Promise<void> => {
     if (carrinho.length === 0) return;
 
     if (!nomeCliente.trim() || !telefoneCliente.trim()) {
-      alert('Por favor, informe seu Nome e WhatsApp para agendar sua sacola condicional.');
+      setModalSistema({
+        isOpen: true,
+        type: 'warning',
+        title: 'Dados Obrigatórios',
+        message: 'Por favor, informe seu Nome e WhatsApp para agendar sua sacola condicional.',
+      });
       return;
     }
 
@@ -261,21 +281,37 @@ export default function VitrineProdutos() {
         `Olá Maria Morena! Meu nome é *${nomeCliente.trim()}*.\n\n` +
         `Gostaria de solicitar as seguintes peças para provar em condicional:\n\n${resumo}\n\n` +
         `*Total Estimado:* R$ ${totalCarrinho.toFixed(2).replace('.', ',')}\n\n` +
-        `Por favor, me confirme a disponibilidade para retirada/entrega! 🛍️✨`
+        `Por favor, me confirme a disponibilidade para retirada/entrega!`
       );
-
-      alert('✨ Sacola registrada no sistema com sucesso! Redirecionando você para o WhatsApp da loja...');
-      window.open(`https://wa.me/5543996623157?text=${msgWhatsapp}`, '_blank');
 
       setCarrinho([]);
       setNomeCliente('');
       setTelefoneCliente('');
       setMostrarCarrinho(false);
+
+      setModalSistema({
+        isOpen: true,
+        type: 'success',
+        title: 'Sacola Solicitada com Sucesso!',
+        message: 'Sua solicitação de sacola condicional foi registrada! Redirecionando para o WhatsApp da loja...',
+        onConfirm: () => {
+          window.open(`https://wa.me/5543996623157?text=${msgWhatsapp}`, '_blank');
+        }
+      });
+
+      // Redireciona diretamente para o WhatsApp
+      window.open(`https://wa.me/5543996623157?text=${msgWhatsapp}`, '_blank');
     } catch (err) {
       const erroAxios = err as AxiosError<ApiErrorResponse>;
       console.error('Erro ao registrar pedido:', erroAxios);
       const mensagemErro = erroAxios.response?.data?.message || erroAxios.response?.data?.erro || 'Falha na conexão com o servidor.';
-      alert('Erro ao finalizar sacola: ' + mensagemErro);
+      
+      setModalSistema({
+        isOpen: true,
+        type: 'danger',
+        title: 'Atenção ao Finalizar Sacola',
+        message: `Erro ao finalizar sacola: ${mensagemErro}`,
+      });
     }
   };
 
@@ -630,15 +666,26 @@ export default function VitrineProdutos() {
                 <button
                   type="button"
                   onClick={finalizarPedido}
-                  className="w-full bg-[#2c3e1c] hover:bg-[#3d5427] text-white py-3 rounded-xl text-xs font-bold uppercase transition shadow-md cursor-pointer"
+                  className="w-full bg-[#2c3e1c] hover:bg-[#3d5427] text-white py-3 rounded-xl text-xs font-bold uppercase transition shadow-md cursor-pointer flex items-center justify-center gap-2"
                 >
-                  SOLICITAR SACOLA (WhatsApp) 💬
+                  <MessageSquare className="w-4 h-4" />
+                  SOLICITAR SACOLA VIA WHATSAPP
                 </button>
               </div>
             )}
           </div>
         </div>
       )}
+
+      {/* Modal Customizado do Sistema */}
+      <SystemModal
+        isOpen={modalSistema.isOpen}
+        title={modalSistema.title}
+        message={modalSistema.message}
+        type={modalSistema.type}
+        onConfirm={modalSistema.onConfirm}
+        onClose={() => setModalSistema((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

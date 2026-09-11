@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect, ChangeEvent, KeyboardEvent, useCallback, useRef } from 'react';
 import { AxiosError } from 'axios';
+import { Pencil, Trash2, Eye, Camera, Settings, Package, Plus, AlertCircle } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
@@ -442,13 +443,13 @@ const TelaProdutos: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
 
           {/* INFORMAÇÕES BÁSICAS */}
-          <div className="bg-white p-6 rounded-sm shadow-sm border border-gray-100">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <label className="block text-[11px] font-bold uppercase mb-2 text-gray-500">Nome do produto (Max 80 caracteres)</label>
             <input
               maxLength={80}
               value={produto.nome}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setProduto({ ...produto, nome: e.target.value })}
-              className="w-full border p-2 bg-gray-50 outline-none focus:border-gray-400"
+              className="w-full border p-2.5 bg-gray-50 outline-none focus:border-gray-400 rounded-lg text-xs"
             />
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -457,23 +458,24 @@ const TelaProdutos: React.FC = () => {
                 <select
                   value={produto.categoria}
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => setProduto({ ...produto, categoria: e.target.value })}
-                  className="w-full border p-2 bg-gray-50 outline-none focus:border-gray-400"
+                  className="w-full border p-2.5 bg-gray-50 outline-none focus:border-gray-400 rounded-lg text-xs"
                 >
                   <option value="">Selecione...</option>
                   {categorias.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
               <div>
+                <label className="block text-[11px] font-bold uppercase mb-2 text-gray-500">Nova Categoria</label>
                 <div className="flex gap-1">
                   <input
                     type="text"
-                    placeholder="Nova Categoria"
+                    placeholder="Adicionar..."
                     value={novaCategoriaTexto}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setNovaCategoriaTexto(e.target.value)}
                     onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && adicionarCategoriaCustomizada()}
-                    className="w-full text-xs border p-2 outline-none bg-gray-50 focus:border-gray-400"
+                    className="w-full text-xs border p-2.5 outline-none bg-gray-50 focus:border-gray-400 rounded-lg"
                   />
-                  <button type="button" onClick={adicionarCategoriaCustomizada} className="bg-gray-800 text-white text-xs px-3 font-bold hover:bg-black">+</button>
+                  <button type="button" onClick={adicionarCategoriaCustomizada} className="bg-gray-800 text-white text-xs px-3 font-bold hover:bg-black rounded-lg cursor-pointer">+</button>
                 </div>
               </div>
             </div>
@@ -485,31 +487,31 @@ const TelaProdutos: React.FC = () => {
               maxLength={500}
               value={produto.descricao}
               onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setProduto({ ...produto, descricao: e.target.value })}
-              className="w-full border p-2 h-28 bg-gray-50 outline-none resize-none focus:border-gray-400"
+              className="w-full border p-2.5 h-28 bg-gray-50 outline-none resize-none focus:border-gray-400 rounded-lg text-xs"
             />
           </div>
 
           {/* FOTOS */}
-          <div className="bg-white p-6 rounded-sm shadow-sm border border-gray-100">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex justify-between items-center mb-4">
               <label className="block text-[11px] font-bold uppercase text-gray-500">Imagens do produto (Mínimo 1, Máximo 4)</label>
               <span className="text-[10px] font-mono text-gray-400">{produto.fotos.length}/4 Carregadas</span>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-2">
               {produto.fotos.length < 4 && (
-                <label className="min-w-25 h-25 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 rounded transition">
-                  <span className="text-xl">📸</span>
+                <label className="min-w-25 h-25 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 rounded-xl transition">
+                  <Camera className="w-6 h-6 text-gray-400 mb-1" />
                   <span className="text-[8px] font-bold uppercase text-gray-500">ADICIONAR</span>
                   <input type="file" accept="image/*" multiple onChange={handleFotos} className="hidden" />
                 </label>
               )}
               {produto.fotos.map((foto, i) => (
-                <div key={i} className="min-w-25 h-25 border bg-gray-50 rounded flex items-center justify-center relative overflow-hidden group">
+                <div key={i} className="min-w-25 h-25 border bg-gray-50 rounded-xl flex items-center justify-center relative overflow-hidden group">
                   <img src={foto} className="w-full h-full object-cover" alt="preview" />
                   <button
                     type="button"
                     onClick={() => removerFoto(i)}
-                    className="absolute inset-0 bg-black/70 text-white font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[10px] uppercase"
+                    className="absolute inset-0 bg-black/70 text-white font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[10px] uppercase cursor-pointer"
                   >
                     Remover
                   </button>
@@ -521,7 +523,7 @@ const TelaProdutos: React.FC = () => {
 
         <div className="space-y-6">
           {/* PREÇO E ESTOQUE */}
-          <div className="bg-white p-6 rounded-sm shadow-sm border border-gray-100 grid grid-cols-2 gap-4">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-bold uppercase mb-2 text-gray-500">Preço (R$)</label>
               <input
@@ -529,19 +531,21 @@ const TelaProdutos: React.FC = () => {
                 value={produto.preco}
                 onChange={handlePrecoInput}
                 placeholder="0.00"
-                className="w-full border p-2 bg-gray-50 outline-none focus:border-gray-400 font-medium"
+                className="w-full border p-2.5 bg-gray-50 outline-none focus:border-gray-400 font-medium rounded-lg text-xs"
               />
             </div>
             <div onClick={abrirGestaoEstoque} className="cursor-pointer group">
-              <label className="block text-[11px] font-bold uppercase mb-2 text-gray-500 group-hover:text-black">Grade Estoque ⚙️</label>
-              <div className="w-full border p-2 bg-gray-100 font-bold text-center text-[#4a5d33] group-hover:bg-[#4a5d33] group-hover:text-white transition">
+              <label className="block text-[11px] font-bold uppercase mb-2 text-gray-500 group-hover:text-black flex items-center gap-1">
+                Grade Estoque <Settings className="w-3.5 h-3.5 text-gray-500" />
+              </label>
+              <div className="w-full border p-2.5 bg-gray-100 font-bold text-center text-[#4a5d33] rounded-lg group-hover:bg-[#4a5d33] group-hover:text-white transition">
                 {Object.values(produto.estoqueDetalhado).reduce((a, b) => a + b, 0)} un
               </div>
             </div>
           </div>
 
           {/* TAMANHOS */}
-          <div className="bg-white p-6 rounded-sm shadow-sm border border-gray-100">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <label className="block text-[11px] font-bold uppercase mb-3 text-center text-gray-500">Tamanhos Disponíveis</label>
             <div className="flex flex-wrap gap-1.5 justify-center mb-4">
               {tamanhos.map(t => (
@@ -553,7 +557,7 @@ const TelaProdutos: React.FC = () => {
                       : [...produto.tamanhosSelecionados, t];
                     setProduto({ ...produto, tamanhosSelecionados: novos });
                   }}
-                  className={`w-9 h-9 text-[10px] font-bold border transition-all ${produto.tamanhosSelecionados.includes(t) ? 'bg-black text-white border-black' : 'bg-white text-gray-400 hover:border-gray-400'}`}
+                  className={`w-9 h-9 text-[10px] font-bold border rounded-lg transition-all cursor-pointer ${produto.tamanhosSelecionados.includes(t) ? 'bg-black text-white border-black' : 'bg-white text-gray-400 hover:border-gray-400'}`}
                 >
                   {t}
                 </button>
@@ -566,21 +570,21 @@ const TelaProdutos: React.FC = () => {
                 value={novoTamanhoTexto}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNovoTamanhoTexto(e.target.value)}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && adicionarTamanhoCustomizado()}
-                className="flex-1 text-xs border p-1 outline-none uppercase font-mono"
+                className="flex-1 text-xs border p-2 outline-none uppercase font-mono rounded-lg"
               />
-              <button type="button" onClick={adicionarTamanhoCustomizado} className="bg-gray-800 text-white text-xs px-3 font-bold hover:bg-black">+</button>
+              <button type="button" onClick={adicionarTamanhoCustomizado} className="bg-gray-800 text-white text-xs px-3 font-bold hover:bg-black rounded-lg cursor-pointer">+</button>
             </div>
           </div>
 
           {/* CORES */}
-          <div className="bg-white p-6 rounded-sm shadow-sm border border-gray-100">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <label className="block text-[11px] font-bold uppercase mb-3 text-gray-500">Cores Disponíveis</label>
             <div className="grid grid-cols-2 gap-y-2.5 max-h-40 overflow-y-auto mb-4 pr-1">
               {listaCores.map(c => (
                 <label key={c.nome} className="flex items-center gap-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
-                    className="w-3 h-3 accent-[#4a5d33]"
+                    className="w-3.5 h-3.5 accent-[#4a5d33]"
                     checked={produto.coresSelecionadas.includes(c.nome)}
                     onChange={() => {
                       const novos = produto.coresSelecionadas.includes(c.nome)
@@ -589,7 +593,7 @@ const TelaProdutos: React.FC = () => {
                       setProduto({ ...produto, coresSelecionadas: novos });
                     }}
                   />
-                  <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: c.hex }} />
+                  <div className="w-3.5 h-3.5 rounded-full border border-gray-300" style={{ backgroundColor: c.hex }} />
                   <span className="text-[10px] text-gray-600 font-semibold">{c.nome}</span>
                 </label>
               ))}
@@ -601,15 +605,15 @@ const TelaProdutos: React.FC = () => {
                 value={novaCorNome}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNovaCorNome(e.target.value)}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && adicionarCorCustomizada()}
-                className="flex-1 text-xs border p-1 outline-none"
+                className="flex-1 text-xs border p-2 outline-none rounded-lg"
               />
               <input
                 type="color"
                 value={novaCorHex}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNovaCorHex(e.target.value)}
-                className="w-8 h-7 cursor-pointer border p-0.5"
+                className="w-8 h-8 cursor-pointer border p-0.5 rounded-lg"
               />
-              <button type="button" onClick={adicionarCorCustomizada} className="bg-gray-800 text-white text-xs px-3 font-bold hover:bg-black">+</button>
+              <button type="button" onClick={adicionarCorCustomizada} className="bg-gray-800 text-white text-xs px-3 font-bold hover:bg-black rounded-lg cursor-pointer">+</button>
             </div>
           </div>
         </div>
@@ -639,11 +643,12 @@ const TelaProdutos: React.FC = () => {
       </div>
 
       {/* TABELA PRINCIPAL LIMPA */}
-      <section ref={tabelaRef} className="bg-white rounded-sm shadow-sm overflow-hidden border-t-4 border-[#4a5d33] max-w-5xl">
+      <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden border-t-4 border-[#4a5d33] max-w-5xl">
         <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
           <div>
-            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-widest">
-              {visualizandoExcluidos ? "🗑️ Histórico de Produtos Removidos" : "Produtos Cadastrados"}
+            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-widest flex items-center gap-1.5">
+              <Trash2 className="w-4 h-4 text-gray-500" />
+              {visualizandoExcluidos ? "Histórico de Produtos Removidos" : "Produtos Cadastrados"}
             </h3>
             {!visualizandoExcluidos && totalElementos > 0 && (
               <span className="text-[10px] text-gray-500 font-semibold">
@@ -657,7 +662,7 @@ const TelaProdutos: React.FC = () => {
               if (!visualizandoExcluidos) buscarExcluidos();
               setVisualizandoExcluidos(!visualizandoExcluidos);
             }}
-            className={`px-3 py-1 text-[10px] font-bold uppercase rounded-xs transition tracking-wider border cursor-pointer ${
+            className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded-lg transition tracking-wider border cursor-pointer ${
               visualizandoExcluidos 
                 ? 'bg-gray-600 hover:bg-gray-700 text-white border-gray-600' 
                 : 'bg-[#4a5d33] hover:bg-[#3b4b28] text-white border-[#4a5d33]'
@@ -669,16 +674,16 @@ const TelaProdutos: React.FC = () => {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50 text-[10px] uppercase text-gray-400 border-b">
+            <thead className="bg-[#cbd0c0] text-[10px] font-bold uppercase text-gray-700 border-b border-gray-300">
               <tr>
-                <th className="p-4">Foto</th>
-                <th className="p-4">Produto</th>
-                <th className="p-4">Preço</th>
-                <th className="p-4">Estoque Total</th>
-                <th className="p-4 text-right">Ações</th>
+                <th className="p-3">Foto</th>
+                <th className="p-3">Produto</th>
+                <th className="p-3">Preço</th>
+                <th className="p-3">Estoque Total</th>
+                <th className="p-3 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-xs">
+            <tbody className="divide-y divide-gray-200 text-xs">
               {(() => {
                 if (!Array.isArray(produtosFiltrados) || produtosFiltrados.length === 0) {
                   return (
@@ -702,34 +707,56 @@ const TelaProdutos: React.FC = () => {
                   }
 
                   return (
-                    <tr key={p.id} className="hover:bg-gray-50/50">
-                      <td className="p-4">
+                    <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="p-3">
                         {(() => {
                           try {
                             const f = typeof p.fotos === 'string' ? JSON.parse(p.fotos) : p.fotos;
                             const srcFoto = Array.isArray(f) ? f[0] : f;
-                            return <img src={srcFoto} className="w-10 h-10 object-cover rounded border" alt="prod" />;
+                            return <img src={srcFoto} className="w-10 h-10 object-cover rounded-lg border" alt="prod" />;
                           } catch {
-                            return <div className="w-10 h-10 bg-gray-100 flex items-center justify-center text-gray-300">👗</div>;
+                            return (
+                              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                                <Package className="w-5 h-5" />
+                              </div>
+                            );
                           }
                         })()}
                       </td>
-                      <td className="p-4 font-bold text-gray-800">{p.nome}</td>
-                      <td className="p-4 text-gray-600 font-medium">
+                      <td className="p-3 font-bold text-gray-800">{p.nome}</td>
+                      <td className="p-3 text-gray-600 font-medium">
                         R$ {Number(p.preco || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="p-4 font-bold text-[#4a5d33]">{totalCalculado} un</td>
-                      <td className="p-4 text-right space-x-3">
+                      <td className="p-3 font-bold text-[#4a5d33]">{totalCalculado} un</td>
+                      <td className="p-3 text-center">
                         {visualizandoExcluidos ? (
-                          <span className="text-[10px] bg-red-50 text-red-600 px-2 py-1 font-bold uppercase rounded-xs border border-red-200">
+                          <span className="text-[10px] bg-red-50 text-red-600 px-2 py-1 font-bold uppercase rounded-md border border-red-200">
                             Inativo / Removido
                           </span>
                         ) : (
-                          <>
-                            <button onClick={() => prepararEdicao(p)} className="text-blue-600 hover:underline font-bold cursor-pointer">EDITAR</button>
-                            <button onClick={() => setModalExcluir({ aberto: true, id: p.id ?? null })} className="text-red-600 hover:underline font-bold cursor-pointer">EXCLUIR</button>
-                            <button onClick={() => verDetalhes(p)} className="text-green-700 hover:underline font-bold cursor-pointer">DETALHES</button>
-                          </>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => verDetalhes(p)}
+                              className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
+                              title="Ver Detalhes do Produto"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => prepararEdicao(p)}
+                              className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
+                              title="Editar Produto"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setModalExcluir({ aberto: true, id: p.id ?? null })}
+                              className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
+                              title="Excluir Produto"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -787,12 +814,15 @@ const TelaProdutos: React.FC = () => {
       {/* MODAL: EXCLUSÃO */}
       {modalExcluir.aberto && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-sm border-t-4 border-red-600 w-full max-w-sm p-6 shadow-2xl">
-            <h3 className="font-serif text-lg text-red-700 mb-2">⚠️ Excluir Registro</h3>
+          <div className="bg-white rounded-xl border-t-4 border-red-600 w-full max-w-sm p-6 shadow-2xl">
+            <h3 className="font-serif text-lg text-red-700 mb-2 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              Excluir Registro
+            </h3>
             <p className="text-xs text-gray-600 mb-6">Tem certeza de que deseja remover este produto? Esta ação não pode ser desfeita.</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setModalExcluir({ aberto: false, id: null })} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold uppercase text-[10px] cursor-pointer">Cancelar</button>
-              <button onClick={confirmarExclusao} className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold uppercase text-[10px] cursor-pointer">Confirmar Exclusão</button>
+              <button onClick={() => setModalExcluir({ aberto: false, id: null })} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold uppercase text-[10px] rounded-lg cursor-pointer">Cancelar</button>
+              <button onClick={confirmarExclusao} className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold uppercase text-[10px] rounded-lg cursor-pointer">Confirmar Exclusão</button>
             </div>
           </div>
         </div>
@@ -801,23 +831,23 @@ const TelaProdutos: React.FC = () => {
       {/* MODAL: DETALHES */}
       {modalDetalhes.aberto && modalDetalhes.dados && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-sm border-t-4 border-gray-700 w-full max-w-lg max-h-[85vh] flex flex-col p-6 shadow-2xl">
+          <div className="bg-white rounded-xl border-t-4 border-gray-700 w-full max-w-lg max-h-[85vh] flex flex-col p-6 shadow-2xl">
             <div className="flex justify-between items-start border-b pb-3 mb-4">
               <div>
                 <h3 className="font-serif text-xl text-gray-900 uppercase">{modalDetalhes.dados.nome}</h3>
-                <span className="text-[9px] font-mono uppercase bg-gray-100 text-gray-500 px-1 border">ID: {modalDetalhes.dados.id}</span>
+                <span className="text-[9px] font-mono uppercase bg-gray-100 text-gray-500 px-1 border rounded">ID: {modalDetalhes.dados.id}</span>
               </div>
               <button onClick={() => setModalDetalhes({ aberto: false, dados: null })} className="text-gray-400 hover:text-black font-bold text-xl cursor-pointer">×</button>
             </div>
             <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs text-gray-700">
-              <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 border">
-                <p><strong>📂 Categoria:</strong> {modalDetalhes.dados.categoria || '—'}</p>
-                <p><strong>💰 Preço:</strong> R$ {Number(modalDetalhes.dados.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                <p className="col-span-2"><strong>🎨 Cores:</strong> {Array.isArray(modalDetalhes.dados.coresC) ? modalDetalhes.dados.coresC.join(', ') : '—'}</p>
-                <p className="col-span-2"><strong>📏 Tamanhos:</strong> {Array.isArray(modalDetalhes.dados.tamanhosC) ? modalDetalhes.dados.tamanhosC.join(', ') : '—'}</p>
+              <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 border rounded-lg">
+                <p><strong>Categoria:</strong> {modalDetalhes.dados.categoria || '—'}</p>
+                <p><strong>Preço:</strong> R$ {Number(modalDetalhes.dados.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                <p className="col-span-2"><strong>Cores:</strong> {Array.isArray(modalDetalhes.dados.coresC) ? modalDetalhes.dados.coresC.join(', ') : '—'}</p>
+                <p className="col-span-2"><strong>Tamanhos:</strong> {Array.isArray(modalDetalhes.dados.tamanhosC) ? modalDetalhes.dados.tamanhosC.join(', ') : '—'}</p>
               </div>
               {modalDetalhes.dados.descricao && (
-                <div className="p-2 border-l-2 border-gray-400 italic bg-gray-50/50">&quot;{modalDetalhes.dados.descricao}&quot;</div>
+                <div className="p-2 border-l-2 border-gray-400 italic bg-gray-50/50 rounded-r">&quot;{modalDetalhes.dados.descricao}&quot;</div>
               )}
               <div>
                 <p className="font-bold uppercase text-[10px] text-gray-400 tracking-wider mb-2">Grade de Estoque:</p>
@@ -832,7 +862,7 @@ const TelaProdutos: React.FC = () => {
               </div>
             </div>
             <div className="mt-6 pt-3 border-t">
-              <button onClick={() => setModalDetalhes({ aberto: false, dados: null })} className="w-full py-2 bg-gray-800 hover:bg-black text-white font-bold uppercase text-xs tracking-wider cursor-pointer">
+              <button onClick={() => setModalDetalhes({ aberto: false, dados: null })} className="w-full py-2 bg-gray-800 hover:bg-black text-white font-bold uppercase text-xs tracking-wider rounded-lg cursor-pointer">
                 Fechar
               </button>
             </div>

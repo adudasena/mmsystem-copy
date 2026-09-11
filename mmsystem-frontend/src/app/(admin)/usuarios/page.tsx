@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect, ChangeEvent, FormEvent, useRef } from 'react';
 import { AxiosError } from 'axios';
+import { Users, MessageSquare, Mail, Pencil, Trash2, Plus, Search } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
+import SystemModal from '@/components/SystemModal';
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface Usuario {
@@ -186,10 +188,10 @@ const TelaUsuarios: React.FC = () => {
     try {
       if (clienteEmEdicao) {
         await api.put(`/usuarios/${clienteEmEdicao.id}`, dadosParaEnvio);
-        setMensagemSucesso('Cliente atualizado com sucesso! ✨');
+        setMensagemSucesso('Cliente atualizado com sucesso!');
       } else {
         await api.post('/usuarios', dadosParaEnvio);
-        setMensagemSucesso('Cliente cadastrado com sucesso! ✨');
+        setMensagemSucesso('Cliente cadastrado com sucesso!');
       }
 
       handleCancelarEdicao();
@@ -205,18 +207,34 @@ const TelaUsuarios: React.FC = () => {
     }
   };
 
+  // Modal de confirmação do sistema
+  const [modalConfirm, setModalConfirm] = useState<{
+    isOpen: boolean;
+    id?: number;
+    nome?: string;
+  }>({
+    isOpen: false,
+  });
+
   // Exclusão via DELETE /usuarios/{id}
-  const handleExcluir = async (id: number, nome: string): Promise<void> => {
-    if (window.confirm(`Tem certeza que deseja excluir o cadastro de "${nome}"?`)) {
-      try {
-        await api.delete(`/usuarios/${id}`);
-        setMensagemSucesso('Cliente removido com sucesso!');
-        buscarClientesPagina(paginaAtual);
-        setTimeout(() => setMensagemSucesso(''), 4000);
-      } catch (err) {
-        console.error('Erro ao excluir cliente:', err);
-        setErro('Não foi possível excluir o cliente.');
-      }
+  const handleExcluir = (id: number, nome: string): void => {
+    setModalConfirm({
+      isOpen: true,
+      id,
+      nome,
+    });
+  };
+
+  const confirmarExclusao = async (): Promise<void> => {
+    if (!modalConfirm.id) return;
+    try {
+      await api.delete(`/usuarios/${modalConfirm.id}`);
+      setMensagemSucesso('Cliente removido com sucesso!');
+      buscarClientesPagina(paginaAtual);
+      setTimeout(() => setMensagemSucesso(''), 4000);
+    } catch (err) {
+      console.error('Erro ao excluir cliente:', err);
+      setErro('Não foi possível excluir o cliente.');
     }
   };
 
@@ -248,7 +266,9 @@ const TelaUsuarios: React.FC = () => {
         {/* MÉTRICAS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200/80 flex items-center gap-4">
-            <div className="p-3 bg-[#e8eae0] text-[#3b4a28] rounded-lg text-xl">👥</div>
+            <div className="p-3 bg-[#e8eae0] text-[#2d3a22] rounded-lg">
+              <Users className="w-6 h-6" />
+            </div>
             <div>
               <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
                 Base Total de Clientes
@@ -260,7 +280,9 @@ const TelaUsuarios: React.FC = () => {
           </div>
 
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200/80 flex items-center gap-4">
-            <div className="p-3 bg-[#e8eae0] text-[#3b4a28] rounded-lg text-xl">💬</div>
+            <div className="p-3 bg-[#e8eae0] text-[#2d3a22] rounded-lg">
+              <MessageSquare className="w-6 h-6" />
+            </div>
             <div>
               <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
                 Com WhatsApp Cadastrado
@@ -272,7 +294,9 @@ const TelaUsuarios: React.FC = () => {
           </div>
 
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200/80 flex items-center gap-4">
-            <div className="p-3 bg-[#e8eae0] text-[#3b4a28] rounded-lg text-xl">📧</div>
+            <div className="p-3 bg-[#e8eae0] text-[#2d3a22] rounded-lg">
+              <Mail className="w-6 h-6" />
+            </div>
             <div>
               <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
                 Com E-mail Vinculado
@@ -420,35 +444,35 @@ const TelaUsuarios: React.FC = () => {
                           </td>
                           <td className="p-3 border-r text-gray-600">{cli.email || '—'}</td>
                           <td className="p-3 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
+                            <div className="flex items-center justify-center gap-2">
                               {cli.telefone ? (
                                 <a
                                   href={linkWhatsApp(cli.telefone)}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 bg-[#25D366] hover:bg-[#1ebd59] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm"
+                                  className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer"
                                   title="Iniciar conversa no WhatsApp"
                                 >
-                                  💬 Whats
+                                  <MessageSquare className="w-3.5 h-3.5 text-white" /> Whats
                                 </a>
                               ) : null}
 
                               <button
                                 type="button"
                                 onClick={() => handleEditar(cli)}
-                                className="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm cursor-pointer"
+                                className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
                                 title="Editar dados da cliente"
                               >
-                                ✏️ Editar
+                                <Pencil className="w-3.5 h-3.5" />
                               </button>
 
                               <button
                                 type="button"
                                 onClick={() => handleExcluir(cli.id, cli.nome)}
-                                className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm cursor-pointer"
+                                className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
                                 title="Excluir cliente"
                               >
-                                🗑️ Excluir
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>

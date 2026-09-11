@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
-import { ShoppingBag, Eye, X, User, Phone, Calendar } from 'lucide-react';
+import { ShoppingBag, Eye, X, User, Phone, Calendar, Pencil, Trash2, MessageSquare, AlertCircle } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
@@ -378,7 +378,7 @@ const TelaPedidos: React.FC = () => {
       setTimeout(() => setMensagemSucesso(''), 4000);
     } catch (err) {
       console.error('Erro ao excluir pedido:', err);
-      alert('Não foi possível excluir este pedido.');
+      setErrosValidacao(['Não foi possível excluir este pedido.']);
     }
   };
 
@@ -387,12 +387,12 @@ const TelaPedidos: React.FC = () => {
     const telefone = pedido.cliente?.telefone?.replace(/\D/g, '') || '';
 
     const texto =
-      `Olá, ${nomeCliente}! ✨\n\n` +
+      `Olá, ${nomeCliente}!\n\n` +
       `Seu pedido *#${pedido.id}* na *Maria Morena* foi registrado!\n` +
       `*Data:* ${pedido.dataPedido}\n` +
-      `*Total:* R$ ${Number(pedido.valorTotal).toFixed(2)}\n` +
+      `*Total:* R$ ${Number(pedido.valorTotal).toFixed(2).replace('.', ',')}\n` +
       `*Status:* ${pedido.status}\n\n` +
-      `Obrigada pela preferência! 🛍️`;
+      `Obrigada pela preferência!`;
 
     const url = `https://wa.me/55${telefone}?text=${encodeURIComponent(texto)}`;
     window.open(url, '_blank');
@@ -517,29 +517,30 @@ const TelaPedidos: React.FC = () => {
                               <button
                                 onClick={() => dispararWhatsAppComprovante(p)}
                                 className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer"
+                                title="Enviar comprovante no WhatsApp"
                               >
-                                💬 Whats
+                                <MessageSquare className="w-3.5 h-3.5 text-white" /> Whats
                               </button>
                               <button
                                 onClick={() => abrirDetalhes(p)}
-                                className="p-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 transition-colors cursor-pointer"
+                                className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
                                 title="Ver Detalhes do Pedido"
                               >
-                                <Eye className="w-4 h-4" />
+                                <Eye className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => prepararEdicao(p)}
-                                className="p-1 hover:scale-110 transition cursor-pointer text-xs"
+                                className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
                                 title="Editar Pedido"
                               >
-                                ✏️
+                                <Pencil className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => setModalExcluir({ aberto: true, id: p.id })}
-                                className="text-red-500 hover:text-red-700 font-bold text-xs cursor-pointer p-1"
+                                className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
                                 title="Excluir Pedido"
                               >
-                                ✕
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>
