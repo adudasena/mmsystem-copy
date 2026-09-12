@@ -395,7 +395,7 @@ export default function VitrineProdutos() {
                   key={prod.id}
                   className="bg-white rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between border border-gray-100"
                 >
-                  <div className="relative aspect-3/4 bg-gray-100 overflow-hidden">
+                  <div className="relative h-48 sm:h-52 w-full bg-gray-100 overflow-hidden">
                     {src ? (
                       <img
                         src={src}

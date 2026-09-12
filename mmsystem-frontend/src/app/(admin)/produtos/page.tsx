@@ -3,10 +3,11 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect, ChangeEvent, KeyboardEvent, useCallback, useRef } from 'react';
 import { AxiosError } from 'axios';
-import { Pencil, Trash2, Eye, Camera, Settings, Package, Plus, AlertCircle } from 'lucide-react';
+import { Pencil, Trash2, Eye, Camera, Settings, Package, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
+import { formatErrorMessage } from '@/utils/errorUtils';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────
 interface Cor {
@@ -338,11 +339,8 @@ const TelaProdutos: React.FC = () => {
       buscarProdutos(paginaAtual);
       setTimeout(() => setMensagemSucesso(''), 5000);
     } catch (err) {
-      const erro = err as AxiosError<ApiErrorResponse>;
-      console.error(erro);
-      const backendMsg = erro.response?.data?.erro
-        || erro.response?.data?.message
-        || 'Erro inesperado ao salvar. Verifique o console.';
+      console.error("Erro ao salvar produto:", err);
+      const backendMsg = formatErrorMessage(err, 'Não foi possível salvar o produto. Verifique as informações fornecidas.');
       setErrosValidacao([backendMsg]);
     }
   };
@@ -357,10 +355,8 @@ const TelaProdutos: React.FC = () => {
       buscarProdutos(paginaAtual);
       setTimeout(() => setMensagemSucesso(''), 5000);
     } catch (err) {
-      const erro = err as AxiosError<ApiErrorResponse>;
-      const msg = erro.response?.data?.message 
-        || 'Não foi possível excluir o produto. Verifique se ele possui vínculos ativos.';
-      
+      console.error("Erro ao excluir produto:", err);
+      const msg = formatErrorMessage(err, 'Não foi possível excluir o produto. Verifique se ele possui vínculos ativos.');
       setErrosValidacao([msg]);
       setModalExcluir({ aberto: false, id: null });
       setTimeout(() => setErrosValidacao([]), 6000);
@@ -418,28 +414,30 @@ const TelaProdutos: React.FC = () => {
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="p-6 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
-      <header className="mb-6">
-        <h1 className="text-3xl font-serif font-bold text-[#2d3a22] tracking-wide">
-          {editandoId ? 'Editando Produto' : 'Produtos'}
-        </h1>
-      </header>
+      <div className="max-w-7xl mx-auto space-y-6">
+        <header className="mb-2">
+          <h1 className="text-3xl font-sans font-bold text-[#2d3a22] tracking-wide">
+            {editandoId ? 'Editando Produto' : 'Produtos'}
+          </h1>
+        </header>
 
-      {errosValidacao.length > 0 && (
-        <div className="mb-6 bg-red-50 border-l-4 border-red-600 p-4 text-red-900 rounded-sm shadow-sm max-w-5xl">
-          <p className="font-bold text-xs uppercase tracking-wide mb-1">Inconsistências encontradas:</p>
-          <ul className="list-disc list-inside text-xs space-y-0.5">
-            {errosValidacao.map((err, i) => <li key={i}>{err}</li>)}
-          </ul>
-        </div>
-      )}
+        {errosValidacao.length > 0 && (
+          <div className="mb-6 bg-red-50 border-l-4 border-red-600 p-4 text-red-900 rounded-lg shadow-sm">
+            <p className="font-bold text-xs uppercase tracking-wide mb-1">Inconsistências encontradas:</p>
+            <ul className="list-disc list-inside text-xs space-y-0.5">
+              {errosValidacao.map((err, i) => <li key={i}>{err}</li>)}
+            </ul>
+          </div>
+        )}
 
-      {mensagemSucesso && (
-        <div className="mb-6 bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-sm shadow-sm max-w-5xl">
-          ✓ {mensagemSucesso}
-        </div>
-      )}
+        {mensagemSucesso && (
+          <div className="mb-6 bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+            <span>{mensagemSucesso}</span>
+          </div>
+        )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 max-w-5xl">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2 space-y-6">
 
           {/* INFORMAÇÕES BÁSICAS */}
@@ -452,13 +450,13 @@ const TelaProdutos: React.FC = () => {
               className="w-full border p-2.5 bg-gray-50 outline-none focus:border-gray-400 rounded-lg text-xs"
             />
 
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-              <div className="md:col-span-2">
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+              <div>
                 <label className="block text-[11px] font-bold uppercase mb-2 text-gray-500">Categoria</label>
                 <select
                   value={produto.categoria}
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => setProduto({ ...produto, categoria: e.target.value })}
-                  className="w-full border p-2.5 bg-gray-50 outline-none focus:border-gray-400 rounded-lg text-xs"
+                  className="w-full border p-2.5 bg-gray-50 outline-none focus:border-gray-400 rounded-lg text-xs h-10"
                 >
                   <option value="">Selecione...</option>
                   {categorias.map(cat => <option key={cat} value={cat}>{cat}</option>)}
@@ -473,9 +471,9 @@ const TelaProdutos: React.FC = () => {
                     value={novaCategoriaTexto}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setNovaCategoriaTexto(e.target.value)}
                     onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && adicionarCategoriaCustomizada()}
-                    className="w-full text-xs border p-2.5 outline-none bg-gray-50 focus:border-gray-400 rounded-lg"
+                    className="w-full text-xs border p-2.5 outline-none bg-gray-50 focus:border-gray-400 rounded-lg h-10"
                   />
-                  <button type="button" onClick={adicionarCategoriaCustomizada} className="bg-gray-800 text-white text-xs px-3 font-bold hover:bg-black rounded-lg cursor-pointer">+</button>
+                  <button type="button" onClick={adicionarCategoriaCustomizada} className="bg-gray-800 text-white text-xs px-3.5 font-bold hover:bg-black rounded-lg cursor-pointer h-10 shrink-0">+</button>
                 </div>
               </div>
             </div>
@@ -620,15 +618,15 @@ const TelaProdutos: React.FC = () => {
       </div>
 
       {/* BOTÕES DE AÇÃO */}
-      <div className="flex justify-end gap-4 mb-8 max-w-5xl">
-        <button onClick={resetarForm} className="px-10 py-2 bg-black text-white text-[11px] font-bold uppercase rounded-sm hover:opacity-80">Cancelar</button>
-        <button onClick={salvarProduto} className="px-12 py-2 bg-[#4a5d33] text-white text-[11px] font-bold uppercase rounded-sm shadow-md hover:brightness-110">
+      <div className="flex justify-end gap-4 mb-8">
+        <button onClick={resetarForm} className="px-10 py-2.5 bg-black text-white text-[11px] font-bold uppercase rounded-lg hover:opacity-80 transition cursor-pointer">Cancelar</button>
+        <button onClick={salvarProduto} className="px-12 py-2.5 bg-[#4a5d33] text-white text-[11px] font-bold uppercase rounded-lg shadow-md hover:brightness-110 transition cursor-pointer">
           {editandoId ? 'Atualizar Produto' : 'Salvar Produto'}
         </button>
       </div>
 
       {/* BARRA DE BUSCA E FILTROS PADRONIZADA */}
-      <div className="mb-6 max-w-5xl">
+      <div className="mb-6">
         <BarraBuscaFiltro
           termoBusca={termoBusca}
           onBuscaChange={setTermoBusca}
@@ -643,7 +641,7 @@ const TelaProdutos: React.FC = () => {
       </div>
 
       {/* TABELA PRINCIPAL LIMPA */}
-      <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden border-t-4 border-[#4a5d33] max-w-5xl">
+      <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden border-t-4 border-[#4a5d33]">
         <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
           <div>
             <h3 className="text-xs font-bold text-gray-700 uppercase tracking-widest flex items-center gap-1.5">
@@ -781,21 +779,21 @@ const TelaProdutos: React.FC = () => {
       {/* MODAL: GRADE ESTOQUE */}
       {modalEstoqueAberto && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-sm border-t-4 border-[#4a5d33] w-full max-w-md max-h-[80vh] flex flex-col p-6 shadow-2xl relative">
+          <div className="bg-white rounded-xl border-t-4 border-[#4a5d33] w-full max-w-md max-h-[80vh] flex flex-col p-6 shadow-2xl relative">
             <button onClick={() => setModalEstoqueAberto(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black font-bold text-xl cursor-pointer">×</button>
-            <h3 className="font-serif text-lg text-gray-900 border-b pb-2 mb-4">Lançador de Estoque por Variação</h3>
+            <h3 className="font-sans font-bold text-lg text-gray-900 border-b pb-2 mb-4">Lançador de Estoque por Variação</h3>
             <div className="flex-1 overflow-y-auto space-y-3 pr-1">
               {produto.coresSelecionadas.map(cor =>
                 produto.tamanhosSelecionados.map(tam => {
                   const chave = `${cor}-${tam}`;
                   return (
-                    <div key={chave} className="flex items-center justify-between p-2 bg-gray-50 border rounded-sm">
+                    <div key={chave} className="flex items-center justify-between p-2 bg-gray-50 border rounded-lg">
                       <span className="text-xs font-semibold text-gray-700">{cor} — Tam {tam}</span>
                       <input
                         type="number" min="0"
                         value={produto.estoqueDetalhado[chave] || 0}
                         onChange={(e: ChangeEvent<HTMLInputElement>) => atualizarQtdEstoque(chave, e.target.value)}
-                        className="w-20 text-center border p-1 text-xs font-bold bg-white outline-none focus:border-gray-400"
+                        className="w-20 text-center border p-1 text-xs font-bold bg-white outline-none focus:border-gray-400 rounded-md"
                       />
                     </div>
                   );
@@ -803,7 +801,7 @@ const TelaProdutos: React.FC = () => {
               )}
             </div>
             <div className="mt-6 pt-4 border-t flex justify-end">
-              <button onClick={() => setModalEstoqueAberto(false)} className="px-6 py-2 bg-[#4a5d33] text-white text-xs font-bold uppercase tracking-wider rounded-sm shadow hover:brightness-110 cursor-pointer">
+              <button onClick={() => setModalEstoqueAberto(false)} className="px-6 py-2 bg-[#4a5d33] text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow hover:brightness-110 cursor-pointer">
                 Confirmar Grade
               </button>
             </div>
@@ -815,7 +813,7 @@ const TelaProdutos: React.FC = () => {
       {modalExcluir.aberto && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
           <div className="bg-white rounded-xl border-t-4 border-red-600 w-full max-w-sm p-6 shadow-2xl">
-            <h3 className="font-serif text-lg text-red-700 mb-2 flex items-center gap-2">
+            <h3 className="font-sans font-bold text-lg text-red-700 mb-2 flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-red-600" />
               Excluir Registro
             </h3>
@@ -834,7 +832,7 @@ const TelaProdutos: React.FC = () => {
           <div className="bg-white rounded-xl border-t-4 border-gray-700 w-full max-w-lg max-h-[85vh] flex flex-col p-6 shadow-2xl">
             <div className="flex justify-between items-start border-b pb-3 mb-4">
               <div>
-                <h3 className="font-serif text-xl text-gray-900 uppercase">{modalDetalhes.dados.nome}</h3>
+                <h3 className="font-sans font-bold text-xl text-gray-900 uppercase">{modalDetalhes.dados.nome}</h3>
                 <span className="text-[9px] font-mono uppercase bg-gray-100 text-gray-500 px-1 border rounded">ID: {modalDetalhes.dados.id}</span>
               </div>
               <button onClick={() => setModalDetalhes({ aberto: false, dados: null })} className="text-gray-400 hover:text-black font-bold text-xl cursor-pointer">×</button>
@@ -869,6 +867,7 @@ const TelaProdutos: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

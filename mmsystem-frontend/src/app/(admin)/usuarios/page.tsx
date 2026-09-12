@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, ChangeEvent, FormEvent, useRef } from 'react';
 import { AxiosError } from 'axios';
-import { Users, MessageSquare, Mail, Pencil, Trash2, Plus, Search } from 'lucide-react';
+import { Users, MessageSquare, Mail, Pencil, Trash2, Plus, Search, CheckCircle2 } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import SystemModal from '@/components/SystemModal';
+import { formatErrorMessage } from '@/utils/errorUtils';
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface Usuario {
@@ -198,11 +199,8 @@ const TelaUsuarios: React.FC = () => {
       buscarClientesPagina(paginaAtual);
       setTimeout(() => setMensagemSucesso(''), 4000);
     } catch (err) {
-      const erroAxios = err as AxiosError<ApiErrorResponse>;
-      console.error('Erro ao salvar cliente:', erroAxios);
-      const msg =
-        erroAxios.response?.data?.message ||
-        'Falha ao salvar. Verifique se o telefone ou e-mail já existem na base.';
+      console.error('Erro ao salvar cliente:', err);
+      const msg = formatErrorMessage(err, 'Falha ao salvar. Verifique se o telefone ou e-mail já existem na base.');
       setErro(msg);
     }
   };
@@ -234,7 +232,8 @@ const TelaUsuarios: React.FC = () => {
       setTimeout(() => setMensagemSucesso(''), 4000);
     } catch (err) {
       console.error('Erro ao excluir cliente:', err);
-      setErro('Não foi possível excluir o cliente.');
+      const msg = formatErrorMessage(err, 'Não foi possível excluir o cliente.');
+      setErro(msg);
     }
   };
 
@@ -317,8 +316,9 @@ const TelaUsuarios: React.FC = () => {
 
         {/* MENSAGENS */}
         {mensagemSucesso && (
-          <div className="bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded-lg text-xs font-bold shadow-sm">
-            {mensagemSucesso}
+          <div className="bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+            <span>{mensagemSucesso}</span>
           </div>
         )}
         {erro && (

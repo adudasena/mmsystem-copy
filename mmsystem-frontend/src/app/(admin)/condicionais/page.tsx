@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, ChangeEvent, useCallback, useRef } from 'react';
 import { AxiosError } from 'axios';
-import { ShoppingBag, FolderCheck, MessageSquare, Pencil, Trash2, AlertCircle, CheckCircle2, Search } from 'lucide-react';
+import { ShoppingBag, FolderCheck, MessageSquare, Pencil, Trash2, AlertCircle, CheckCircle2, Search, Info } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import SystemModal from '@/components/SystemModal';
+import { formatErrorMessage } from '@/utils/errorUtils';
 
 // ─── Interfaces e Tipagens ─────────────────────────────────────────────────
 export interface Usuario {
@@ -369,8 +370,8 @@ const TelaCondicionais: React.FC = () => {
 
       setTimeout(() => setMensagemSucesso(''), 3000);
     } catch (err) {
-      const erroAxios = err as AxiosError<ApiErrorResponse>;
-      const msgErro = erroAxios.response?.data?.message || erroAxios.response?.data?.erro || "Erro ao comunicar com a API do Spring Boot.";
+      console.error("Erro ao salvar condicional:", err);
+      const msgErro = formatErrorMessage(err, "Não foi possível salvar a sacola condicional.");
       setErrosValidacao([msgErro]);
     }
   };
@@ -384,8 +385,10 @@ const TelaCondicionais: React.FC = () => {
       await buscarCondicionais(paginaAtual); 
 
       setTimeout(() => setMensagemSucesso(''), 4000);
-    } catch {
-      setErrosValidacao(['Não foi possível excluir o registro.']);
+    } catch (err) {
+      console.error("Erro ao deletar condicional:", err);
+      const msg = formatErrorMessage(err, 'Não foi possível excluir o registro.');
+      setErrosValidacao([msg]);
     }
   };
 
@@ -411,12 +414,14 @@ const TelaCondicionais: React.FC = () => {
 
       setModalBaixaAberto(false);
       setSacolaParaBaixa(null);
-      setMensagemSucesso("✨ Baixa concluída! Estoque atualizado e Venda/Pagamento gerados com sucesso!");
+      setMensagemSucesso("Baixa concluída! Estoque atualizado e Venda/Pagamento gerados com sucesso!");
       buscarCondicionais(paginaAtual);
       setTimeout(() => setMensagemSucesso(''), 4000);
     } catch (err) {
-      console.error("Erro ao finalizar baixa no Spring Boot:", err);
-      alert("Não foi possível salvar o fechamento da sacola. Verifique a conexão com o servidor.");
+      console.error("Erro ao finalizar baixa:", err);
+      const msg = formatErrorMessage(err, "Não foi possível salvar o fechamento da sacola.");
+      setErrosValidacao([msg]);
+      setModalBaixaAberto(false);
     }
   };
 
@@ -466,194 +471,205 @@ const TelaCondicionais: React.FC = () => {
 
   return (
     <div className="p-6 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
-      {/* CABEÇALHO */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 max-w-5xl">
-        <div>
-          <h1 className="text-3xl font-serif font-bold text-[#2d3a22]">Painel de Condicionais</h1>
-          <p className="text-xs text-gray-600 mt-1">Gerenciamento ágil de peças com saída condicional para prova domiciliar.</p>
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* CABEÇALHO */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">Painel de Condicionais</h1>
+            <p className="text-xs text-gray-600 mt-1">Gerenciamento ágil de peças com saída condicional para prova domiciliar.</p>
+          </div>
+
+          <button 
+            onClick={abrirNovaSacolaForm}
+            className="bg-[#2d3a22] hover:bg-[#3d5427] text-white font-bold text-xs uppercase px-4 py-2.5 rounded-lg shadow-sm transition cursor-pointer self-start md:self-auto"
+          >
+            + Nova Sacola Condicional
+          </button>
         </div>
 
-        <button 
-          onClick={abrirNovaSacolaForm}
-          className="bg-[#2d3a22] hover:bg-[#3d5427] text-white font-bold text-xs uppercase px-4 py-2.5 rounded-lg shadow-sm transition cursor-pointer self-start md:self-auto"
-        >
-          + Nova Sacola Condicional
-        </button>
-      </div>
+        {/* FEEDBACKS */}
+        {mensagemSucesso && (
+          <div className="bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2 mb-4">
+            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+            <span>{mensagemSucesso}</span>
+          </div>
+        )}
 
-      {/* FEEDBACKS */}
-      {mensagemSucesso && (
-        <div className="bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded mb-4 text-xs font-bold max-w-5xl">
-          ✓ {mensagemSucesso}
+        {errosValidacao.length > 0 && (
+          <div className="bg-red-50 border-l-4 border-red-600 p-3 text-red-900 font-semibold text-xs rounded-lg shadow-sm space-y-1 mb-4">
+            {errosValidacao.map((e, idx) => (
+              <p key={idx} className="flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{e}</span>
+              </p>
+            ))}
+          </div>
+        )}
+
+        {/* NAVEGAÇÃO POR ABAS */}
+        <div className="flex gap-2 border-b border-gray-300 mb-4">
+          <button
+            type="button"
+            onClick={() => setAbaAtiva('ativas')}
+            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[2px] flex items-center gap-1.5 ${
+              abaAtiva === 'ativas'
+                ? 'border-[#2d3a22] text-[#2d3a22] bg-white/50'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <ShoppingBag className="w-4 h-4 text-[#2d3a22]" />
+            Condicionais Ativos ({listaCondicionais.filter(c => c.status === 'ABERTA').length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setAbaAtiva('finalizadas')}
+            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[2px] flex items-center gap-1.5 ${
+              abaAtiva === 'finalizadas'
+                ? 'border-[#2d3a22] text-[#2d3a22] bg-white/50'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <FolderCheck className="w-4 h-4 text-[#2d3a22]" />
+            Histórico de Finalizados
+          </button>
         </div>
-      )}
 
-      {errosValidacao.length > 0 && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-xs font-semibold max-w-5xl space-y-1">
-          {errosValidacao.map((e, idx) => <p key={idx}>⚠️ {e}</p>)}
+        {/* BARRA DE PESQUISA E FILTROS */}
+        <div className="mb-6">
+          <BarraBuscaFiltro
+            termoBusca={termoBusca}
+            onBuscaChange={setTermoBusca}
+            placeholder="Buscar sacola por código, cliente ou peça..."
+            filtroValor={statusFiltro}
+            onFiltroChange={setStatusFiltro}
+            opcoesFiltro={[
+              { label: 'Todos os Status', value: 'TODOS' },
+              { label: 'Aberta', value: 'ABERTA' },
+              { label: 'Finalizada', value: 'FINALIZADA' },
+              { label: 'Devolvida', value: 'DEVOLVIDA' }
+            ]}
+          />
         </div>
-      )}
 
-      {/* NAVEGAÇÃO POR ABAS */}
-      <div className="flex gap-2 border-b border-gray-300 mb-4 max-w-5xl">
-        <button
-          type="button"
-          onClick={() => setAbaAtiva('ativas')}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[2px] flex items-center gap-1.5 ${
-            abaAtiva === 'ativas'
-              ? 'border-[#2d3a22] text-[#2d3a22] bg-white/50'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <ShoppingBag className="w-4 h-4 text-[#2d3a22]" />
-          Condicionais Ativos ({listaCondicionais.filter(c => c.status === 'ABERTA').length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setAbaAtiva('finalizadas')}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[2px] flex items-center gap-1.5 ${
-            abaAtiva === 'finalizadas'
-              ? 'border-[#2d3a22] text-[#2d3a22] bg-white/50'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <FolderCheck className="w-4 h-4 text-[#2d3a22]" />
-          Histórico de Finalizados
-        </button>
-      </div>
-
-      {/* BARRA DE PESQUISA E FILTROS */}
-      <div className="mb-6 max-w-5xl">
-        <BarraBuscaFiltro
-          termoBusca={termoBusca}
-          onBuscaChange={setTermoBusca}
-          placeholder="Buscar sacola por código, cliente ou peça..."
-          filtroValor={statusFiltro}
-          onFiltroChange={setStatusFiltro}
-          opcoesFiltro={[
-            { label: 'Todos os Status', value: 'TODOS' },
-            { label: 'Aberta', value: 'ABERTA' },
-            { label: 'Finalizada', value: 'FINALIZADA' },
-            { label: 'Devolvida', value: 'DEVOLVIDA' }
-          ]}
-        />
-      </div>
-
-      {/* TABELA DE REGISTROS */}
-      <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-w-5xl flex flex-col justify-between">
-        <div className="overflow-x-auto min-h-[360px]">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#cbd0c0] text-[11px] font-bold uppercase text-gray-700 border-b border-gray-300">
-                <th className="p-3">Código</th>
-                <th className="p-3">Cliente</th>
-                <th className="p-3">Valor Estimado</th>
-                <th className="p-3">Data Início</th>
-                <th className="p-3">Data Limite / Prazo</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Peças Relacionadas</th>
-                <th className="p-3 text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 text-xs">
-              {listaFiltrada.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="p-8 text-center text-gray-400 italic bg-white">Nenhum registro encontrado nesta aba.</td>
+        {/* TABELA DE REGISTROS */}
+        <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col justify-between">
+          <div className="overflow-x-auto min-h-[360px]">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-[#cbd0c0] text-[11px] font-bold uppercase text-gray-700 border-b border-gray-300">
+                  <th className="p-3">Código</th>
+                  <th className="p-3">Cliente</th>
+                  <th className="p-3">Valor Estimado</th>
+                  <th className="p-3">Data Início</th>
+                  <th className="p-3">Data Limite / Prazo</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3">Peças Relacionadas</th>
+                  <th className="p-3 text-center">Ações</th>
                 </tr>
-              ) : (
-                listaFiltrada.map((c) => {
-                  const prazo = calcularPrazo(c.dataRetorno);
-                  return (
-                    <tr key={c.id} className="hover:bg-gray-50 transition-colors bg-white">
-                      <td className="p-3 font-bold text-gray-700">#{String(c.id).padStart(3, '0')}</td>
-                      <td className="p-3">
-                        <p className="font-semibold text-gray-900">{c.usuario?.nome || c.cliente?.nome || '—'}</p>
-                        <p className="text-[10px] text-gray-500">{c.usuario?.telefone || c.cliente?.telefone || ''}</p>
-                      </td>
-                      <td className="p-3 font-bold text-gray-900">
-                        R$ {Number(c.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="p-3 text-gray-500">{c.dataSaida}</td>
-                      <td className="p-3">
-                        <span className="block font-medium text-gray-800">{c.dataRetorno}</span>
-                        {c.status === 'ABERTA' && (
-                          <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-0.5 border ${
-                            prazo.status === 'ATRASADO' ? 'bg-red-100 text-red-800 border-red-300' :
-                            prazo.status === 'HOJE' ? 'bg-amber-100 text-amber-800 border-amber-300' :
-                            'bg-green-100 text-green-800 border-green-300'
-                          }`}>
-                            {prazo.texto}
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3 uppercase font-mono text-[10px]">
-                        <span className={`px-2 py-0.5 rounded border font-bold ${
-                          c.status === 'ABERTA' ? 'bg-amber-100 text-amber-800 border-amber-300' : 
-                          c.status === 'FINALIZADA' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                          'bg-blue-100 text-blue-800 border-blue-300'
-                        }`}>
-                          {c.status}
-                        </span>
-                      </td>
-                      <td className="p-3 text-gray-600 max-w-[240px]">
-                        <div className="space-y-1">
-                          {(c.itens || []).map((i, idx) => (
-                            <div key={idx} className="text-[11px] bg-gray-50 p-1 border rounded-sm flex justify-between items-center">
-                              <span className="truncate mr-1">{i.produto?.nome} <strong>({i.corEscolhida || '-'}/{i.tamanhoEscolhido || '-'})</strong></span>
-                              <span className={`text-[9px] px-1 font-bold border uppercase shrink-0 ${
-                                i.statusItem === 'VENDIDO' ? 'bg-green-100 border-green-300 text-green-800' : 
-                                i.statusItem === 'DEVOLVIDA' || i.statusItem === 'DISPONIVEL' ? 'bg-blue-100 border-blue-300 text-blue-800' : 
-                                'bg-white border-gray-300 text-gray-500'
-                              }`}>
-                                {i.statusItem || 'EM COND.'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="p-3 text-center">
-                        <div className="flex justify-center items-center gap-2">
+              </thead>
+              <tbody className="divide-y divide-gray-200 text-xs">
+                {listaFiltrada.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-gray-400 italic bg-white">Nenhum registro encontrado nesta aba.</td>
+                  </tr>
+                ) : (
+                  listaFiltrada.map((c) => {
+                    const prazo = calcularPrazo(c.dataRetorno);
+                    return (
+                      <tr key={c.id} className="hover:bg-gray-50 transition-colors bg-white">
+                        <td className="p-3 font-bold text-gray-700">#{String(c.id).padStart(3, '0')}</td>
+                        <td className="p-3">
+                          <p className="font-semibold text-gray-900">{c.usuario?.nome || c.cliente?.nome || '—'}</p>
+                          <p className="text-[10px] text-gray-500">{c.usuario?.telefone || c.cliente?.telefone || ''}</p>
+                        </td>
+                        <td className="p-3 font-bold text-gray-900">
+                          R$ {Number(c.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="p-3 text-gray-500">{c.dataSaida}</td>
+                        <td className="p-3">
+                          <span className="block font-medium text-gray-800">{c.dataRetorno}</span>
                           {c.status === 'ABERTA' && (
-                            <>
-                              <button
-                                onClick={() => enviarCobrancaWhatsApp(c)}
-                                className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer"
-                                title="Enviar lembrete no WhatsApp"
-                              >
-                                <MessageSquare className="w-3.5 h-3.5 text-white" /> Whats
-                              </button>
-                              <button 
-                                onClick={() => prepararBaixaIndividual(c)} 
-                                className="bg-[#4a5d33] hover:bg-[#3d5427] text-white px-2 py-1 rounded text-[10px] font-bold uppercase cursor-pointer transition shadow-2xs" 
-                                title="Dar Baixa nas Peças e Atualizar Estoque"
-                              >
-                                ✓ Baixa
-                              </button>
-                              <button 
-                                onClick={() => prepararEdicaoLocal(c)} 
-                                className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black" 
-                                title="Editar Sacola"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                            </>
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-0.5 border ${
+                              prazo.status === 'ATRASADO' ? 'bg-red-100 text-red-800 border-red-300' :
+                              prazo.status === 'HOJE' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                              'bg-green-100 text-green-800 border-green-300'
+                            }`}>
+                              {prazo.texto}
+                            </span>
                           )}
-                          <button 
-                            onClick={() => setModalExcluir({ aberto: true, id: c.id })} 
-                            className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700" 
-                            title="Excluir"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        </td>
+                        <td className="p-3 uppercase font-mono text-[10px]">
+                          <span className={`px-2 py-0.5 rounded border font-bold ${
+                            c.status === 'ABERTA' ? 'bg-amber-100 text-amber-800 border-amber-300' : 
+                            c.status === 'FINALIZADA' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                            'bg-blue-100 text-blue-800 border-blue-300'
+                          }`}>
+                            {c.status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-gray-600 max-w-[240px]">
+                          <div className="space-y-1">
+                            {(c.itens || []).map((i, idx) => (
+                              <div key={idx} className="text-[11px] bg-gray-50 p-1 border rounded-sm flex justify-between items-center">
+                                <span className="truncate mr-1">{i.produto?.nome} <strong>({i.corEscolhida || '-'}/{i.tamanhoEscolhido || '-'})</strong></span>
+                                <span className={`text-[9px] px-1 font-bold border uppercase shrink-0 ${
+                                  i.statusItem === 'VENDIDO' ? 'bg-green-100 border-green-300 text-green-800' : 
+                                  i.statusItem === 'DEVOLVIDA' || i.statusItem === 'DISPONIVEL' ? 'bg-blue-100 border-blue-300 text-blue-800' : 
+                                  'bg-white border-gray-300 text-gray-500'
+                                }`}>
+                                  {i.statusItem || 'EM COND.'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex justify-center items-center gap-2">
+                            {c.status === 'ABERTA' ? (
+                              <>
+                                <button
+                                  onClick={() => enviarCobrancaWhatsApp(c)}
+                                  className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer"
+                                  title="Enviar lembrete no WhatsApp"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5 text-white" /> Whats
+                                </button>
+                                <button 
+                                  onClick={() => prepararBaixaIndividual(c)} 
+                                  className="bg-[#4a5d33] hover:bg-[#3d5427] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer" 
+                                  title="Dar Baixa nas Peças e Atualizar Estoque"
+                                >
+                                  ✓ Baixa
+                                </button>
+                                <button 
+                                  onClick={() => prepararEdicaoLocal(c)} 
+                                  className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black" 
+                                  title="Editar Sacola"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                  onClick={() => setModalExcluir({ aberto: true, id: c.id })} 
+                                  className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700" 
+                                  title="Excluir Sacola"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 font-bold uppercase rounded-md border border-gray-200">
+                                Histórico / Finalizado
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
 
         {/* BARRA DE PAGINAÇÃO NO RODAPÉ */}
         <Paginacao
@@ -663,6 +679,7 @@ const TelaCondicionais: React.FC = () => {
           onMudarPagina={mudarPagina}
         />
       </section>
+      </div>
 
       {/* MODAL: FORMULÁRIO DE CRIAÇÃO E EDIÇÃO */}
       {modalFormAberto && (
@@ -674,6 +691,17 @@ const TelaCondicionais: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
+              {/* Erros de validação dentro da modal */}
+              {errosValidacao.length > 0 && (
+                <div className="bg-red-50 border-l-4 border-red-600 p-3 text-red-900 font-semibold text-xs rounded-lg shadow-sm space-y-1 mb-4">
+                  {errosValidacao.map((e, idx) => (
+                    <p key={idx} className="flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                      <span>{e}</span>
+                    </p>
+                  ))}
+                </div>
+              )}
               <div>
                 <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Selecione a Cliente *</label>
                 <select
@@ -839,16 +867,17 @@ const TelaCondicionais: React.FC = () => {
                           : 'bg-gray-700 text-gray-200 border-gray-500'
                       }`}
                     >
-                      <option value="DEVOLVIDA">🔄 DEVOLVER (Loja)</option>
-                      <option value="VENDIDO">💰 VENDIDO (Dar Baixa)</option>
+                      <option value="DEVOLVIDA">DEVOLVER (Loja)</option>
+                      <option value="VENDIDO">VENDIDO (Dar Baixa)</option>
                     </select>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="p-3 bg-white/10 rounded-lg text-xs text-gray-200 mb-4">
-              ℹ️ As peças marcadas como <strong>VENDIDO</strong> darão baixa imediata no estoque e criarão automaticamente um <strong>Pedido de Venda</strong> e uma cobrança em <strong>Pagamentos</strong>.
+            <div className="p-3 bg-white/10 rounded-lg text-xs text-gray-200 mb-4 flex items-start gap-2">
+              <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <span>As peças marcadas como <strong>VENDIDO</strong> darão baixa imediata no estoque e criarão automaticamente um <strong>Pedido de Venda</strong> e uma cobrança em <strong>Pagamentos</strong>.</span>
             </div>
 
             <div className="pt-3 border-t border-white/20 flex justify-end gap-2">
@@ -862,8 +891,11 @@ const TelaCondicionais: React.FC = () => {
       {/* MODAL DE EXCLUSÃO */}
       {modalExcluir.aberto && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white p-5 max-w-xs w-full rounded-sm border-t-4 border-red-600 shadow-2xl">
-            <h4 className="font-serif text-base text-red-700 mb-1">⚠️ Excluir Condicional</h4>
+          <div className="bg-white p-5 max-w-xs w-full rounded-xl border-t-4 border-red-600 shadow-2xl">
+            <h4 className="font-sans font-bold text-base text-red-700 mb-1 flex items-center gap-1.5">
+              <AlertCircle className="w-4 h-4 text-red-600" />
+              Excluir Condicional
+            </h4>
             <p className="text-xs text-gray-600 mb-4">Confirma a remoção permanente deste registro?</p>
             <div className="flex justify-end gap-2 text-[10px] font-bold uppercase">
               <button onClick={() => setModalExcluir({ aberto: false, id: null })} className="px-3 py-1.5 bg-gray-100 text-gray-700 cursor-pointer">Voltar</button>

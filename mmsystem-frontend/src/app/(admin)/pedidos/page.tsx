@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
-import { ShoppingBag, Eye, X, User, Phone, Calendar, Pencil, Trash2, MessageSquare, AlertCircle } from 'lucide-react';
+import { ShoppingBag, Eye, X, User, Phone, Calendar, Pencil, Trash2, MessageSquare, AlertCircle, CheckCircle2 } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import SelectProdutoFilter from '@/components/SelectProdutoFilter';
+import { formatErrorMessage } from '@/utils/errorUtils';
 
 // ─── Auxiliar de UUID ────────────────────────────────────────────────────────
 const gerarUuid = (): string => {
@@ -326,14 +327,16 @@ const TelaPedidos: React.FC = () => {
 
     try {
       const payload = {
-        fkClienteId: Number(formPedido.fkClienteId),
+        fkClienteId: formPedido.fkClienteId ? Number(formPedido.fkClienteId) : null,
         dataPedido: formPedido.dataPedido,
         status: formPedido.status,
         valorTotal: calcularValorTotalPedido(),
-        itens: formPedido.itens.map(it => ({
-          fkProdutoId: Number(it.fkProdutoId),
-          quantidade: Number(it.quantidade)
-        }))
+        itens: formPedido.itens
+          .filter(it => it.fkProdutoId !== '' && it.fkProdutoId !== null && Number(it.fkProdutoId) > 0)
+          .map(it => ({
+            fkProdutoId: Number(it.fkProdutoId),
+            quantidade: Number(it.quantidade) || 1
+          }))
       };
 
       if (editandoId) {
@@ -347,9 +350,9 @@ const TelaPedidos: React.FC = () => {
       setModalFormAberto(false);
       buscarPedidos(paginaAtual);
       setTimeout(() => setMensagemSucesso(''), 4000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao salvar pedido:', err);
-      const msgServidor = err?.response?.data?.mensagem || 'Falha ao salvar pedido na base de dados.';
+      const msgServidor = formatErrorMessage(err, 'Falha ao salvar pedido na base de dados.');
       setErrosValidacao([msgServidor]);
     }
   };
@@ -378,7 +381,8 @@ const TelaPedidos: React.FC = () => {
       setTimeout(() => setMensagemSucesso(''), 4000);
     } catch (err) {
       console.error('Erro ao excluir pedido:', err);
-      setErrosValidacao(['Não foi possível excluir este pedido.']);
+      const msg = formatErrorMessage(err, 'Não foi possível excluir este pedido.');
+      setErrosValidacao([msg]);
     }
   };
 
@@ -434,8 +438,7 @@ const TelaPedidos: React.FC = () => {
         {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-serif font-bold text-[#2d3a22] flex items-center gap-2">
-              <ShoppingBag className="w-8 h-8 text-[#2d3a22]" />
+            <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">
               Pedidos
             </h1>
           </div>
@@ -449,8 +452,9 @@ const TelaPedidos: React.FC = () => {
         </div>
 
         {mensagemSucesso && (
-          <div className="bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-sm shadow-sm">
-            ✓ {mensagemSucesso}
+          <div className="bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+            <span>{mensagemSucesso}</span>
           </div>
         )}
 

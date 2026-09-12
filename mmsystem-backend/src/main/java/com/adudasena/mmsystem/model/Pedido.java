@@ -1,6 +1,7 @@
 package com.adudasena.mmsystem.model;
 
 import com.adudasena.mmsystem.enums.StatusPedido;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
@@ -32,7 +33,7 @@ public class Pedido {
     @JsonIgnoreProperties({"senha", "pedidos", "condicionais", "hibernateLazyInitializer", "handler"})
     private Usuario cliente;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "fk_condicional_id", nullable = true)
     @JsonIgnoreProperties({"itens", "usuario", "cliente", "hibernateLazyInitializer", "handler"})
     private Condicional condicional;
@@ -41,9 +42,12 @@ public class Pedido {
     @JsonIgnoreProperties({"pedido", "hibernateLazyInitializer", "handler"})
     private List<ItemPedido> itens = new ArrayList<>();
 
+    @JsonIgnore
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonIgnoreProperties({"pedido", "hibernateLazyInitializer", "handler"})
     private List<Pagamento> pagamentos = new ArrayList<>();
+
+    @Column(name = "deleted_at")
+    private java.time.LocalDateTime deletedAt;
 
     public Pedido() {}
 
@@ -70,4 +74,7 @@ public class Pedido {
 
     public List<Pagamento> getPagamentos() { return pagamentos; }
     public void setPagamentos(List<Pagamento> pagamentos) { this.pagamentos = pagamentos; }
+
+    public java.time.LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(java.time.LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 }

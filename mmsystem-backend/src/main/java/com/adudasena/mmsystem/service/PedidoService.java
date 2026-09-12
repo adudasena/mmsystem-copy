@@ -45,7 +45,18 @@ public class PedidoService {
 
     @Transactional(readOnly = true)
     public Page<Pedido> listarTodos(Pageable pageable) {
-        Page<Pedido> pagina = pedidoRepository.findAll(pageable);
+        Page<Pedido> pagina = pedidoRepository.findByDeletedAtIsNull(pageable);
+        pagina.getContent().forEach(pedido -> {
+            if (pedido.getItens() != null) {
+                pedido.getItens().size();
+            }
+        });
+        return pagina;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Pedido> listarExcluidos(Pageable pageable) {
+        Page<Pedido> pagina = pedidoRepository.findByDeletedAtIsNotNull(pageable);
         pagina.getContent().forEach(pedido -> {
             if (pedido.getItens() != null) {
                 pedido.getItens().size();
@@ -56,14 +67,14 @@ public class PedidoService {
 
     @Transactional(readOnly = true)
     public Pedido buscarPorId(Long id) {
-        return pedidoRepository.findById(id).orElse(null);
+        return pedidoRepository.findByIdAndDeletedAtIsNull(id).orElse(null);
     }
 
     @Transactional
     public Pedido salvar(PedidoDTO dto) {
-        if (dto.getFkClienteId() != null && dto.getDataPedido() != null) {
-            boolean duplicado = pedidoRepository.findAll().stream().anyMatch(p ->
-                p.getCliente() != null && p.getCliente().getId().equals(dto.getFkClienteId()) &&
+        if (dto.getFkClienteId() != null && dto.getFkClienteId() > 0 && dto.getDataPedido() != null) {
+            boolean duplicado = pedidoRepository.findByDeletedAtIsNull(Pageable.unpaged()).stream().anyMatch(p ->
+                p.getCliente() != null && p.getCliente().getId() != null && p.getCliente().getId().equals(dto.getFkClienteId()) &&
                 p.getDataPedido() != null && p.getDataPedido().equals(dto.getDataPedido()) &&
                 p.getValorTotal() != null && dto.getValorTotal() != null &&
                 Math.abs(p.getValorTotal().doubleValue() - dto.getValorTotal().doubleValue()) < 0.01
@@ -74,12 +85,30 @@ public class PedidoService {
         }
         Pedido pedido = new Pedido();
         preencherDadosPedido(pedido, dto);
+
+        // Recalcula o valor total se necessário
+        if (pedido.getValorTotal() == null || pedido.getValorTotal().compareTo(BigDecimal.ZERO) <= 0) {
+            BigDecimal totalCalculado = BigDecimal.ZERO;
+            if (pedido.getItens() != null) {
+                for (ItemPedido item : pedido.getItens()) {
+                    if (item.getProduto() != null && item.getProduto().getPreco() != null) {
+                        BigDecimal preco = item.getProduto().getPreco();
+                        BigDecimal qtd = BigDecimal.valueOf(item.getQuantidade() != null ? item.getQuantidade() : 1);
+                        totalCalculado = totalCalculado.add(preco.multiply(qtd));
+                    }
+                }
+            }
+            if (totalCalculado.compareTo(BigDecimal.ZERO) > 0) {
+                pedido.setValorTotal(totalCalculado);
+            }
+        }
+
         Pedido pedidoSalvo = pedidoRepository.save(pedido);
 
         // 1. Dá baixa no estoque para cada item do pedido criado
         if (pedidoSalvo.getItens() != null) {
             for (ItemPedido item : pedidoSalvo.getItens()) {
-                if (item.getProduto() != null && item.getQuantidade() != null && item.getQuantidade() > 0) {
+                if (item.getProduto() != null && item.getProduto().getId() != null && item.getQuantidade() != null && item.getQuantidade() > 0) {
                     darBaixaEstoqueProduto(item.getProduto().getId(), item.getQuantidade());
                 }
             }
@@ -98,14 +127,49 @@ public class PedidoService {
             return null;
         }
         pedidoExistente.getItens().clear();
+        pedidoRepository.saveAndFlush(pedidoExistente);
+
         preencherDadosPedido(pedidoExistente, dto);
-        return pedidoRepository.save(pedidoExistente);
+
+        if (dto.getValorTotal() == null || dto.getValorTotal().compareTo(BigDecimal.ZERO) <= 0) {
+            BigDecimal totalCalculado = BigDecimal.ZERO;
+            if (pedidoExistente.getItens() != null) {
+                for (ItemPedido item : pedidoExistente.getItens()) {
+                    if (item.getProduto() != null && item.getProduto().getPreco() != null) {
+                        BigDecimal preco = item.getProduto().getPreco();
+                        BigDecimal qtd = BigDecimal.valueOf(item.getQuantidade() != null ? item.getQuantidade() : 1);
+                        totalCalculado = totalCalculado.add(preco.multiply(qtd));
+                    }
+                }
+            }
+            if (totalCalculado.compareTo(BigDecimal.ZERO) > 0) {
+                pedidoExistente.setValorTotal(totalCalculado);
+            }
+        }
+
+        Pedido pedidoSalvo = pedidoRepository.save(pedidoExistente);
+
+        try {
+            pagamentoRepository.findAll().stream()
+                .filter(p -> p.getPedido() != null && id.equals(p.getPedido().getId()))
+                .findFirst()
+                .ifPresent(pag -> {
+                    pag.setValor(pedidoSalvo.getValorTotal());
+                    pagamentoRepository.save(pag);
+                });
+        } catch (Exception e) {
+            System.err.println("Erro ao atualizar valor do pagamento vinculado: " + e.getMessage());
+        }
+
+        return pedidoSalvo;
     }
 
     @Transactional
     public boolean excluir(Long id) {
-        if (pedidoRepository.existsById(id)) {
-            pedidoRepository.deleteById(id);
+        Pedido p = pedidoRepository.findById(id).orElse(null);
+        if (p != null) {
+            p.setDeletedAt(java.time.LocalDateTime.now());
+            pedidoRepository.save(p);
             return true;
         }
         return false;
@@ -139,7 +203,7 @@ public class PedidoService {
             pedido.setStatus(StatusPedido.PENDENTE);
         }
 
-        if (dto.getFkClienteId() != null) {
+        if (dto.getFkClienteId() != null && dto.getFkClienteId() > 0) {
             Usuario cliente = usuarioRepository.findById(dto.getFkClienteId()).orElse(null);
             pedido.setCliente(cliente);
         } else {
@@ -148,14 +212,16 @@ public class PedidoService {
 
         if (dto.getItens() != null) {
             for (ItemPedidoDTO itemDto : dto.getItens()) {
-                if (itemDto.getFkProdutoId() != null) {
+                if (itemDto.getFkProdutoId() != null && itemDto.getFkProdutoId() > 0) {
                     Produto produto = produtoRepository.findById(itemDto.getFkProdutoId()).orElse(null);
-                    ItemPedido item = new ItemPedido();
-                    item.setPedido(pedido);
-                    item.setProduto(produto);
-                    int qtd = (itemDto.getQuantidade() != null && itemDto.getQuantidade() > 0) ? itemDto.getQuantidade() : 1;
-                    item.setQuantidade(qtd);
-                    pedido.getItens().add(item);
+                    if (produto != null) {
+                        ItemPedido item = new ItemPedido();
+                        item.setPedido(pedido);
+                        item.setProduto(produto);
+                        int qtd = (itemDto.getQuantidade() != null && itemDto.getQuantidade() > 0) ? itemDto.getQuantidade() : 1;
+                        item.setQuantidade(qtd);
+                        pedido.getItens().add(item);
+                    }
                 }
             }
         }

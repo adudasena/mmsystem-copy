@@ -5,6 +5,7 @@ import { Pencil, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
+import { formatErrorMessage } from '@/utils/errorUtils';
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface PedidoRef {
@@ -227,7 +228,8 @@ const TelaPagamentos: React.FC = () => {
       setTimeout(() => setMensagemSucesso(''), 4000);
     } catch (err) {
       console.error('Erro ao salvar pagamento:', err);
-      setErrosValidacao(['Não foi possível salvar o lançamento. Verifique a conexão com a API.']);
+      const msg = formatErrorMessage(err, 'Não foi possível salvar o lançamento. Verifique as informações.');
+      setErrosValidacao([msg]);
     }
   };
 
@@ -241,7 +243,9 @@ const TelaPagamentos: React.FC = () => {
       setTimeout(() => setMensagemSucesso(''), 4000);
     } catch (err) {
       console.error('Erro ao excluir pagamento:', err);
-      alert('Não foi possível excluir este lançamento.');
+      const msg = formatErrorMessage(err, 'Não foi possível excluir este lançamento.');
+      setErrosValidacao([msg]);
+      setModalExcluir({ aberto: false, id: null });
     }
   };
 
@@ -280,8 +284,9 @@ const TelaPagamentos: React.FC = () => {
         </div>
 
         {mensagemSucesso && (
-          <div className="bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-sm shadow-sm">
-            ✓ {mensagemSucesso}
+          <div className="bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+            <span>{mensagemSucesso}</span>
           </div>
         )}
 

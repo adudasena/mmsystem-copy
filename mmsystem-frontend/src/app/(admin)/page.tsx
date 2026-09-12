@@ -60,6 +60,24 @@ export default function PainelPage() {
     return Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
+  const getFaturamentoExibido = () => {
+    if (filtroPeriodo === 'HOJE') return metricas.totalVendasHoje || 0;
+    if (filtroPeriodo === 'MES') return metricas.totalVendasMes || 0;
+    return (metricas.totalVendasMes || 0) + (metricas.totalVendasHoje || 0); // Consolidado
+  };
+
+  const getQtdPedidosExibida = () => {
+    if (filtroPeriodo === 'HOJE') return metricas.qtdVendasHoje || 0;
+    if (filtroPeriodo === 'MES') return metricas.qtdVendasMes || 0;
+    return (metricas.qtdVendasMes || 0);
+  };
+
+  const getTicketMedio = () => {
+    const total = getFaturamentoExibido();
+    const qtd = getQtdPedidosExibida() || 1;
+    return total / qtd;
+  };
+
   return (
     <div className="p-6 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800" suppressHydrationWarning>
       <div className="max-w-7xl mx-auto space-y-6">
@@ -67,7 +85,7 @@ export default function PainelPage() {
         {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-serif font-bold text-[#2d3a22]">
+            <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">
               Bem-vinda, {nomeUsuario}!
             </h1>
             <p className="text-sm text-gray-600 mt-1">
@@ -106,14 +124,6 @@ export default function PainelPage() {
                 Hoje
               </button>
             </div>
-
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-800 hover:bg-red-900 text-white font-bold text-xs uppercase px-4 py-2.5 rounded-lg shadow-sm transition cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-              Sair da Conta
-            </button>
           </div>
         </div>
 
@@ -122,7 +132,7 @@ export default function PainelPage() {
           <div className="flex items-center justify-between border-b pb-4 mb-4">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-[#2d3a22]" />
-              <h2 className="text-lg font-serif font-bold text-gray-900">
+              <h2 className="text-lg font-sans font-bold text-gray-900">
                 Fluxo de Vendas &amp; Faturamento
               </h2>
             </div>
@@ -132,24 +142,24 @@ export default function PainelPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Card Faturamento Mês */}
-            <div className={`p-4 rounded-xl border transition ${filtroPeriodo === 'HOJE' ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-emerald-50/50 border-emerald-200'}`}>
+            {/* Card Faturamento Selecionado */}
+            <div className="p-4 rounded-xl border bg-emerald-50/50 border-emerald-200 transition">
               <div className="flex justify-between items-start mb-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
-                  Faturamento (Mês)
+                  {filtroPeriodo === 'HOJE' ? 'Faturamento (Hoje)' : filtroPeriodo === 'MES' ? 'Faturamento (Mês)' : 'Faturamento Total'}
                 </span>
                 <DollarSign className="w-5 h-5 text-emerald-700" />
               </div>
               <h3 className="text-2xl font-extrabold text-emerald-950">
-                {carregando ? '...' : formatarMoeda(metricas.totalVendasMes)}
+                {carregando ? '...' : formatarMoeda(getFaturamentoExibido())}
               </h3>
               <p className="text-[10px] text-emerald-700 font-semibold mt-1">
-                {metricas.qtdVendasMes || 0} pedido(s) neste mês
+                {getQtdPedidosExibida()} pedido(s) registrado(s)
               </p>
             </div>
 
-            {/* Card Faturamento Hoje */}
-            <div className={`p-4 rounded-xl border transition ${filtroPeriodo === 'MES' ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-blue-50/50 border-blue-200'}`}>
+            {/* Card Vendas Hoje */}
+            <div className={`p-4 rounded-xl border transition ${filtroPeriodo === 'MES' ? 'bg-gray-50 border-gray-200 opacity-70' : 'bg-blue-50/50 border-blue-200'}`}>
               <div className="flex justify-between items-start mb-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800">
                   Vendas de Hoje
@@ -168,7 +178,7 @@ export default function PainelPage() {
             <div className="p-4 rounded-xl border bg-purple-50/50 border-purple-200">
               <div className="flex justify-between items-start mb-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-purple-800">
-                  Pedidos (Mês)
+                  Pedidos (Mês Atual)
                 </span>
                 <ShoppingBag className="w-5 h-5 text-purple-700" />
               </div>
@@ -176,11 +186,11 @@ export default function PainelPage() {
                 {carregando ? '...' : metricas.qtdVendasMes || 0}
               </h3>
               <p className="text-[10px] text-purple-700 font-semibold mt-1">
-                Pedidos registrados
+                {formatarMoeda(metricas.totalVendasMes)} no mês
               </p>
             </div>
 
-            {/* Ticket Médio Mês */}
+            {/* Ticket Médio */}
             <div className="p-4 rounded-xl border bg-amber-50/50 border-amber-200">
               <div className="flex justify-between items-start mb-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
@@ -189,10 +199,10 @@ export default function PainelPage() {
                 <TrendingUp className="w-5 h-5 text-amber-700" />
               </div>
               <h3 className="text-2xl font-extrabold text-amber-950">
-                {carregando ? '...' : formatarMoeda((metricas.totalVendasMes || 0) / (metricas.qtdVendasMes || 1))}
+                {carregando ? '...' : formatarMoeda(getTicketMedio())}
               </h3>
               <p className="text-[10px] text-amber-700 font-semibold mt-1">
-                Médio por pedido
+                Média por pedido
               </p>
             </div>
           </div>

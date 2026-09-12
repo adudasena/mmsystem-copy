@@ -42,6 +42,15 @@ public class PedidoController {
         return ResponseEntity.ok(service.listarTodos(pageable));
     }
 
+    @GetMapping("/excluidos")
+    public ResponseEntity<Page<Pedido>> listarExcluidos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        return ResponseEntity.ok(service.listarExcluidos(pageable));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Pedido> buscarPorId(@PathVariable Long id) {
         Pedido pedido = service.buscarPorId(id);
