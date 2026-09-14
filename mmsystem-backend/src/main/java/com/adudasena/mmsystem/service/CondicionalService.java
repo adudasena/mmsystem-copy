@@ -197,10 +197,22 @@ public class CondicionalService {
         }
     }
 
+    public Page<Condicional> listarExcluidos(Pageable pageable) {
+        return repository.findByDeletedAtIsNotNull(pageable);
+    }
+
     @Transactional
     public void excluir(Long id) {
         Condicional condicional = buscarPorId(id);
         condicional.setDeletedAt(LocalDateTime.now());
+        repository.save(condicional);
+    }
+
+    @Transactional
+    public void restaurar(Long id) {
+        Condicional condicional = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Condicional não encontrada: " + id));
+        condicional.setDeletedAt(null);
         repository.save(condicional);
     }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
-import { Pencil, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Pencil, Trash2, AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
@@ -47,6 +47,9 @@ const TelaPagamentos: React.FC = () => {
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [pedidosOpcoes, setPedidosOpcoes] = useState<PedidoRef[]>([]);
   
+  // Controle de Abas (Pagamentos Ativos vs Removidos / Lixeira)
+  const [abaAtiva, setAbaAtiva] = useState<'ATIVOS' | 'EXCLUIDOS'>('ATIVOS');
+
   // ─── Estados de Filtro e Busca ───────────────────────────────────────────
   const [termoBusca, setTermoBusca] = useState<string>('');
   const [statusFiltro, setStatusFiltro] = useState<string>('TODOS');
@@ -80,10 +83,14 @@ const TelaPagamentos: React.FC = () => {
   const tamanhoPagina = 5;
 
   // ─── Busca Paginada de Pagamentos ──────────────────────────────────────────
-  const buscarPagamentos = useCallback(async (pagina: number = 0): Promise<void> => {
+  const buscarPagamentos = useCallback(async (pagina: number = 0, tipoAba: 'ATIVOS' | 'EXCLUIDOS' = abaAtiva): Promise<void> => {
     try {
       setLoading(true);
-      const res = await api.get<PageSpring<Pagamento> | Pagamento[]>(`/pagamentos?page=${pagina}&size=${tamanhoPagina}`);
+      const url = tipoAba === 'EXCLUIDOS'
+        ? `/pagamentos/excluidos?page=${pagina}&size=${tamanhoPagina}`
+        : `/pagamentos?page=${pagina}&size=${tamanhoPagina}`;
+
+      const res = await api.get<PageSpring<Pagamento> | Pagamento[]>(url);
       
       if (res.data && Array.isArray((res.data as PageSpring<Pagamento>).content)) {
         const dados = res.data as PageSpring<Pagamento>;
@@ -102,7 +109,19 @@ const TelaPagamentos: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [tamanhoPagina]);
+  }, [tamanhoPagina, abaAtiva]);
+
+  const restaurarPagamento = async (id: number): Promise<void> => {
+    try {
+      await api.put(`/pagamentos/${id}/restaurar`);
+      setMensagemSucesso('Lançamento financeiro restaurado com sucesso!');
+      buscarPagamentos(paginaAtual, abaAtiva);
+      setTimeout(() => setMensagemSucesso(''), 4000);
+    } catch (err) {
+      console.error('Erro ao restaurar pagamento:', err);
+      setErrosValidacao(['Não foi possível restaurar o lançamento financeiro.']);
+    }
+  };
 
   // ─── Efeito de Inicialização Unificado ──────────────────────────────────────
   useEffect(() => {
@@ -156,6 +175,10 @@ const TelaPagamentos: React.FC = () => {
       montado = false;
     };
   }, [tamanhoPagina]);
+
+  useEffect(() => {
+    buscarPagamentos(0, abaAtiva);
+  }, [abaAtiva, buscarPagamentos]);
 
   // ─── Navegação com Auto-Scroll ───────────────────────────────────────────
   const mudarPagina = (novaPagina: number) => {
@@ -237,13 +260,13 @@ const TelaPagamentos: React.FC = () => {
     if (!modalExcluir.id) return;
     try {
       await api.delete(`/pagamentos/${modalExcluir.id}`);
-      setMensagemSucesso('Lançamento removido com sucesso!');
+      setMensagemSucesso('Lançamento financeiro movido para a lixeira com sucesso!');
       setModalExcluir({ aberto: false, id: null });
-      buscarPagamentos(paginaAtual);
+      buscarPagamentos(paginaAtual, abaAtiva);
       setTimeout(() => setMensagemSucesso(''), 4000);
     } catch (err) {
       console.error('Erro ao excluir pagamento:', err);
-      const msg = formatErrorMessage(err, 'Não foi possível excluir este lançamento.');
+      const msg = formatErrorMessage(err, 'Não foi possível mover este lançamento para a lixeira.');
       setErrosValidacao([msg]);
       setModalExcluir({ aberto: false, id: null });
     }
@@ -270,7 +293,7 @@ const TelaPagamentos: React.FC = () => {
         {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-serif font-bold text-[#2d3a22]">
+            <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">
               Pagamentos &amp; Lançamentos
             </h1>
           </div>
@@ -307,10 +330,36 @@ const TelaPagamentos: React.FC = () => {
 
         {/* Tabela de Lançamentos */}
         <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-4 border-b bg-gray-50/50 flex justify-between items-center">
-            <h2 className="text-xs font-bold uppercase text-gray-700">
-              Histórico de Lançamentos ({totalElementos > 0 ? totalElementos : pagamentosFiltrados.length})
-            </h2>
+          <div className="p-4 border-b bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAbaAtiva('ATIVOS')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  abaAtiva === 'ATIVOS'
+                    ? 'bg-[#2d3a22] text-white shadow-sm'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Pagamentos Ativos
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAbaAtiva('EXCLUIDOS')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  abaAtiva === 'EXCLUIDOS'
+                    ? 'bg-red-700 text-white shadow-sm'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Pagamentos Removidos (Lixeira)
+              </button>
+            </div>
+
+            <span className="text-[11px] font-bold text-gray-500 uppercase">
+              Total: {totalElementos > 0 ? totalElementos : pagamentosFiltrados.length}
+            </span>
           </div>
 
           {loading ? (
@@ -335,7 +384,7 @@ const TelaPagamentos: React.FC = () => {
                   {pagamentosFiltrados.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="p-8 text-center italic text-gray-500">
-                        Nenhum pagamento registrado.
+                        {abaAtiva === 'EXCLUIDOS' ? 'Nenhum pagamento removido na lixeira.' : 'Nenhum pagamento registrado.'}
                       </td>
                     </tr>
                   ) : (
@@ -369,20 +418,33 @@ const TelaPagamentos: React.FC = () => {
                         </td>
                         <td className="p-3 text-center">
                           <div className="flex justify-center items-center gap-2">
-                            <button
-                              onClick={() => prepararEdicao(pag)}
-                              className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
-                              title="Editar Lançamento"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setModalExcluir({ aberto: true, id: pag.id })}
-                              className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
-                              title="Excluir Lançamento"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            {abaAtiva === 'EXCLUIDOS' ? (
+                              <button
+                                type="button"
+                                onClick={() => restaurarPagamento(pag.id)}
+                                className="bg-green-700 hover:bg-green-800 text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 cursor-pointer"
+                                title="Restaurar lançamento financeiro"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" /> Restaurar
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => prepararEdicao(pag)}
+                                  className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
+                                  title="Editar Lançamento"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setModalExcluir({ aberto: true, id: pag.id })}
+                                  className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
+                                  title="Mover Lançamento para a Lixeira"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>

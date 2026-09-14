@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, ChangeEvent, useCallback, useRef } from 'react';
 import { AxiosError } from 'axios';
-import { ShoppingBag, FolderCheck, MessageSquare, Pencil, Trash2, AlertCircle, CheckCircle2, Search, Info } from 'lucide-react';
+import { ShoppingBag, FolderCheck, MessageSquare, Pencil, Trash2, AlertCircle, CheckCircle2, Search, Info, RotateCcw } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
@@ -109,8 +109,8 @@ const TelaCondicionais: React.FC = () => {
   const [totalElementos, setTotalElementos] = useState<number>(0);
   const tamanhoPagina = 5;
 
-  // Controle de Abas: 'ativas' ou 'finalizadas'
-  const [abaAtiva, setAbaAtiva] = useState<'ativas' | 'finalizadas'>('ativas');
+  // Controle de Abas: 'ativas', 'finalizadas' ou 'excluidas'
+  const [abaAtiva, setAbaAtiva] = useState<'ativas' | 'finalizadas' | 'excluidas'>('ativas');
 
   // Modais de Controle
   const [modalFormAberto, setModalFormAberto] = useState<boolean>(false);
@@ -133,9 +133,13 @@ const TelaCondicionais: React.FC = () => {
   });
 
   // ─── Busca Paginada de Condicionais ────────────────────────────────────────
-  const buscarCondicionais = useCallback(async (pagina: number = 0): Promise<void> => {
+  const buscarCondicionais = useCallback(async (pagina: number = 0, tipoAba: 'ativas' | 'finalizadas' | 'excluidas' = abaAtiva): Promise<void> => {
     try {
-      const resCond = await api.get<PageSpring<Condicional> | Condicional[]>(`/condicionais?page=${pagina}&size=${tamanhoPagina}`);
+      const url = tipoAba === 'excluidas'
+        ? `/condicionais/excluidos?page=${pagina}&size=${tamanhoPagina}`
+        : `/condicionais?page=${pagina}&size=${tamanhoPagina}`;
+
+      const resCond = await api.get<PageSpring<Condicional> | Condicional[]>(url);
       if (resCond.data && Array.isArray((resCond.data as PageSpring<Condicional>).content)) {
         const dados = resCond.data as PageSpring<Condicional>;
         setListaCondicionais(dados.content);
@@ -149,7 +153,35 @@ const TelaCondicionais: React.FC = () => {
       console.error("Erro ao buscar condicionais paginados:", err);
       setListaCondicionais([]);
     }
-  }, [tamanhoPagina]);
+  }, [tamanhoPagina, abaAtiva]);
+
+  const restaurarCondicional = async (id: number): Promise<void> => {
+    try {
+      await api.put(`/condicionais/${id}/restaurar`);
+      setMensagemSucesso('Sacola condicional restaurada com sucesso!');
+      buscarCondicionais(paginaAtual, abaAtiva);
+      setTimeout(() => setMensagemSucesso(''), 4000);
+    } catch (err) {
+      console.error('Erro ao restaurar condicional:', err);
+      setErrosValidacao(['Não foi possível restaurar a sacola condicional.']);
+    }
+  };
+
+  const confirmarExclusao = async (): Promise<void> => {
+    if (!modalExcluir.id) return;
+    try {
+      await api.delete(`/condicionais/${modalExcluir.id}`);
+      setMensagemSucesso('Sacola condicional movida para a lixeira com sucesso!');
+      setModalExcluir({ aberto: false, id: null });
+      buscarCondicionais(paginaAtual, abaAtiva);
+      setTimeout(() => setMensagemSucesso(''), 4000);
+    } catch (err) {
+      console.error('Erro ao excluir condicional:', err);
+      const msg = formatErrorMessage(err, 'Não foi possível mover a sacola condicional para a lixeira.');
+      setErrosValidacao([msg]);
+      setModalExcluir({ aberto: false, id: null });
+    }
+  };
 
   // ─── Carregar Dados Iniciais ────────────────────────────────────────────────
   useEffect(() => {
@@ -205,6 +237,10 @@ const TelaCondicionais: React.FC = () => {
       montado = false;
     };
   }, [tamanhoPagina]);
+
+  useEffect(() => {
+    buscarCondicionais(0, abaAtiva);
+  }, [abaAtiva, buscarCondicionais]);
 
   // ─── Navegação da Paginação ──────────────────────────────────────────────
   const mudarPagina = (novaPagina: number) => {
@@ -285,6 +321,14 @@ const TelaCondicionais: React.FC = () => {
   };
 
   const adicionarLinhaProduto = (): void => {
+    if (formCondicional.itens.length > 0) {
+      const ultimaPeca = formCondicional.itens[formCondicional.itens.length - 1];
+      if (!ultimaPeca.produtoId || !ultimaPeca.corEscolhida || !ultimaPeca.tamanhoEscolhido || !ultimaPeca.quantidade || Number(ultimaPeca.quantidade) <= 0) {
+        setErrosValidacao(["Atenção! Selecione o Produto, Cor, Tamanho e Quantidade da peça atual antes de adicionar uma nova."]);
+        return;
+      }
+    }
+    setErrosValidacao([]);
     setFormCondicional({
       ...formCondicional,
       itens: [...formCondicional.itens, { produtoId: '', quantidade: 1, corEscolhida: '', tamanhoEscolhido: '', statusItem: 'EM_CONDICIONAL' }]
@@ -316,9 +360,16 @@ const TelaCondicionais: React.FC = () => {
     }
   };
 
+  const exibirErroModal = (mensagens: string[]): void => {
+    setErrosValidacao(mensagens);
+    setTimeout(() => {
+      document.getElementById('modal-condicional-container')?.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 50);
+  };
+
   const salvarCondicional = async (): Promise<void> => {
     if (!formCondicional.clienteId || !formCondicional.dataRetorno) {
-      setErrosValidacao(["Vincule um cliente e determine a data limite de devolução."]);
+      exibirErroModal(["Vincule um cliente e determine a data limite de devolução."]);
       return;
     }
 
@@ -328,12 +379,12 @@ const TelaCondicionais: React.FC = () => {
     const diferencaDias = diferencaTempo / (1000 * 3600 * 24);
 
     if (diferencaDias > 30 || diferencaDias < 0) {
-      setErrosValidacao(["Prazo inválido! Verifique o intervalo de datas (Máx 30 dias)."]);
+      exibirErroModal(["Prazo inválido! Verifique o intervalo de datas (Máx 30 dias)."]);
       return;
     }
 
     if (!formCondicional.itens || formCondicional.itens.length === 0) {
-      setErrosValidacao(["Adicione pelo menos um produto na sacola antes de salvar."]);
+      exibirErroModal(["Adicione pelo menos um produto na sacola antes de salvar."]);
       return;
     }
 
@@ -342,7 +393,7 @@ const TelaCondicionais: React.FC = () => {
     );
     
     if (temAtributoIncompleto) {
-      setErrosValidacao(["Atenção! Selecione a Cor e o Tamanho para todos os produtos adicionados na sacola."]);
+      exibirErroModal(["Atenção! Selecione a Cor e o Tamanho para todos os produtos adicionados na sacola."]);
       return;
     }
 
@@ -352,7 +403,7 @@ const TelaCondicionais: React.FC = () => {
       
       if (Number(item.quantidade) > disponivel) {
         const prodNome = produtos.find(p => String(p.id) === String(item.produtoId))?.nome || "Produto";
-        setErrosValidacao([`Quantidade indisponível para ${prodNome}. Estoque atual: ${disponivel} pç(s)`]);
+        exibirErroModal([`Quantidade indisponível para ${prodNome}. Estoque atual: ${disponivel} pç(s)`]);
         return;
       }
     }
@@ -458,7 +509,9 @@ const TelaCondicionais: React.FC = () => {
 
   // ─── Filtro Local dos Condicionais ───────────────────────────────────────
   const listaFiltrada = (Array.isArray(listaCondicionais) ? listaCondicionais : []).filter(c => {
-    const atendeAba = abaAtiva === 'ativas' ? c.status === 'ABERTA' : (c.status === 'FINALIZADA' || c.status === 'DEVOLVIDA');
+    const atendeAba = abaAtiva === 'excluidas'
+      ? true
+      : (abaAtiva === 'ativas' ? c.status === 'ABERTA' : (c.status === 'FINALIZADA' || c.status === 'DEVOLVIDA'));
     const atendeStatus = statusFiltro === 'TODOS' || c.status === statusFiltro;
     
     const termo = termoBusca.toLowerCase();
@@ -506,34 +559,6 @@ const TelaCondicionais: React.FC = () => {
           </div>
         )}
 
-        {/* NAVEGAÇÃO POR ABAS */}
-        <div className="flex gap-2 border-b border-gray-300 mb-4">
-          <button
-            type="button"
-            onClick={() => setAbaAtiva('ativas')}
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[2px] flex items-center gap-1.5 ${
-              abaAtiva === 'ativas'
-                ? 'border-[#2d3a22] text-[#2d3a22] bg-white/50'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            <ShoppingBag className="w-4 h-4 text-[#2d3a22]" />
-            Condicionais Ativos ({listaCondicionais.filter(c => c.status === 'ABERTA').length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setAbaAtiva('finalizadas')}
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 -mb-[2px] flex items-center gap-1.5 ${
-              abaAtiva === 'finalizadas'
-                ? 'border-[#2d3a22] text-[#2d3a22] bg-white/50'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            <FolderCheck className="w-4 h-4 text-[#2d3a22]" />
-            Histórico de Finalizados
-          </button>
-        </div>
-
         {/* BARRA DE PESQUISA E FILTROS */}
         <div className="mb-6">
           <BarraBuscaFiltro
@@ -553,6 +578,49 @@ const TelaCondicionais: React.FC = () => {
 
         {/* TABELA DE REGISTROS */}
         <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col justify-between">
+          <div className="p-4 border-b bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAbaAtiva('ativas')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  abaAtiva === 'ativas'
+                    ? 'bg-[#2d3a22] text-white shadow-sm'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Condicionais Ativos
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAbaAtiva('finalizadas')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  abaAtiva === 'finalizadas'
+                    ? 'bg-[#2d3a22] text-white shadow-sm'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Histórico de Finalizados
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAbaAtiva('excluidas')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  abaAtiva === 'excluidas'
+                    ? 'bg-red-700 text-white shadow-sm'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Sacolas Removidas (Lixeira)
+              </button>
+            </div>
+
+            <span className="text-[11px] font-bold text-gray-500 uppercase">
+              TOTAL: {totalElementos > 0 ? totalElementos : listaFiltrada.length}
+            </span>
+          </div>
           <div className="overflow-x-auto min-h-[360px]">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -625,7 +693,16 @@ const TelaCondicionais: React.FC = () => {
                         </td>
                         <td className="p-3 text-center">
                           <div className="flex justify-center items-center gap-2">
-                            {c.status === 'ABERTA' ? (
+                            {abaAtiva === 'excluidas' ? (
+                              <button
+                                type="button"
+                                onClick={() => restaurarCondicional(c.id)}
+                                className="bg-green-700 hover:bg-green-800 text-white px-2.5 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 cursor-pointer"
+                                title="Restaurar sacola da lixeira"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" /> Restaurar
+                              </button>
+                            ) : c.status === 'ABERTA' ? (
                               <>
                                 <button
                                   onClick={() => enviarCobrancaWhatsApp(c)}
@@ -639,7 +716,7 @@ const TelaCondicionais: React.FC = () => {
                                   className="bg-[#4a5d33] hover:bg-[#3d5427] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer" 
                                   title="Dar Baixa nas Peças e Atualizar Estoque"
                                 >
-                                  ✓ Baixa
+                                  Baixa
                                 </button>
                                 <button 
                                   onClick={() => prepararEdicaoLocal(c)} 
@@ -690,7 +767,7 @@ const TelaCondicionais: React.FC = () => {
               <button onClick={() => setModalFormAberto(false)} className="text-gray-400 hover:text-black font-bold text-xl cursor-pointer">×</button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
+            <div id="modal-condicional-container" className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
               {/* Erros de validação dentro da modal */}
               {errosValidacao.length > 0 && (
                 <div className="bg-red-50 border-l-4 border-red-600 p-3 text-red-900 font-semibold text-xs rounded-lg shadow-sm space-y-1 mb-4">
@@ -747,8 +824,51 @@ const TelaCondicionais: React.FC = () => {
                 <div className="space-y-2">
                   {formCondicional.itens.map((item, idx) => {
                     const prodSelecionado = produtos.find(p => String(p.id) === String(item.produtoId));
-                    let coresDisponiveisNoProduto: string[] = [];
-                    let tamanhosDisponiveisNoProduto: string[] = [];
+
+                    const obterEstoqueTotalProduto = (p: ProdutoCondicional): number => {
+                      const est = p.estoque_detalhado || p.estoqueDetalhado;
+                      if (est) {
+                        try {
+                          const mapa = typeof est === 'string' ? JSON.parse(est) : est;
+                          if (typeof mapa === 'object' && mapa !== null) {
+                            return Object.values(mapa).reduce((acc: number, curr: unknown) => acc + Number(curr || 0), 0);
+                          }
+                        } catch {}
+                      }
+                      return 99;
+                    };
+
+                    const obterEstoqueGradeVariacao = (p: ProdutoCondicional, corChoice?: string, tamChoice?: string): number => {
+                      const est = p.estoque_detalhado || p.estoqueDetalhado;
+                      if (!est) return 99;
+                      try {
+                        const mapa = typeof est === 'string' ? JSON.parse(est) : est;
+                        if (!mapa || typeof mapa !== 'object') return 99;
+
+                        if (corChoice && tamChoice) {
+                          const c1 = `${corChoice}-${tamChoice}`;
+                          if (c1 in mapa) return Number(mapa[c1] || 0);
+                          const c2 = `${tamChoice}-${corChoice}`;
+                          if (c2 in mapa) return Number(mapa[c2] || 0);
+                          return 0;
+                        }
+                        if (corChoice) {
+                          let somaCor = 0;
+                          for (const [k, v] of Object.entries(mapa)) {
+                            if (k.startsWith(corChoice + '-') || k.endsWith('-' + corChoice) || k === corChoice) {
+                              somaCor += Number(v || 0);
+                            }
+                          }
+                          return somaCor;
+                        }
+                        return Object.values(mapa).reduce((acc: number, curr: unknown) => acc + Number(curr || 0), 0);
+                      } catch {
+                        return 99;
+                      }
+                    };
+
+                    let coresDisponiveisNoProduto: { nome: string; estoque: number }[] = [];
+                    let tamanhosDisponiveisNoProduto: { nome: string; estoque: number }[] = [];
 
                     if (prodSelecionado) {
                       const estoqueBruto = prodSelecionado.estoque_detalhado || prodSelecionado.estoqueDetalhado;
@@ -756,12 +876,22 @@ const TelaCondicionais: React.FC = () => {
                         try {
                           const estoque = typeof estoqueBruto === 'string' ? JSON.parse(estoqueBruto) : estoqueBruto;
                           const chaves = Object.keys(estoque);
-                          coresDisponiveisNoProduto = Array.from(new Set(chaves.map(k => k.split('-')[0])));
+                          const listaCores = Array.from(new Set(chaves.map(k => k.split('-')[0])));
                           
+                          coresDisponiveisNoProduto = listaCores.map(c => ({
+                            nome: c,
+                            estoque: obterEstoqueGradeVariacao(prodSelecionado, c)
+                          })).filter(c => c.estoque > 0 || c.nome === item.corEscolhida);
+
                           if (item.corEscolhida) {
-                            tamanhosDisponiveisNoProduto = chaves
+                            const listaTams = chaves
                               .filter(k => k.startsWith(item.corEscolhida + '-'))
                               .map(k => k.split('-')[1]);
+
+                            tamanhosDisponiveisNoProduto = listaTams.map(t => ({
+                              nome: t,
+                              estoque: obterEstoqueGradeVariacao(prodSelecionado, item.corEscolhida, t)
+                            })).filter(t => t.estoque > 0 || t.nome === item.tamanhoEscolhido);
                           }
                         } catch (e) {
                           console.error("Erro parsing estoque grade:", e);
@@ -769,16 +899,28 @@ const TelaCondicionais: React.FC = () => {
                       }
                     }
 
+                    const produtosDisponiveis = produtos.filter(p =>
+                      obterEstoqueTotalProduto(p) > 0 || String(p.id) === String(item.produtoId)
+                    );
+
+                    const estoqueMaxVar = prodSelecionado
+                      ? obterEstoqueGradeVariacao(prodSelecionado, item.corEscolhida, item.tamanhoEscolhido)
+                      : 99;
+
                     return (
                       <div key={idx} className="grid grid-cols-12 gap-2 bg-gray-50 p-2 border rounded-md items-center">
-                        <div className="col-span-6">
+                        <div className="col-span-5">
                           <select 
                             value={item.produtoId} 
                             onChange={(e: ChangeEvent<HTMLSelectElement>) => handleItemChange(idx, 'produtoId', e.target.value)} 
                             className="w-full border p-1 bg-white text-xs outline-none rounded"
                           >
                             <option value="">Selecione o Produto...</option>
-                            {produtos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                            {produtosDisponiveis.map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.nome} ({obterEstoqueTotalProduto(p)} un. em estoque)
+                              </option>
+                            ))}
                           </select>
                         </div>
 
@@ -790,7 +932,11 @@ const TelaCondicionais: React.FC = () => {
                             disabled={!item.produtoId}
                           >
                             <option value="">Cor...</option>
-                            {coresDisponiveisNoProduto.map(c => <option key={c} value={c}>{c}</option>)}
+                            {coresDisponiveisNoProduto.map(c => (
+                              <option key={c.nome} value={c.nome}>
+                                {c.nome} ({c.estoque} un.)
+                              </option>
+                            ))}
                           </select>
                         </div>
 
@@ -802,18 +948,28 @@ const TelaCondicionais: React.FC = () => {
                             disabled={!item.corEscolhida}
                           >
                             <option value="">Tam...</option>
-                            {tamanhosDisponiveisNoProduto.map(t => <option key={t} value={t}>{t}</option>)}
+                            {tamanhosDisponiveisNoProduto.map(t => (
+                              <option key={t.nome} value={t.nome}>
+                                {t.nome} ({t.estoque} un. disp.)
+                              </option>
+                            ))}
                           </select>
                         </div>
 
-                        <div className="col-span-1">
+                        <div className="col-span-2 flex flex-col items-center">
                           <input 
                             type="number" 
                             min="1" 
+                            max={estoqueMaxVar > 0 ? estoqueMaxVar : 1}
                             value={item.quantidade} 
                             onChange={(e: ChangeEvent<HTMLInputElement>) => handleItemChange(idx, 'quantidade', parseInt(e.target.value, 10) || 1)} 
-                            className="w-full border p-1 text-center bg-white text-xs rounded" 
+                            className="w-full border p-1 text-center bg-white text-xs rounded font-bold" 
                           />
+                          {prodSelecionado && (
+                            <span className="text-[9px] font-bold text-[#4a5d33] mt-0.5">
+                              ({estoqueMaxVar} un. disp.)
+                            </span>
+                          )}
                         </div>
 
                         <div className="col-span-1 text-center">
@@ -894,12 +1050,12 @@ const TelaCondicionais: React.FC = () => {
           <div className="bg-white p-5 max-w-xs w-full rounded-xl border-t-4 border-red-600 shadow-2xl">
             <h4 className="font-sans font-bold text-base text-red-700 mb-1 flex items-center gap-1.5">
               <AlertCircle className="w-4 h-4 text-red-600" />
-              Excluir Condicional
+              Excluir Sacola Condicional
             </h4>
-            <p className="text-xs text-gray-600 mb-4">Confirma a remoção permanente deste registro?</p>
+            <p className="text-xs text-gray-600 mb-4">Tem certeza que deseja mover esta sacola condicional para a lixeira?</p>
             <div className="flex justify-end gap-2 text-[10px] font-bold uppercase">
-              <button onClick={() => setModalExcluir({ aberto: false, id: null })} className="px-3 py-1.5 bg-gray-100 text-gray-700 cursor-pointer">Voltar</button>
-              <button onClick={deletarCondicional} className="px-3 py-1.5 bg-red-600 text-white hover:bg-red-700 cursor-pointer">Confirmar</button>
+              <button onClick={() => setModalExcluir({ aberto: false, id: null })} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded cursor-pointer">Cancelar</button>
+              <button onClick={confirmarExclusao} className="px-3 py-1.5 bg-red-600 text-white hover:bg-red-700 rounded cursor-pointer">Mover para a Lixeira</button>
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, ChangeEvent, FormEvent, useRef } from 'react';
 import { AxiosError } from 'axios';
-import { Users, MessageSquare, Mail, Pencil, Trash2, Plus, Search, CheckCircle2 } from 'lucide-react';
+import { Users, MessageSquare, Mail, Pencil, Trash2, Plus, Search, CheckCircle2, RotateCcw, UserX } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
@@ -46,6 +46,9 @@ const TelaUsuarios: React.FC = () => {
   const [erro, setErro] = useState<string>('');
   const [busca, setBusca] = useState<string>('');
 
+  // Controle de Abas (Ativos vs Excluídos/Inativos)
+  const [abaAtiva, setAbaAtiva] = useState<'ATIVOS' | 'EXCLUIDOS'>('ATIVOS');
+
   // Referência para Auto-Scroll na tabela
   const tabelaRef = useRef<HTMLDivElement>(null);
 
@@ -66,51 +69,15 @@ const TelaUsuarios: React.FC = () => {
     perfil: 'CLIENTE',
   });
 
-  // ─── Efeito de Inicialização Segura ───────────────────────────────────────
-  useEffect(() => {
-    let montado = true;
-
-    const carregarInicial = async () => {
-      try {
-        setLoading(true);
-        const res = await api.get<PageSpring<Usuario> | Usuario[]>(`/usuarios?page=0&size=${tamanhoPagina}`);
-        
-        if (montado) {
-          if (res.data && Array.isArray((res.data as PageSpring<Usuario>).content)) {
-            const dados = res.data as PageSpring<Usuario>;
-            setClientes(dados.content);
-            setTotalPaginas(dados.totalPages);
-            setTotalElementos(dados.totalElements);
-            setPaginaAtual(dados.number);
-          } else if (Array.isArray(res.data)) {
-            setClientes(res.data);
-          } else {
-            setClientes([]);
-          }
-        }
-      } catch (err) {
-        console.error('Erro ao buscar clientes:', err);
-        if (montado) {
-        }
-      } finally {
-        if (montado) {
-          setLoading(false);
-        }
-      }
-    };
-
-    carregarInicial();
-
-    return () => {
-      montado = false;
-    };
-  }, [tamanhoPagina]);
-
   // ─── Função de Busca Paginada ──────────────────────────────────────────────
-  const buscarClientesPagina = async (pagina: number = 0): Promise<void> => {
+  const buscarClientesPagina = async (pagina: number = 0, tipoAba: 'ATIVOS' | 'EXCLUIDOS' = abaAtiva): Promise<void> => {
     try {
       setLoading(true);
-      const res = await api.get<PageSpring<Usuario> | Usuario[]>(`/usuarios?page=${pagina}&size=${tamanhoPagina}`);
+      const url = tipoAba === 'EXCLUIDOS'
+        ? `/usuarios/excluidos?page=${pagina}&size=${tamanhoPagina}`
+        : `/usuarios?page=${pagina}&size=${tamanhoPagina}`;
+
+      const res = await api.get<PageSpring<Usuario> | Usuario[]>(url);
       
       if (res.data && Array.isArray((res.data as PageSpring<Usuario>).content)) {
         const dados = res.data as PageSpring<Usuario>;
@@ -131,11 +98,27 @@ const TelaUsuarios: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    buscarClientesPagina(0, abaAtiva);
+  }, [abaAtiva]);
+
   // ─── Navegação com Auto-Scroll ───────────────────────────────────────────
   const mudarPagina = (novaPagina: number) => {
     if (novaPagina >= 0 && novaPagina < totalPaginas) {
-      buscarClientesPagina(novaPagina);
+      buscarClientesPagina(novaPagina, abaAtiva);
       tabelaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const restaurarCliente = async (id: number): Promise<void> => {
+    try {
+      await api.put(`/usuarios/${id}/restaurar`);
+      setMensagemSucesso('Cliente reativado com sucesso!');
+      buscarClientesPagina(paginaAtual, abaAtiva);
+      setTimeout(() => setMensagemSucesso(''), 4000);
+    } catch (err) {
+      console.error('Erro ao restaurar cliente:', err);
+      setErro('Não foi possível reativar o cliente.');
     }
   };
 
@@ -227,13 +210,15 @@ const TelaUsuarios: React.FC = () => {
     if (!modalConfirm.id) return;
     try {
       await api.delete(`/usuarios/${modalConfirm.id}`);
-      setMensagemSucesso('Cliente removido com sucesso!');
-      buscarClientesPagina(paginaAtual);
+      setMensagemSucesso('Cliente movido para a lixeira com sucesso!');
+      setModalConfirm({ isOpen: false });
+      buscarClientesPagina(paginaAtual, abaAtiva);
       setTimeout(() => setMensagemSucesso(''), 4000);
     } catch (err) {
       console.error('Erro ao excluir cliente:', err);
-      const msg = formatErrorMessage(err, 'Não foi possível excluir o cliente.');
+      const msg = formatErrorMessage(err, 'Não foi possível mover o cliente para a lixeira.');
       setErro(msg);
+      setModalConfirm({ isOpen: false });
     }
   };
 
@@ -257,7 +242,7 @@ const TelaUsuarios: React.FC = () => {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* CABEÇALHO */}
         <div>
-          <h1 className="text-3xl font-serif font-bold text-[#2d3a22]">
+          <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">
             Clientes
           </h1>
         </div>
@@ -406,14 +391,40 @@ const TelaUsuarios: React.FC = () => {
           {/* TABELA DE CLIENTES */}
           <div ref={tabelaRef} className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-4 border-b bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-3">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-700">
-                Clientes Cadastrados ({totalElementos > 0 ? totalElementos : clientesFiltrados.length})
-              </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAbaAtiva('ATIVOS')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    abaAtiva === 'ATIVOS'
+                      ? 'bg-[#3b4a28] text-white shadow-sm'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Clientes Ativos
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAbaAtiva('EXCLUIDOS')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    abaAtiva === 'EXCLUIDOS'
+                      ? 'bg-red-700 text-white shadow-sm'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  <UserX className="w-3.5 h-3.5" /> Clientes Inativos (Lixeira)
+                </button>
+              </div>
+
+              <span className="text-[11px] font-bold text-gray-500 uppercase">
+                Total: {totalElementos > 0 ? totalElementos : clientesFiltrados.length}
+              </span>
             </div>
 
             {loading ? (
               <p className="p-8 text-center text-xs text-gray-500 font-medium">
-                Carregando lista de clientes...
+                Carregando clientes...
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -431,7 +442,7 @@ const TelaUsuarios: React.FC = () => {
                     {clientesFiltrados.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="p-8 text-center italic text-gray-500">
-                          Nenhum cliente encontrado.
+                          {abaAtiva === 'EXCLUIDOS' ? 'Nenhum cliente inativo na lixeira.' : 'Nenhum cliente ativo encontrado.'}
                         </td>
                       </tr>
                     ) : (
@@ -457,23 +468,36 @@ const TelaUsuarios: React.FC = () => {
                                 </a>
                               ) : null}
 
-                              <button
-                                type="button"
-                                onClick={() => handleEditar(cli)}
-                                className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
-                                title="Editar dados da cliente"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
+                              {abaAtiva === 'EXCLUIDOS' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => restaurarCliente(cli.id)}
+                                  className="bg-green-700 hover:bg-green-800 text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 cursor-pointer"
+                                  title="Reativar cliente na base"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" /> Reativar
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditar(cli)}
+                                    className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
+                                    title="Editar dados da cliente"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
 
-                              <button
-                                type="button"
-                                onClick={() => handleExcluir(cli.id, cli.nome)}
-                                className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
-                                title="Excluir cliente"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleExcluir(cli.id, cli.nome)}
+                                    className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
+                                    title="Desativar cliente (Mover para Inativos)"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -494,6 +518,23 @@ const TelaUsuarios: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* MODAL DE CONFIRMAÇÃO DE SOFT DELETE */}
+      <SystemModal
+        isOpen={modalConfirm.isOpen}
+        title="Mover Cliente para a Lixeira"
+        onClose={() => setModalConfirm({ isOpen: false })}
+        onConfirm={confirmarExclusao}
+        confirmText="Mover para a Lixeira"
+        confirmVariant="danger"
+      >
+        <p className="text-xs text-gray-700">
+          Tem certeza que deseja mover a cliente <strong>{modalConfirm.nome}</strong> para a lixeira?
+        </p>
+        <p className="text-[11px] text-gray-500 mt-2">
+          A cliente será desativada, mas todo o histórico de compras, pedidos e condicionais permanecerá 100% preservado no sistema.
+        </p>
+      </SystemModal>
     </div>
   );
 };

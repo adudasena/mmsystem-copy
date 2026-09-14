@@ -93,4 +93,13 @@ public class PedidoController {
         }
         return ResponseEntity.noContent().build();
     }
+
+    @PutMapping("/{id}/restaurar")
+    public ResponseEntity<Void> restaurar(@PathVariable Long id) {
+        boolean restaurado = service.restaurar(id);
+        if (!restaurado) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok().build();
+    }
 }

@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect, ChangeEvent, KeyboardEvent, useCallback, useRef } from 'react';
 import { AxiosError } from 'axios';
-import { Pencil, Trash2, Eye, Camera, Settings, Package, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Pencil, Trash2, Eye, Camera, Settings, Package, Plus, AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
@@ -401,6 +401,31 @@ const TelaProdutos: React.FC = () => {
     }
   };
 
+  const restaurarProduto = async (id: number): Promise<void> => {
+    try {
+      await api.put(`/produtos/${id}/restaurar`);
+      setMensagemSucesso('Produto restaurado com sucesso!');
+      if (visualizandoExcluidos) {
+        buscarExcluidos();
+      } else {
+        buscarProdutos(paginaAtual);
+      }
+      setTimeout(() => setMensagemSucesso(''), 5000);
+    } catch (err) {
+      console.error('Erro ao restaurar produto:', err);
+      const msg = formatErrorMessage(err, 'Não foi possível restaurar o produto.');
+      setErrosValidacao([msg]);
+    }
+  };
+
+  useEffect(() => {
+    if (visualizandoExcluidos) {
+      buscarExcluidos();
+    } else {
+      buscarProdutos(paginaAtual);
+    }
+  }, [visualizandoExcluidos, buscarProdutos, paginaAtual]);
+
   // ─── Filtro Local dos Produtos ────────────────────────────────────────────
   const produtosFiltrados = (visualizandoExcluidos ? produtosExcluidos : listaProdutos).filter((p) => {
     const atendeCategoria = categoriaFiltro === 'TODAS' || p.categoria === categoriaFiltro;
@@ -728,9 +753,20 @@ const TelaProdutos: React.FC = () => {
                       <td className="p-3 font-bold text-[#4a5d33]">{totalCalculado} un</td>
                       <td className="p-3 text-center">
                         {visualizandoExcluidos ? (
-                          <span className="text-[10px] bg-red-50 text-red-600 px-2 py-1 font-bold uppercase rounded-md border border-red-200">
-                            Inativo / Removido
-                          </span>
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="text-[10px] bg-red-50 text-red-600 px-2 py-1 font-bold uppercase rounded-md border border-red-200">
+                              Inativo / Removido
+                            </span>
+                            {p.id && (
+                              <button
+                                onClick={() => restaurarProduto(p.id!)}
+                                className="p-1 hover:scale-110 transition cursor-pointer text-[#4a5d33] hover:text-[#2d3a22]"
+                                title="Restaurar Produto"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <div className="flex items-center justify-center gap-2">
                             <button

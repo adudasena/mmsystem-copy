@@ -23,7 +23,12 @@ public class PagamentoService {
 
     @Transactional(readOnly = true)
     public Page<Pagamento> listarTodos(Pageable pageable) {
-        return pagamentoRepository.findAll(pageable);
+        return pagamentoRepository.findByDeletedAtIsNull(pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Pagamento> listarExcluidos(Pageable pageable) {
+        return pagamentoRepository.findByDeletedAtIsNotNull(pageable);
     }
 
     @Transactional(readOnly = true)
@@ -50,8 +55,21 @@ public class PagamentoService {
 
     @Transactional
     public boolean excluir(Long id) {
-        if (pagamentoRepository.existsById(id)) {
-            pagamentoRepository.deleteById(id);
+        Pagamento pag = pagamentoRepository.findById(id).orElse(null);
+        if (pag != null) {
+            pag.setDeletedAt(java.time.LocalDateTime.now());
+            pagamentoRepository.save(pag);
+            return true;
+        }
+        return false;
+    }
+
+    @Transactional
+    public boolean restaurar(Long id) {
+        Pagamento pag = pagamentoRepository.findById(id).orElse(null);
+        if (pag != null) {
+            pag.setDeletedAt(null);
+            pagamentoRepository.save(pag);
             return true;
         }
         return false;

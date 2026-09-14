@@ -33,6 +33,9 @@ public class Pagamento {
     @JsonIgnoreProperties({"itens", "pagamentos", "cliente", "condicional", "hibernateLazyInitializer", "handler"})
     private Pedido pedido;
 
+    @Column(name = "deleted_at")
+    private java.time.LocalDateTime deletedAt;
+
     public Pagamento() {}
 
     public Long getId() { return id; }
@@ -52,4 +55,7 @@ public class Pagamento {
 
     public Pedido getPedido() { return pedido; }
     public void setPedido(Pedido pedido) { this.pedido = pedido; }
+
+    public java.time.LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(java.time.LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 }

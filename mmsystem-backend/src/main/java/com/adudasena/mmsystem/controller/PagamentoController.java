@@ -41,6 +41,15 @@ public class PagamentoController {
         return ResponseEntity.ok(service.listarTodos(pageable));
     }
 
+    @GetMapping("/excluidos")
+    public ResponseEntity<Page<Pagamento>> listarExcluidos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        return ResponseEntity.ok(service.listarExcluidos(pageable));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<Pagamento> atualizar(@PathVariable Long id, @RequestBody PagamentoDTO dto) {
         Pagamento pagamentoAtualizado = service.atualizar(id, dto);
@@ -57,6 +66,15 @@ public class PagamentoController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/restaurar")
+    public ResponseEntity<Void> restaurar(@PathVariable Long id) {
+        boolean restaurado = service.restaurar(id);
+        if (!restaurado) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping

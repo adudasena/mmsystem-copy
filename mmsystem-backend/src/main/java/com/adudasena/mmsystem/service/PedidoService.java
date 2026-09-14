@@ -152,9 +152,11 @@ public class PedidoService {
         try {
             pagamentoRepository.findAll().stream()
                 .filter(p -> p.getPedido() != null && id.equals(p.getPedido().getId()))
-                .findFirst()
-                .ifPresent(pag -> {
+                .forEach(pag -> {
                     pag.setValor(pedidoSalvo.getValorTotal());
+                    if (pedidoSalvo.getStatus() == StatusPedido.PAGO) {
+                        pag.setStatus("PAGO");
+                    }
                     pagamentoRepository.save(pag);
                 });
         } catch (Exception e) {
@@ -176,12 +178,38 @@ public class PedidoService {
     }
 
     @Transactional
+    public boolean restaurar(Long id) {
+        Pedido p = pedidoRepository.findById(id).orElse(null);
+        if (p != null) {
+            p.setDeletedAt(null);
+            pedidoRepository.save(p);
+            return true;
+        }
+        return false;
+    }
+
+    @Transactional
     public Pedido atualizarStatus(Long id, String status) {
         Pedido pedido = buscarPorId(id);
         if (pedido != null && status != null) {
             try {
-                pedido.setStatus(StatusPedido.valueOf(status.toUpperCase()));
-                return pedidoRepository.save(pedido);
+                StatusPedido statusEnum = StatusPedido.valueOf(status.toUpperCase());
+                pedido.setStatus(statusEnum);
+                Pedido salvo = pedidoRepository.save(pedido);
+
+                // Sincroniza o lançamento de Pagamento vinculado
+                pagamentoRepository.findAll().stream()
+                    .filter(p -> p.getPedido() != null && id.equals(p.getPedido().getId()))
+                    .forEach(pag -> {
+                        if (statusEnum == StatusPedido.PAGO) {
+                            pag.setStatus("PAGO");
+                        } else if (statusEnum == StatusPedido.CANCELADO) {
+                            pag.setStatus("CANCELADO");
+                        }
+                        pagamentoRepository.save(pag);
+                    });
+
+                return salvo;
             } catch (IllegalArgumentException e) {
                 return null;
             }

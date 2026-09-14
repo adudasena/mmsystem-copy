@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
-import { ShoppingBag, Eye, X, User, Phone, Calendar, Pencil, Trash2, MessageSquare, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ShoppingBag, Eye, X, User, Phone, Calendar, Pencil, Trash2, MessageSquare, AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
@@ -30,6 +30,9 @@ export interface ProdutoRef {
   id: number;
   nome: string;
   preco: number;
+  estoque_detalhado?: Record<string, number> | string;
+  estoqueDetalhado?: Record<string, number> | string;
+  quantidadeEstoque?: number;
 }
 
 export interface ItemPedidoForm {
@@ -106,6 +109,9 @@ const TelaPedidos: React.FC = () => {
     itens: [{ uuid: gerarUuid(), fkProdutoId: '', quantidade: 1 }]
   });
 
+  // Controle de Abas (Pedidos Ativos vs Removidos / Lixeira)
+  const [abaAtiva, setAbaAtiva] = useState<'ATIVOS' | 'EXCLUIDOS'>('ATIVOS');
+
   // Referência para Auto-Scroll
   const tabelaRef = useRef<HTMLDivElement>(null);
 
@@ -116,10 +122,14 @@ const TelaPedidos: React.FC = () => {
   const tamanhoPagina = 5;
 
   // ─── Busca Paginada de Pedidos ─────────────────────────────────────────────
-  const buscarPedidos = useCallback(async (pagina: number = 0): Promise<void> => {
+  const buscarPedidos = useCallback(async (pagina: number = 0, tipoAba: 'ATIVOS' | 'EXCLUIDOS' = abaAtiva): Promise<void> => {
     try {
       setLoading(true);
-      const res = await api.get<PageSpring<Pedido> | Pedido[]>(`/pedidos?page=${pagina}&size=${tamanhoPagina}`);
+      const url = tipoAba === 'EXCLUIDOS'
+        ? `/pedidos/excluidos?page=${pagina}&size=${tamanhoPagina}`
+        : `/pedidos?page=${pagina}&size=${tamanhoPagina}`;
+
+      const res = await api.get<PageSpring<Pedido> | Pedido[]>(url);
       
       if (res.data && Array.isArray((res.data as PageSpring<Pedido>).content)) {
         const dados = res.data as PageSpring<Pedido>;
@@ -138,7 +148,19 @@ const TelaPedidos: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [tamanhoPagina]);
+  }, [tamanhoPagina, abaAtiva]);
+
+  const restaurarPedido = async (id: number): Promise<void> => {
+    try {
+      await api.put(`/pedidos/${id}/restaurar`);
+      setMensagemSucesso('Pedido restaurado com sucesso!');
+      buscarPedidos(paginaAtual, abaAtiva);
+      setTimeout(() => setMensagemSucesso(''), 4000);
+    } catch (err) {
+      console.error('Erro ao restaurar pedido:', err);
+      setErrosValidacao(['Não foi possível restaurar o pedido.']);
+    }
+  };
 
   // ─── Efeito de Inicialização Unificado ────────────────────────────────────
   useEffect(() => {
@@ -205,6 +227,10 @@ const TelaPedidos: React.FC = () => {
       montado = false;
     };
   }, [tamanhoPagina]);
+
+  useEffect(() => {
+    buscarPedidos(0, abaAtiva);
+  }, [abaAtiva, buscarPedidos]);
 
   // ─── Navegação da Paginação ─────────────────────────────────────────────
   const mudarPagina = (novaPagina: number) => {
@@ -478,10 +504,36 @@ const TelaPedidos: React.FC = () => {
         {/* Tabela Principal */}
         <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col justify-between">
           <div>
-            <div className="p-4 border-b bg-gray-50/50 flex justify-between items-center">
-              <h2 className="text-xs font-bold uppercase text-gray-700">
-                Pedidos Registrados ({totalElementos > 0 ? totalElementos : pedidosFiltrados.length})
-              </h2>
+            <div className="p-4 border-b bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAbaAtiva('ATIVOS')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    abaAtiva === 'ATIVOS'
+                      ? 'bg-[#4a5d33] text-white shadow-sm'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Pedidos Ativos
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAbaAtiva('EXCLUIDOS')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    abaAtiva === 'EXCLUIDOS'
+                      ? 'bg-red-700 text-white shadow-sm'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Pedidos Removidos (Lixeira)
+                </button>
+              </div>
+
+              <span className="text-[11px] font-bold text-gray-500 uppercase">
+                Total: {totalElementos > 0 ? totalElementos : pedidosFiltrados.length}
+              </span>
             </div>
 
             {loading ? (
@@ -503,7 +555,7 @@ const TelaPedidos: React.FC = () => {
                     {pedidosFiltrados.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="p-8 text-center italic text-gray-500">
-                          Nenhum pedido encontrado.
+                          {abaAtiva === 'EXCLUIDOS' ? 'Nenhum pedido removido na lixeira.' : 'Nenhum pedido ativo encontrado.'}
                         </td>
                       </tr>
                     ) : (
@@ -532,20 +584,34 @@ const TelaPedidos: React.FC = () => {
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
-                              <button
-                                onClick={() => prepararEdicao(p)}
-                                className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
-                                title="Editar Pedido"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => setModalExcluir({ aberto: true, id: p.id })}
-                                className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
-                                title="Excluir Pedido"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+
+                              {abaAtiva === 'EXCLUIDOS' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => restaurarPedido(p.id)}
+                                  className="bg-green-700 hover:bg-green-800 text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 cursor-pointer"
+                                  title="Restaurar pedido da lixeira"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" /> Restaurar
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => prepararEdicao(p)}
+                                    className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
+                                    title="Editar Pedido"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => setModalExcluir({ aberto: true, id: p.id })}
+                                    className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
+                                    title="Mover Pedido para a Lixeira"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -645,44 +711,69 @@ const TelaPedidos: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    {formPedido.itens.map((item) => (
-                      <div key={item.uuid} className="grid grid-cols-12 gap-2 bg-gray-50 p-2 border border-gray-200 rounded-md items-center">
-                        <div className="col-span-8">
-                          <SelectProdutoFilter
-                            produtos={produtosOpcoes}
-                            valorSelecionado={item.fkProdutoId}
-                            onChange={(valor) => handleItemChange(item.uuid, 'fkProdutoId', valor)}
-                            placeholder="Selecione o Produto..."
-                          />
-                        </div>
+                    {formPedido.itens.map((item) => {
+                      const prodSel = produtosOpcoes.find(p => String(p.id) === String(item.fkProdutoId));
+                      let estoqueMax = 9999;
+                      if (prodSel) {
+                        const est = prodSel.estoqueDetalhado || prodSel.estoque_detalhado;
+                        if (est) {
+                          try {
+                            const mapa = typeof est === 'string' ? JSON.parse(est) : est;
+                            if (typeof mapa === 'object' && mapa !== null) {
+                              estoqueMax = Object.values(mapa).reduce((a: number, b: unknown) => a + Number(b || 0), 0);
+                            }
+                          } catch {}
+                        } else if (prodSel.quantidadeEstoque !== undefined) {
+                          estoqueMax = prodSel.quantidadeEstoque;
+                        }
+                      }
 
-                        <div className="col-span-3">
-                          <input
-                            type="number"
-                            min="1"
-                            max="9999"
-                            value={item.quantidade}
-                            onKeyDown={handleQuantidadeKeyDown}
-                            onChange={(e) => handleQuantidadeChange(item.uuid, e.target.value)}
-                            className="w-full border border-gray-300 p-2 text-center bg-white text-xs font-bold rounded-md outline-none focus:border-[#4a5d33]"
-                            placeholder="Qtd"
-                          />
-                        </div>
+                      return (
+                        <div key={item.uuid} className="grid grid-cols-12 gap-2 bg-gray-50 p-2 border border-gray-200 rounded-md items-center">
+                          <div className="col-span-7">
+                            <SelectProdutoFilter
+                              produtos={produtosOpcoes}
+                              valorSelecionado={item.fkProdutoId}
+                              onChange={(valor) => handleItemChange(item.uuid, 'fkProdutoId', valor)}
+                              placeholder="Selecione o Produto..."
+                            />
+                          </div>
 
-                        <div className="col-span-1 text-center">
-                          {formPedido.itens.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removerLinhaItem(item.uuid)}
-                              className="text-red-600 font-bold hover:text-red-800 cursor-pointer p-1 text-base"
-                              title="Remover Item"
-                            >
-                              ×
-                            </button>
-                          )}
+                          <div className="col-span-4 flex flex-col items-center">
+                            <div className="flex items-center gap-1 w-full">
+                              <input
+                                type="number"
+                                min="1"
+                                max={estoqueMax > 0 ? estoqueMax : 1}
+                                value={item.quantidade}
+                                onKeyDown={handleQuantidadeKeyDown}
+                                onChange={(e) => handleQuantidadeChange(item.uuid, e.target.value)}
+                                className="w-full border border-gray-300 p-2 text-center bg-white text-xs font-bold rounded-md outline-none focus:border-[#4a5d33]"
+                                placeholder="Qtd"
+                              />
+                            </div>
+                            {prodSel && (
+                              <span className="text-[10px] font-bold text-[#4a5d33] mt-0.5">
+                                ({estoqueMax} un. disp.)
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="col-span-1 text-center">
+                            {formPedido.itens.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removerLinhaItem(item.uuid)}
+                                className="text-red-600 font-bold hover:text-red-800 cursor-pointer p-1 text-base"
+                                title="Remover Item"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

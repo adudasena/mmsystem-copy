@@ -79,6 +79,13 @@ public class ProdutoService {
         return repository.findByDeletedAtIsNotNull();
     }
 
+    public void restaurar(Long id) {
+        Produto produto = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Produto não encontrado com o ID: " + id));
+        produto.setDeletedAt(null);
+        repository.save(produto);
+    }
+
     private Produto salvar(Produto produto, ProdutoDTO dto) throws JsonProcessingException {
         produto.setNome(dto.getNome());
         produto.setDescricao(dto.getDescricao());

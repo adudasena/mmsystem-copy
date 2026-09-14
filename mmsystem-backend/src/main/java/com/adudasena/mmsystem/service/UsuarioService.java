@@ -53,6 +53,17 @@ public class UsuarioService {
         repository.save(usuario);
     }
 
+    public Page<Usuario> listarExcluidos(Pageable pageable) {
+        return repository.findByDeletedAtIsNotNull(pageable);
+    }
+
+    public void restaurar(Long id) {
+        Usuario usuario = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cliente/Usuário não encontrado com o ID: " + id));
+        usuario.setDeletedAt(null);
+        repository.save(usuario);
+    }
+
     private void copiarDtoParaEntidade(UsuarioDTO dto, Usuario usuario) {
         usuario.setNome(dto.getNome());
         usuario.setTelefone(dto.getTelefone());

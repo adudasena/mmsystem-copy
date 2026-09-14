@@ -12,7 +12,9 @@ import java.util.Optional;
 @Repository
 public interface CondicionalRepository extends JpaRepository<Condicional, Long> {
     List<Condicional> findByDeletedAtIsNull();
+    List<Condicional> findByDeletedAtIsNotNull();
     Optional<Condicional> findByIdAndDeletedAtIsNull(Long id);
 
     Page<Condicional> findByDeletedAtIsNull(Pageable pageable);
+    Page<Condicional> findByDeletedAtIsNotNull(Pageable pageable);
 }

@@ -21,8 +21,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         logger.error("Violação de integridade de dados: ", ex);
         Map<String, String> erro = new HashMap<>();
-        erro.put("mensagem", "Não foi possível concluir a ação: este registro possui vínculos com outros lançamentos no sistema.");
-        erro.put("erro", "Dados em conflito ou vinculados");
+        erro.put("mensagem", "Não foi possível concluir a ação. Verifique se os dados inseridos possuem registros ou relacionamentos pendentes.");
+        erro.put("erro", "Dados em conflito");
         return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
     }
 

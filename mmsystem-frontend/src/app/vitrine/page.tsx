@@ -326,34 +326,40 @@ export default function VitrineProdutos() {
   return (
     <div className="min-h-screen bg-[#dcded0] text-gray-800 font-sans pb-12">
       {/* HEADER / BARRA SUPERIOR */}
-      <header className="bg-[#2c3e1c] text-white py-3 px-4 md:px-8 sticky top-0 z-40 shadow-md flex justify-between items-center">
-        <div className="flex items-center gap-3">
+      <header className="bg-[#2c3e1c] text-white py-4 px-4 md:px-8 sticky top-0 z-40 shadow-md relative flex items-center justify-between min-h-[64px]">
+        <div className="text-xs uppercase font-bold tracking-widest text-[#a8b896] hidden md:block">
+          Maria Morena • Modas
+        </div>
+
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
           <img
             src="/escritocompleto1linha.svg"
             alt="Maria Morena Logo"
-            className="h-9 w-auto invert brightness-200"
+            className="h-9 md:h-10 w-auto filter brightness-0 invert"
           />
         </div>
 
-        <button
-          type="button"
-          onClick={() => setMostrarCarrinho(true)}
-          className="relative bg-[#3d5427] hover:bg-[#48632e] text-white text-sm px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 shadow cursor-pointer"
-        >
-          <span>🛒 Sacola Condicional</span>
-          {carrinho.length > 0 && (
-            <span className="bg-[#dcded0] text-[#2c3e1c] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-              {carrinho.length}
-            </span>
-          )}
-        </button>
+        <div className="ml-auto">
+          <button
+            type="button"
+            onClick={() => setMostrarCarrinho(true)}
+            className="relative bg-[#3d5427] hover:bg-[#48632e] text-white text-xs md:text-sm px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 shadow-md cursor-pointer border border-[#527035]"
+          >
+            <span>🛒 Sacola Condicional</span>
+            {carrinho.length > 0 && (
+              <span className="bg-white text-[#2c3e1c] text-xs font-extrabold rounded-full w-5 h-5 flex items-center justify-center shadow-xs">
+                {carrinho.length}
+              </span>
+            )}
+          </button>
+        </div>
       </header>
 
       {/* TITULO DA VITRINE + FILTROS */}
       <section className="p-4 md:p-6 max-w-7xl mx-auto">
-        <div className="mb-4">
-          <h1 className="text-xl md:text-2xl font-bold text-[#2c3e1c]">Vitrine Digital</h1>
-          <p className="text-xs text-gray-600">Escolha suas peças para experimentar em casa no condicional ou comprar diretamente.</p>
+        <div className="mb-6">
+          <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">Vitrine Digital</h1>
+          <p className="text-xs text-gray-600 mt-1">Escolha suas peças para experimentar em casa no condicional ou comprar diretamente.</p>
         </div>
 
         {/* CONTROLES DE FILTRO */}
@@ -499,6 +505,11 @@ export default function VitrineProdutos() {
                     </span>
                   )}
                 </div>
+                {produtoSelecionado.descricao && (
+                  <p className="text-xs text-gray-600 italic mt-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100 leading-relaxed">
+                    {produtoSelecionado.descricao}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-3 text-xs">

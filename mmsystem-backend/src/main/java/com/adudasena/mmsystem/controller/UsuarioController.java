@@ -29,6 +29,15 @@ public class UsuarioController {
         return ResponseEntity.ok(service.listarTodos(pageable));
     }
 
+    @GetMapping("/excluidos")
+    public ResponseEntity<Page<Usuario>> listarExcluidos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        return ResponseEntity.ok(service.listarExcluidos(pageable));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Usuario> buscarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(service.buscarPorId(id));
@@ -48,5 +57,11 @@ public class UsuarioController {
     public ResponseEntity<Void> excluir(@PathVariable Long id) {
         service.excluir(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/restaurar")
+    public ResponseEntity<Void> restaurar(@PathVariable Long id) {
+        service.restaurar(id);
+        return ResponseEntity.ok().build();
     }
 }

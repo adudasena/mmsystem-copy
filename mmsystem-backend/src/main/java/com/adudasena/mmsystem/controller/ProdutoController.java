@@ -31,6 +31,11 @@ public class ProdutoController {
         return ResponseEntity.ok(service.listarTodos(pageable));
     }
 
+    @GetMapping("/excluidos")
+    public List<Produto> listarExcluidos() {
+        return service.listarExcluidos();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Produto> buscarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(service.buscarPorId(id));
@@ -52,8 +57,9 @@ public class ProdutoController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/excluidos")
-    public List<Produto> listarExcluidos() {
-        return service.listarExcluidos();
+    @PutMapping("/{id}/restaurar")
+    public ResponseEntity<Void> restaurar(@PathVariable Long id) {
+        service.restaurar(id);
+        return ResponseEntity.noContent().build();
     }
 }
