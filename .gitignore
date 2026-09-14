@@ -23,6 +23,9 @@ build/
 Thumbs.db
 .DS_Store
 
-.agents
+# AI / Agents e Documentações temporárias
+.agents/
 AGENTS.md
 GEMINI.md
+*.md
+!.github/*.md
