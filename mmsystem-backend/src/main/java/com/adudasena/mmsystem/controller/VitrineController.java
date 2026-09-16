@@ -10,10 +10,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/vitrine")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
+@lombok.RequiredArgsConstructor
 public class VitrineController {
 
-    @Autowired
-    private CondicionalService condicionalService;
+    private final CondicionalService condicionalService;
 
     @PostMapping("/pedido")
     public ResponseEntity<Condicional> criarPedidoVitrine(@RequestBody VitrinePedidoDTO dto) {

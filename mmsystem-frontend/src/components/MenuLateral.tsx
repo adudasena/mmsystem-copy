@@ -4,15 +4,15 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { 
-  Home, 
-  Package, 
-  RefreshCw, 
-  CreditCard, 
-  ShoppingBag, 
-  Users, 
-  Store, 
-  LogOut 
+import {
+  Home,
+  Package,
+  RefreshCw,
+  CreditCard,
+  ShoppingBag,
+  Users,
+  Store,
+  LogOut
 } from 'lucide-react';
 
 const MenuLateral = () => {
@@ -22,7 +22,7 @@ const MenuLateral = () => {
     { nome: 'Painel', rota: '/', icone: Home },
     { nome: 'Produtos', rota: '/produtos', icone: Package },
     { nome: 'Condicionais', rota: '/condicionais', icone: RefreshCw },
-    { nome: 'Pagamentos Futuros', rota: '/pagamentos', icone: CreditCard },
+    { nome: 'Pagamentos', rota: '/pagamentos', icone: CreditCard },
     { nome: 'Pedidos', rota: '/pedidos', icone: ShoppingBag },
     { nome: 'Clientes', rota: '/usuarios', icone: Users },
     { nome: 'Vitrine', rota: '/vitrine', icone: Store },
@@ -36,7 +36,7 @@ const MenuLateral = () => {
 
   return (
     <div className="w-72 h-screen bg-[#2c3e1c] text-white flex flex-col justify-between p-6 fixed left-0 top-0 shadow-2xl z-50">
-      
+
       <div>
         {/* SEÇÃO DA LOGO OFICIAL MANTIDA */}
         <div className="mb-8 flex flex-col items-center">
@@ -60,11 +60,10 @@ const MenuLateral = () => {
               <Link
                 key={item.nome}
                 href={item.rota}
-                className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
-                  isActive 
+                className={`flex items-center gap-3 p-3 rounded-lg transition-all ${isActive
                     ? 'bg-white/15 border-l-4 border-[#dcded0] shadow-inner font-bold'
                     : 'hover:bg-white/5 opacity-80 hover:opacity-100'
-                }`}
+                  }`}
               >
                 <Icone className="w-5 h-5 text-white" />
                 <span className="font-medium text-sm text-white">

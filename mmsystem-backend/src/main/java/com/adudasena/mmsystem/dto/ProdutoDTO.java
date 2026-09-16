@@ -1,6 +1,5 @@
 package com.adudasena.mmsystem.dto;
 
-import com.adudasena.mmsystem.model.Produto;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import java.math.BigDecimal;

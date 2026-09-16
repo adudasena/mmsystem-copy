@@ -2,9 +2,9 @@ package com.adudasena.mmsystem.controller;
 
 import com.adudasena.mmsystem.dto.PagamentoDTO;
 import com.adudasena.mmsystem.enums.MetodoPagamento;
+import com.adudasena.mmsystem.enums.StatusPagamento;
 import com.adudasena.mmsystem.model.Pagamento;
 import com.adudasena.mmsystem.model.Pedido;
-import com.adudasena.mmsystem.model.Produto;
 import com.adudasena.mmsystem.repository.PagamentoRepository;
 import com.adudasena.mmsystem.repository.PedidoRepository;
 import com.adudasena.mmsystem.service.PagamentoService;
@@ -16,21 +16,18 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import lombok.RequiredArgsConstructor;
 import java.util.List;
 
 @RestController
 @RequestMapping("/pagamentos")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class PagamentoController {
 
-    @Autowired
-    private PagamentoRepository pagamentoRepository;
-
-    @Autowired
-    private PedidoRepository pedidoRepository;
-
-    @Autowired
-    private PagamentoService service;
+    private final PagamentoRepository pagamentoRepository;
+    private final PedidoRepository pedidoRepository;
+    private final PagamentoService service;
 
     @GetMapping
     public ResponseEntity<Page<Pagamento>> listarTodos(
@@ -87,7 +84,9 @@ public class PagamentoController {
         }
 
         pagamento.setDataVencimento(dto.getDataVencimento());
-        pagamento.setStatus(dto.getStatus());
+        if (dto.getStatus() != null) {
+            pagamento.setStatus(StatusPagamento.valueOf(dto.getStatus()));
+        }
 
         // CORREÇÃO 2: Usa a variável injetada com 'p' minúsculo (pedidoRepository)
         if (dto.getFkPedidoId() != null) {

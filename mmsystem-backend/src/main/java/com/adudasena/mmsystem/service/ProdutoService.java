@@ -16,16 +16,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@lombok.RequiredArgsConstructor
 public class ProdutoService {
 
-    @Autowired
-    private ProdutoRepository repository;
+    private final ProdutoRepository repository;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private CondicionalRepository condicionalRepository;
+    private final CondicionalRepository condicionalRepository;
 
     public List<Produto> listarTodos() {
         return repository.findByDeletedAtIsNull();

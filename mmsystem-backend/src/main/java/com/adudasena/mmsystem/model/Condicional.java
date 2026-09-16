@@ -3,7 +3,7 @@ package com.adudasena.mmsystem.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
-import org.hibernate.annotations.Where;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,7 +15,7 @@ import java.util.List;
 @Table(name = "condicionais")
 @Data
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-@Where(clause = "deleted_at IS NULL") // Filtra automaticamente condicionais excluídas em qualquer busca
+@SQLRestriction("deleted_at IS NULL") // Filtra automaticamente condicionais excluídas em qualquer busca
 public class Condicional {
 
     @Id

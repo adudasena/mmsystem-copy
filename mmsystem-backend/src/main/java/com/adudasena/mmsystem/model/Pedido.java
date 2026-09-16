@@ -23,7 +23,7 @@ public class Pedido {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private StatusPedido status = StatusPedido.PENDENTE;
+    private StatusPedido status = StatusPedido.AGUARDANDO_PAGAMENTO;
 
     @Column(name = "valor_total", nullable = false, precision = 10, scale = 2)
     private BigDecimal valorTotal = BigDecimal.ZERO;

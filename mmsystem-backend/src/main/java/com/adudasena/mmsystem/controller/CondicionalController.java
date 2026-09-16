@@ -15,10 +15,10 @@ import org.springframework.data.domain.Sort;
 @RestController
 @RequestMapping("/condicionais")
 @CrossOrigin("*")
+@lombok.RequiredArgsConstructor
 public class CondicionalController {
 
-    @Autowired
-    private CondicionalService service;
+    private final CondicionalService service;
 
     @GetMapping
     public ResponseEntity<Page<Condicional>> listarTodos(

@@ -2,6 +2,8 @@ package com.adudasena.mmsystem.service;
 
 import com.adudasena.mmsystem.dto.PagamentoDTO;
 import com.adudasena.mmsystem.enums.MetodoPagamento;
+import com.adudasena.mmsystem.enums.StatusPagamento;
+import com.adudasena.mmsystem.enums.StatusPedido;
 import com.adudasena.mmsystem.model.Pagamento;
 import com.adudasena.mmsystem.model.Pedido;
 import com.adudasena.mmsystem.repository.PagamentoRepository;
@@ -13,13 +15,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@lombok.RequiredArgsConstructor
 public class PagamentoService {
 
-    @Autowired
-    private PagamentoRepository pagamentoRepository;
+    private final PagamentoRepository pagamentoRepository;
 
-    @Autowired
-    private PedidoRepository pedidoRepository;
+    private final PedidoRepository pedidoRepository;
 
     @Transactional(readOnly = true)
     public Page<Pagamento> listarTodos(Pageable pageable) {
@@ -40,7 +41,9 @@ public class PagamentoService {
     public Pagamento salvar(PagamentoDTO dto) {
         Pagamento pagamento = new Pagamento();
         preencherDadosPagamento(pagamento, dto);
-        return pagamentoRepository.save(pagamento);
+        Pagamento salvo = pagamentoRepository.save(pagamento);
+        sincronizarPedido(salvo);
+        return salvo;
     }
 
     @Transactional
@@ -50,7 +53,9 @@ public class PagamentoService {
             return null;
         }
         preencherDadosPagamento(pagamentoExistente, dto);
-        return pagamentoRepository.save(pagamentoExistente);
+        Pagamento salvo = pagamentoRepository.save(pagamentoExistente);
+        sincronizarPedido(salvo);
+        return salvo;
     }
 
     @Transactional
@@ -78,7 +83,16 @@ public class PagamentoService {
     private void preencherDadosPagamento(Pagamento pagamento, PagamentoDTO dto) {
         pagamento.setValor(dto.getValor());
         pagamento.setDataVencimento(dto.getDataVencimento());
-        pagamento.setStatus(dto.getStatus() != null ? dto.getStatus().toUpperCase() : "PENDENTE");
+        
+        if (dto.getStatus() != null) {
+            try {
+                pagamento.setStatus(StatusPagamento.valueOf(dto.getStatus().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                pagamento.setStatus(StatusPagamento.PENDENTE);
+            }
+        } else {
+            pagamento.setStatus(StatusPagamento.PENDENTE);
+        }
 
         if (dto.getMetodoPagamento() != null) {
             try {
@@ -93,6 +107,25 @@ public class PagamentoService {
             pagamento.setPedido(pedido);
         } else {
             pagamento.setPedido(null);
+        }
+    }
+
+    private void sincronizarPedido(Pagamento pagamento) {
+        if (pagamento.getPedido() != null && pagamento.getStatus() != null) {
+            Pedido pedido = pagamento.getPedido();
+            switch (pagamento.getStatus()) {
+                case PENDENTE:
+                    pedido.setStatus(StatusPedido.AGUARDANDO_PAGAMENTO);
+                    break;
+                case APROVADO:
+                    pedido.setStatus(StatusPedido.CONCLUIDO);
+                    break;
+                case CANCELADO:
+                case ESTORNADO:
+                    pedido.setStatus(StatusPedido.CANCELADO);
+                    break;
+            }
+            pedidoRepository.save(pedido);
         }
     }
 }

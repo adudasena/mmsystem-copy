@@ -12,11 +12,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/atributos")
 @CrossOrigin(origins = "*")
+@lombok.RequiredArgsConstructor
 public class AtributoProdutoController {
 
-    @Autowired private CategoriaRepository categoriaRepository;
-    @Autowired private TamanhoRepository tamanhoRepository;
-    @Autowired private CorRepository corRepository;
+    private final CategoriaRepository categoriaRepository;
+    private final TamanhoRepository tamanhoRepository;
+    private final CorRepository corRepository;
 
     @GetMapping("/categorias")
     public ResponseEntity<List<Categoria>> listarCategorias() { return ResponseEntity.ok(categoriaRepository.findAll()); }

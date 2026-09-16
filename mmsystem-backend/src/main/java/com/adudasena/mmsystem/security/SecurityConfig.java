@@ -19,10 +19,10 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@lombok.RequiredArgsConstructor
 public class SecurityConfig {
 
-    @Autowired
-    private JwtAuthFilter jwtAuthFilter;
+    private final JwtAuthFilter jwtAuthFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -66,4 +66,4 @@ public class SecurityConfig {
 
         return http.build();
     }
-}
+}

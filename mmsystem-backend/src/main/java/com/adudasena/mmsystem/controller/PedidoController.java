@@ -19,13 +19,12 @@ import java.util.Map;
 @RestController
 @RequestMapping("/pedidos")
 @CrossOrigin(origins = "*")
+@lombok.RequiredArgsConstructor
 public class PedidoController {
 
-    @Autowired
-    private PedidoService service;
+    private final PedidoService service;
 
-    @Autowired
-    private CondicionalService condicionalService;
+    private final CondicionalService condicionalService;
 
     @PostMapping("/vitrine")
     public ResponseEntity<Condicional> criarPedidoVitrine(@RequestBody VitrinePedidoDTO dto) {

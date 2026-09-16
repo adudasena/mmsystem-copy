@@ -19,7 +19,7 @@ export interface Pagamento {
   metodoPagamento: string;
   dataVencimento?: string | null;
   valor: number | string;
-  status: 'PAGO' | 'PENDENTE' | 'ATRASADO' | string;
+  status: 'PENDENTE' | 'APROVADO' | 'CANCELADO' | 'ESTORNADO' | string;
 }
 
 export interface FormPagamentoData {
@@ -322,9 +322,10 @@ const TelaPagamentos: React.FC = () => {
           onFiltroChange={setStatusFiltro}
           opcoesFiltro={[
             { label: 'Todos os Status', value: 'TODOS' },
-            { label: 'Pago', value: 'PAGO' },
             { label: 'Pendente', value: 'PENDENTE' },
-            { label: 'Atrasado', value: 'ATRASADO' }
+            { label: 'Aprovado', value: 'APROVADO' },
+            { label: 'Cancelado', value: 'CANCELADO' },
+            { label: 'Estornado', value: 'ESTORNADO' }
           ]}
         />
 
@@ -406,9 +407,9 @@ const TelaPagamentos: React.FC = () => {
                         <td className="p-3">
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
-                              pag.status === 'PAGO'
+                              pag.status === 'APROVADO'
                                 ? 'bg-green-100 text-green-800 border-green-300'
-                                : pag.status === 'ATRASADO'
+                                : pag.status === 'CANCELADO' || pag.status === 'ESTORNADO'
                                 ? 'bg-red-100 text-red-800 border-red-300'
                                 : 'bg-amber-100 text-amber-800 border-amber-300'
                             }`}
@@ -584,8 +585,9 @@ const TelaPagamentos: React.FC = () => {
                       className="w-full border p-2 bg-gray-50 text-xs outline-none font-bold"
                     >
                       <option value="PENDENTE">PENDENTE</option>
-                      <option value="PAGO">PAGO</option>
-                      <option value="ATRASADO">ATRASADO</option>
+                      <option value="APROVADO">APROVADO</option>
+                      <option value="CANCELADO">CANCELADO</option>
+                      <option value="ESTORNADO">ESTORNADO</option>
                     </select>
                   </div>
                 </div>

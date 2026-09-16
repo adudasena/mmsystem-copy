@@ -17,10 +17,10 @@ import org.springframework.data.domain.Sort;
 @RestController
 @RequestMapping("/produtos")
 @CrossOrigin("*")
+@lombok.RequiredArgsConstructor
 public class ProdutoController {
 
-    @Autowired
-    private ProdutoService service;
+    private final ProdutoService service;
 
     @GetMapping
     public ResponseEntity<Page<Produto>> listarTodos(

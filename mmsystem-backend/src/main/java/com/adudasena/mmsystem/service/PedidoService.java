@@ -3,6 +3,7 @@ package com.adudasena.mmsystem.service;
 import com.adudasena.mmsystem.dto.ItemPedidoDTO;
 import com.adudasena.mmsystem.dto.PedidoDTO;
 import com.adudasena.mmsystem.enums.MetodoPagamento;
+import com.adudasena.mmsystem.enums.StatusPagamento;
 import com.adudasena.mmsystem.enums.StatusPedido;
 import com.adudasena.mmsystem.model.ItemPedido;
 import com.adudasena.mmsystem.model.Pagamento;
@@ -26,22 +27,18 @@ import java.time.LocalDate;
 import java.util.Map;
 
 @Service
+@lombok.RequiredArgsConstructor
 public class PedidoService {
 
-    @Autowired
-    private PedidoRepository pedidoRepository;
+    private final PedidoRepository pedidoRepository;
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    private final UsuarioRepository usuarioRepository;
 
-    @Autowired
-    private ProdutoRepository produtoRepository;
+    private final ProdutoRepository produtoRepository;
 
-    @Autowired
-    private PagamentoRepository pagamentoRepository;
+    private final PagamentoRepository pagamentoRepository;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public Page<Pedido> listarTodos(Pageable pageable) {
@@ -154,8 +151,10 @@ public class PedidoService {
                 .filter(p -> p.getPedido() != null && id.equals(p.getPedido().getId()))
                 .forEach(pag -> {
                     pag.setValor(pedidoSalvo.getValorTotal());
-                    if (pedidoSalvo.getStatus() == StatusPedido.PAGO) {
-                        pag.setStatus("PAGO");
+                    if (pedidoSalvo.getStatus() == StatusPedido.CONCLUIDO) {
+                        pag.setStatus(StatusPagamento.APROVADO);
+                    } else if (pedidoSalvo.getStatus() == StatusPedido.CANCELADO) {
+                        pag.setStatus(StatusPagamento.CANCELADO);
                     }
                     pagamentoRepository.save(pag);
                 });
@@ -201,10 +200,12 @@ public class PedidoService {
                 pagamentoRepository.findAll().stream()
                     .filter(p -> p.getPedido() != null && id.equals(p.getPedido().getId()))
                     .forEach(pag -> {
-                        if (statusEnum == StatusPedido.PAGO) {
-                            pag.setStatus("PAGO");
+                        if (statusEnum == StatusPedido.CONCLUIDO) {
+                            pag.setStatus(StatusPagamento.APROVADO);
                         } else if (statusEnum == StatusPedido.CANCELADO) {
-                            pag.setStatus("CANCELADO");
+                            pag.setStatus(StatusPagamento.CANCELADO);
+                        } else if (statusEnum == StatusPedido.AGUARDANDO_PAGAMENTO) {
+                            pag.setStatus(StatusPagamento.PENDENTE);
                         }
                         pagamentoRepository.save(pag);
                     });
@@ -225,10 +226,10 @@ public class PedidoService {
             try {
                 pedido.setStatus(StatusPedido.valueOf(dto.getStatus().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                pedido.setStatus(StatusPedido.PENDENTE);
+                pedido.setStatus(StatusPedido.AGUARDANDO_PAGAMENTO);
             }
         } else {
-            pedido.setStatus(StatusPedido.PENDENTE);
+            pedido.setStatus(StatusPedido.AGUARDANDO_PAGAMENTO);
         }
 
         if (dto.getFkClienteId() != null && dto.getFkClienteId() > 0) {
@@ -291,7 +292,7 @@ public class PedidoService {
             pagamento.setValor(pedido.getValorTotal() != null ? pedido.getValorTotal() : BigDecimal.ZERO);
             pagamento.setMetodoPagamento(MetodoPagamento.PAGAMENTO_FUTURO);
             pagamento.setDataVencimento(pedido.getDataPedido() != null ? pedido.getDataPedido().plusDays(30) : LocalDate.now().plusDays(30));
-            pagamento.setStatus("PENDENTE");
+            pagamento.setStatus(StatusPagamento.PENDENTE);
 
             pagamentoRepository.save(pagamento);
         } catch (Exception e) {

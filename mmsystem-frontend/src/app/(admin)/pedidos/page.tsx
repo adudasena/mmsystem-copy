@@ -17,7 +17,7 @@ const gerarUuid = (): string => {
 };
 
 // ─── Tipagens e Interfaces ──────────────────────────────────────────────────
-export type StatusPedido = 'PENDENTE' | 'PAGO' | 'ENVIADO' | 'ENTREGUE' | 'CANCELADO';
+export type StatusPedido = 'AGUARDANDO_PAGAMENTO' | 'CANCELADO' | 'CONCLUIDO';
 
 export interface ClientePedido {
   id: number;
@@ -105,7 +105,7 @@ const TelaPedidos: React.FC = () => {
   const [formPedido, setFormPedido] = useState<FormPedidoData>({
     fkClienteId: '',
     dataPedido: new Date().toISOString().split('T')[0],
-    status: 'PENDENTE',
+    status: 'AGUARDANDO_PAGAMENTO',
     itens: [{ uuid: gerarUuid(), fkProdutoId: '', quantidade: 1 }]
   });
 
@@ -246,7 +246,7 @@ const TelaPedidos: React.FC = () => {
     setFormPedido({
       fkClienteId: '',
       dataPedido: new Date().toISOString().split('T')[0],
-      status: 'PENDENTE',
+      status: 'AGUARDANDO_PAGAMENTO',
       itens: [{ uuid: gerarUuid(), fkProdutoId: '', quantidade: 1 }]
     });
     setModalFormAberto(true);
@@ -258,7 +258,7 @@ const TelaPedidos: React.FC = () => {
     setFormPedido({
       fkClienteId: ped.cliente?.id || '',
       dataPedido: ped.dataPedido || new Date().toISOString().split('T')[0],
-      status: ped.status || 'PENDENTE',
+      status: ped.status || 'AGUARDANDO_PAGAMENTO',
       itens: ped.itens && ped.itens.length > 0
         ? ped.itens.map(it => ({
             uuid: gerarUuid(),
@@ -435,11 +435,9 @@ const TelaPedidos: React.FC = () => {
 
   const renderBadgeStatus = (status: StatusPedido) => {
     const estilos: Record<StatusPedido, string> = {
-      PENDENTE: 'bg-amber-100 text-amber-800 border-amber-300',
-      PAGO: 'bg-blue-100 text-blue-800 border-blue-300',
-      ENVIADO: 'bg-purple-100 text-purple-800 border-purple-300',
-      ENTREGUE: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      AGUARDANDO_PAGAMENTO: 'bg-amber-100 text-amber-800 border-amber-300',
       CANCELADO: 'bg-rose-100 text-rose-800 border-rose-300',
+      CONCLUIDO: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     };
 
     return (
@@ -493,11 +491,9 @@ const TelaPedidos: React.FC = () => {
           onFiltroChange={setStatusFiltro}
           opcoesFiltro={[
             { label: 'Todos os Status', value: 'TODOS' },
-            { label: 'Pendente', value: 'PENDENTE' },
-            { label: 'Pago', value: 'PAGO' },
-            { label: 'Enviado', value: 'ENVIADO' },
-            { label: 'Entregue', value: 'ENTREGUE' },
-            { label: 'Cancelado', value: 'CANCELADO' }
+            { label: 'Aguardando Pagamento', value: 'AGUARDANDO_PAGAMENTO' },
+            { label: 'Cancelado', value: 'CANCELADO' },
+            { label: 'Concluído', value: 'CONCLUIDO' }
           ]}
         />
 
@@ -682,11 +678,9 @@ const TelaPedidos: React.FC = () => {
                       onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormPedido({ ...formPedido, status: e.target.value as StatusPedido })}
                       className="w-full border border-gray-300 p-2 bg-gray-50 text-xs outline-none font-bold rounded-md"
                     >
-                      <option value="PENDENTE">PENDENTE</option>
-                      <option value="PAGO">PAGO</option>
-                      <option value="ENVIADO">ENVIADO</option>
-                      <option value="ENTREGUE">ENTREGUE</option>
+                      <option value="AGUARDANDO_PAGAMENTO">AGUARDANDO_PAGAMENTO</option>
                       <option value="CANCELADO">CANCELADO</option>
+                      <option value="CONCLUIDO">CONCLUIDO</option>
                     </select>
                   </div>
                 </div>

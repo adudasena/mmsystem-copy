@@ -4,12 +4,12 @@ import com.adudasena.mmsystem.dto.CondicionalDTO;
 import com.adudasena.mmsystem.dto.VitrinePedidoDTO;
 import com.adudasena.mmsystem.enums.MetodoPagamento;
 import com.adudasena.mmsystem.enums.Perfil;
+import com.adudasena.mmsystem.enums.StatusPagamento;
 import com.adudasena.mmsystem.enums.StatusPedido;
 import com.adudasena.mmsystem.model.*;
 import com.adudasena.mmsystem.repository.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,25 +25,20 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@lombok.RequiredArgsConstructor
 public class CondicionalService {
 
-    @Autowired
-    private CondicionalRepository repository;
+    private final CondicionalRepository repository;
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    private final UsuarioRepository usuarioRepository;
 
-    @Autowired
-    private ProdutoRepository produtoRepository;
+    private final ProdutoRepository produtoRepository;
 
-    @Autowired
-    private PedidoRepository pedidoRepository;
+    private final PedidoRepository pedidoRepository;
 
-    @Autowired
-    private PagamentoRepository pagamentoRepository;
+    private final PagamentoRepository pagamentoRepository;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
     public List<Condicional> listarTodos() {
         return repository.findAll();
@@ -121,7 +116,8 @@ public class CondicionalService {
             CondicionalDTO.ItemSacolaDTO itemDto = itensEnviadosPeloFront.stream()
                     .filter(i -> i.getProdutoId().equals(itemBanco.getProduto().getId())
                             && (i.getCorEscolhida() == null || i.getCorEscolhida().equals(itemBanco.getCorEscolhida()))
-                            && (i.getTamanhoEscolhido() == null || i.getTamanhoEscolhido().equals(itemBanco.getTamanhoEscolhido())))
+                            && (i.getTamanhoEscolhido() == null
+                                    || i.getTamanhoEscolhido().equals(itemBanco.getTamanhoEscolhido())))
                     .findFirst()
                     .orElse(null);
 
@@ -132,10 +128,12 @@ public class CondicionalService {
                     itemBanco.setStatusItem("VENDIDO");
                     possuiVenda = true;
                     itensVendidos.add(itemBanco);
-                } else if (acaoVendedora.equals("DISPONIVEL") || acaoVendedora.equals("DEVOLVIDO") || acaoVendedora.equals("DEVOLVIDA")) {
+                } else if (acaoVendedora.equals("DISPONIVEL") || acaoVendedora.equals("DEVOLVIDO")
+                        || acaoVendedora.equals("DEVOLVIDA")) {
                     // Restaura estoque pois item saiu de EM_CONDICIONAL para DISPONIVEL
                     if (!"DISPONIVEL".equalsIgnoreCase(itemBanco.getStatusItem())) {
-                        alterarEstoqueProduto(itemBanco.getProduto(), itemBanco.getCorEscolhida(), itemBanco.getTamanhoEscolhido(), +itemBanco.getQuantidade());
+                        alterarEstoqueProduto(itemBanco.getProduto(), itemBanco.getCorEscolhida(),
+                                itemBanco.getTamanhoEscolhido(), +itemBanco.getQuantidade());
                     }
                     itemBanco.setStatusItem("DISPONIVEL");
                     possuiDevolucao = true;
@@ -162,7 +160,7 @@ public class CondicionalService {
             pedido.setCliente(condicional.getUsuario());
             pedido.setCondicional(condicional);
             pedido.setDataPedido(LocalDate.now());
-            pedido.setStatus(StatusPedido.PENDENTE);
+            pedido.setStatus(StatusPedido.AGUARDANDO_PAGAMENTO);
 
             BigDecimal valorTotalVendido = BigDecimal.ZERO;
             List<ItemPedido> itensPedido = new ArrayList<>();
@@ -174,9 +172,11 @@ public class CondicionalService {
                 itemPed.setQuantidade(itemCond.getQuantidade() != null ? itemCond.getQuantidade() : 1);
                 itensPedido.add(itemPed);
 
-                BigDecimal precoUnit = itemCond.getProduto() != null && itemCond.getProduto().getPreco() != null 
-                        ? itemCond.getProduto().getPreco() : BigDecimal.ZERO;
-                valorTotalVendido = valorTotalVendido.add(precoUnit.multiply(BigDecimal.valueOf(itemPed.getQuantidade())));
+                BigDecimal precoUnit = itemCond.getProduto() != null && itemCond.getProduto().getPreco() != null
+                        ? itemCond.getProduto().getPreco()
+                        : BigDecimal.ZERO;
+                valorTotalVendido = valorTotalVendido
+                        .add(precoUnit.multiply(BigDecimal.valueOf(itemPed.getQuantidade())));
             }
 
             pedido.setItens(itensPedido);
@@ -189,7 +189,7 @@ public class CondicionalService {
             pagamento.setValor(valorTotalVendido);
             pagamento.setMetodoPagamento(MetodoPagamento.PAGAMENTO_FUTURO);
             pagamento.setDataVencimento(LocalDate.now().plusDays(30));
-            pagamento.setStatus("PENDENTE");
+            pagamento.setStatus(StatusPagamento.PENDENTE);
             pagamentoRepository.save(pagamento);
 
         } catch (Exception e) {
@@ -230,7 +230,9 @@ public class CondicionalService {
                 usuario = porTelefone.get();
             } else {
                 Usuario novoCliente = new Usuario();
-                novoCliente.setNome(dto.getNomeCliente() != null && !dto.getNomeCliente().trim().isEmpty() ? dto.getNomeCliente().trim() : "Cliente Vitrine");
+                novoCliente.setNome(dto.getNomeCliente() != null && !dto.getNomeCliente().trim().isEmpty()
+                        ? dto.getNomeCliente().trim()
+                        : "Cliente Vitrine");
                 novoCliente.setTelefone(dto.getTelefoneCliente().trim());
                 novoCliente.setPerfil(Perfil.ROLE_CLIENTE);
                 usuario = usuarioRepository.save(novoCliente);
@@ -247,8 +249,12 @@ public class CondicionalService {
 
         if (usuario == null) {
             Usuario fallback = new Usuario();
-            fallback.setNome(dto.getNomeCliente() != null && !dto.getNomeCliente().trim().isEmpty() ? dto.getNomeCliente().trim() : "Cliente Vitrine");
-            fallback.setTelefone(dto.getTelefoneCliente() != null && !dto.getTelefoneCliente().trim().isEmpty() ? dto.getTelefoneCliente().trim() : "00000000000");
+            fallback.setNome(
+                    dto.getNomeCliente() != null && !dto.getNomeCliente().trim().isEmpty() ? dto.getNomeCliente().trim()
+                            : "Cliente Vitrine");
+            fallback.setTelefone(dto.getTelefoneCliente() != null && !dto.getTelefoneCliente().trim().isEmpty()
+                    ? dto.getTelefoneCliente().trim()
+                    : "00000000000");
             fallback.setPerfil(Perfil.ROLE_CLIENTE);
             usuario = usuarioRepository.save(fallback);
         }
@@ -292,7 +298,8 @@ public class CondicionalService {
     }
 
     private void preencherItens(Condicional condicional, List<CondicionalDTO.ItemSacolaDTO> itensDTO) {
-        if (itensDTO == null) return;
+        if (itensDTO == null)
+            return;
         for (CondicionalDTO.ItemSacolaDTO itemDTO : itensDTO) {
             Produto produto = produtoRepository.findById(itemDTO.getProdutoId())
                     .orElseThrow(() -> new RuntimeException("Produto não encontrado: " + itemDTO.getProdutoId()));
@@ -300,9 +307,11 @@ public class CondicionalService {
             int qtd = itemDTO.getQuantidade() != null ? itemDTO.getQuantidade() : 1;
             String cor = itemDTO.getCorEscolhida();
             String tamanho = itemDTO.getTamanhoEscolhido();
-            String statusItem = itemDTO.getStatusItem() != null ? itemDTO.getStatusItem().toUpperCase() : "EM_CONDICIONAL";
+            String statusItem = itemDTO.getStatusItem() != null ? itemDTO.getStatusItem().toUpperCase()
+                    : "EM_CONDICIONAL";
 
-            if (!"DISPONIVEL".equalsIgnoreCase(statusItem) && !"DEVOLVIDO".equalsIgnoreCase(statusItem) && !"DEVOLVIDA".equalsIgnoreCase(statusItem)) {
+            if (!"DISPONIVEL".equalsIgnoreCase(statusItem) && !"DEVOLVIDO".equalsIgnoreCase(statusItem)
+                    && !"DEVOLVIDA".equalsIgnoreCase(statusItem)) {
                 validarEstoqueDisponivel(produto, cor, tamanho, qtd);
                 alterarEstoqueProduto(produto, cor, tamanho, -qtd);
             }
@@ -343,25 +352,31 @@ public class CondicionalService {
         }
         try {
             Map<String, Integer> estoque = objectMapper.readValue(
-                    jsonEstoque, new TypeReference<Map<String, Integer>>() {}
-            );
-            if (estoque == null || estoque.isEmpty()) return 99;
+                    jsonEstoque, new TypeReference<Map<String, Integer>>() {
+                    });
+            if (estoque == null || estoque.isEmpty())
+                return 99;
 
             String c = cor != null ? cor.trim() : "";
             String t = tamanho != null ? tamanho.trim() : "";
 
             String chave1 = c + "-" + t;
-            if (estoque.containsKey(chave1)) return estoque.get(chave1) != null ? estoque.get(chave1) : 0;
+            if (estoque.containsKey(chave1))
+                return estoque.get(chave1) != null ? estoque.get(chave1) : 0;
 
             String chave2 = t + "-" + c;
-            if (estoque.containsKey(chave2)) return estoque.get(chave2) != null ? estoque.get(chave2) : 0;
+            if (estoque.containsKey(chave2))
+                return estoque.get(chave2) != null ? estoque.get(chave2) : 0;
 
-            if (!t.isEmpty() && estoque.containsKey(t)) return estoque.get(t) != null ? estoque.get(t) : 0;
-            if (!c.isEmpty() && estoque.containsKey(c)) return estoque.get(c) != null ? estoque.get(c) : 0;
+            if (!t.isEmpty() && estoque.containsKey(t))
+                return estoque.get(t) != null ? estoque.get(t) : 0;
+            if (!c.isEmpty() && estoque.containsKey(c))
+                return estoque.get(c) != null ? estoque.get(c) : 0;
 
             for (Map.Entry<String, Integer> entry : estoque.entrySet()) {
                 String k = entry.getKey();
-                if (k.equalsIgnoreCase(chave1) || k.equalsIgnoreCase(chave2) || k.equalsIgnoreCase(t) || k.equalsIgnoreCase(c)) {
+                if (k.equalsIgnoreCase(chave1) || k.equalsIgnoreCase(chave2) || k.equalsIgnoreCase(t)
+                        || k.equalsIgnoreCase(c)) {
                     return entry.getValue() != null ? entry.getValue() : 0;
                 }
             }
@@ -376,11 +391,14 @@ public class CondicionalService {
         int disponivel = obterEstoqueDisponivel(produto, cor, tamanho);
         if (disponivel < qtdSolicitada) {
             String detalheVariacao = (tamanho != null && !tamanho.isEmpty() ? "Tamanho: " + tamanho : "")
-                    + (cor != null && !cor.isEmpty() ? (tamanho != null && !tamanho.isEmpty() ? ", Cor: " : "Cor: ") + cor : "");
-            if (detalheVariacao.isEmpty()) detalheVariacao = "Padrão";
+                    + (cor != null && !cor.isEmpty()
+                            ? (tamanho != null && !tamanho.isEmpty() ? ", Cor: " : "Cor: ") + cor
+                            : "");
+            if (detalheVariacao.isEmpty())
+                detalheVariacao = "Padrão";
 
-            throw new IllegalArgumentException("Saldo insuficiente em estoque para o produto '" 
-                    + produto.getNome() + "' (" + detalheVariacao + "). Estoque disponível: " 
+            throw new IllegalArgumentException("Saldo insuficiente em estoque para o produto '"
+                    + produto.getNome() + "' (" + detalheVariacao + "). Estoque disponível: "
                     + disponivel + ", Solicitado: " + qtdSolicitada + ".");
         }
     }
@@ -391,12 +409,14 @@ public class CondicionalService {
                     .orElseThrow(() -> new RuntimeException("Produto não localizado para atualização de estoque."));
 
             String jsonEstoque = produto.getEstoqueDetalhado();
-            if (jsonEstoque == null || jsonEstoque.trim().isEmpty()) return;
+            if (jsonEstoque == null || jsonEstoque.trim().isEmpty())
+                return;
 
             Map<String, Integer> estoque = objectMapper.readValue(
-                    jsonEstoque, new TypeReference<Map<String, Integer>>() {}
-            );
-            if (estoque == null || estoque.isEmpty()) return;
+                    jsonEstoque, new TypeReference<Map<String, Integer>>() {
+                    });
+            if (estoque == null || estoque.isEmpty())
+                return;
 
             String c = cor != null ? cor.trim() : "";
             String t = tamanho != null ? tamanho.trim() : "";
@@ -405,13 +425,18 @@ public class CondicionalService {
             String chave1 = c + "-" + t;
             String chave2 = t + "-" + c;
 
-            if (estoque.containsKey(chave1)) chaveEncontrada = chave1;
-            else if (estoque.containsKey(chave2)) chaveEncontrada = chave2;
-            else if (!t.isEmpty() && estoque.containsKey(t)) chaveEncontrada = t;
-            else if (!c.isEmpty() && estoque.containsKey(c)) chaveEncontrada = c;
+            if (estoque.containsKey(chave1))
+                chaveEncontrada = chave1;
+            else if (estoque.containsKey(chave2))
+                chaveEncontrada = chave2;
+            else if (!t.isEmpty() && estoque.containsKey(t))
+                chaveEncontrada = t;
+            else if (!c.isEmpty() && estoque.containsKey(c))
+                chaveEncontrada = c;
             else {
                 for (String k : estoque.keySet()) {
-                    if (k.equalsIgnoreCase(chave1) || k.equalsIgnoreCase(chave2) || k.equalsIgnoreCase(t) || k.equalsIgnoreCase(c)) {
+                    if (k.equalsIgnoreCase(chave1) || k.equalsIgnoreCase(chave2) || k.equalsIgnoreCase(t)
+                            || k.equalsIgnoreCase(c)) {
                         chaveEncontrada = k;
                         break;
                     }

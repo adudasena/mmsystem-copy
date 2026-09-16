@@ -10,15 +10,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import java.util.List;
 
 @RestController
 @RequestMapping("/usuarios")
 @CrossOrigin("*")
+@lombok.RequiredArgsConstructor
 public class UsuarioController {
 
-    @Autowired
-    private UsuarioService service;
+    private final UsuarioService service;
 
     @GetMapping
     public ResponseEntity<Page<Usuario>> listarTodos(
