@@ -86,10 +86,14 @@ public class DashboardController {
             fim = LocalDate.now();
         }
 
-        if (inicio.isAfter(fim)) {
-            LocalDate temp = inicio;
-            inicio = fim;
-            fim = temp;
+        // Validação 1: Data de início não pode ser futura
+        if (inicio.isAfter(LocalDate.now())) {
+            inicio = LocalDate.now();
+        }
+
+        // Validação 2: Data final não pode ser menor que data de início
+        if (fim.isBefore(inicio)) {
+            fim = inicio;
         }
 
         long dias = java.time.temporal.ChronoUnit.DAYS.between(inicio, fim) + 1;

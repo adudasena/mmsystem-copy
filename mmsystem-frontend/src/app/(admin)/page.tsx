@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, ShoppingBag, Package, DollarSign, TrendingUp, TrendingDown, Search } from 'lucide-react';
+import { Users, ShoppingBag, Package, DollarSign, TrendingUp, TrendingDown, Search, AlertCircle } from 'lucide-react';
 import api from '@/services/api';
 
 interface DashboardMetricas {
@@ -35,6 +35,7 @@ export default function PainelPage() {
 
   const [dataInicio, setDataInicio] = useState<string>(inicioMes);
   const [dataFim, setDataFim] = useState<string>(hoje);
+  const [erroData, setErroData] = useState<string | null>(null);
   
   const [metricas, setMetricas] = useState<DashboardMetricas>({
     totalClientes: 0,
@@ -69,6 +70,24 @@ export default function PainelPage() {
     }
   };
 
+  const validarEBuscar = (iniStr?: string, fimStr?: string) => {
+    const dtIni = typeof iniStr === 'string' ? iniStr : dataInicio;
+    const dtFim = typeof fimStr === 'string' ? fimStr : dataFim;
+
+    if (dtIni && dtIni > hoje) {
+      setErroData('A data de início não pode ser uma data futura.');
+      return;
+    }
+
+    if (dtIni && dtFim && dtFim < dtIni) {
+      setErroData('A data final não pode ser menor que a data de início.');
+      return;
+    }
+
+    setErroData(null);
+    buscarMetricas(dtIni, dtFim);
+  };
+
   const [montado, setMontado] = useState(false);
 
   useEffect(() => {
@@ -81,7 +100,7 @@ export default function PainelPage() {
 
   useEffect(() => {
     if (montado) {
-      buscarMetricas();
+      validarEBuscar(dataInicio, dataFim);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [montado]);
@@ -107,43 +126,59 @@ export default function PainelPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Cabeçalho e Filtros */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-          <div>
-            <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">
-              Dashboard
-            </h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Olá {nomeUsuario}, veja o desempenho do período comparado ao período anterior.
-            </p>
+        <div className="flex flex-col bg-white p-6 rounded-2xl shadow-sm border border-gray-200 gap-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">
+                Dashboard
+              </h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Olá {nomeUsuario}, veja o desempenho do período comparado ao período anterior.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-end gap-3">
+              <div className="flex flex-col">
+                <label className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Data Início</label>
+                <input 
+                  type="date" 
+                  max={hoje}
+                  value={dataInicio}
+                  onChange={(e) => {
+                    setDataInicio(e.target.value);
+                    if (erroData) setErroData(null);
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d3a22] transition"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Data Fim</label>
+                <input 
+                  type="date" 
+                  value={dataFim}
+                  onChange={(e) => {
+                    setDataFim(e.target.value);
+                    if (erroData) setErroData(null);
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d3a22] transition"
+                />
+              </div>
+              <button 
+                onClick={() => validarEBuscar(dataInicio, dataFim)}
+                className="px-4 py-2 bg-[#2d3a22] text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#1f2818] transition shadow-md"
+              >
+                <Search className="w-4 h-4" />
+                Filtrar
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-end gap-3">
-            <div className="flex flex-col">
-              <label className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Data Início</label>
-              <input 
-                type="date" 
-                value={dataInicio}
-                onChange={(e) => setDataInicio(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d3a22] transition"
-              />
+          {erroData && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-bold animate-fadeIn">
+              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+              <span>{erroData}</span>
             </div>
-            <div className="flex flex-col">
-              <label className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Data Fim</label>
-              <input 
-                type="date" 
-                value={dataFim}
-                onChange={(e) => setDataFim(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d3a22] transition"
-              />
-            </div>
-            <button 
-              onClick={() => buscarMetricas(dataInicio, dataFim)}
-              className="px-4 py-2 bg-[#2d3a22] text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#1f2818] transition shadow-md"
-            >
-              <Search className="w-4 h-4" />
-              Filtrar
-            </button>
-          </div>
+          )}
         </div>
 
         {/* SEÇÃO FLUXO DE VENDAS */}
