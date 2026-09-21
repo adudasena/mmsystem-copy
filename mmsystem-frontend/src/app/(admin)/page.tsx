@@ -54,8 +54,8 @@ export default function PainelPage() {
     setCarregando(true);
     try {
       const params = new URLSearchParams();
-      const dtIni = ini !== undefined ? ini : dataInicio;
-      const dtFim = fim !== undefined ? fim : dataFim;
+      const dtIni = typeof ini === 'string' ? ini : dataInicio;
+      const dtFim = typeof fim === 'string' ? fim : dataFim;
 
       if (dtIni) params.append('dataInicio', dtIni);
       if (dtFim) params.append('dataFim', dtFim);
@@ -137,7 +137,7 @@ export default function PainelPage() {
               />
             </div>
             <button 
-              onClick={buscarMetricas}
+              onClick={() => buscarMetricas(dataInicio, dataFim)}
               className="px-4 py-2 bg-[#2d3a22] text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#1f2818] transition shadow-md"
             >
               <Search className="w-4 h-4" />
