@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, ShoppingBag, Package, DollarSign, TrendingUp, TrendingDown, Search, AlertCircle, BarChart3, Calendar, Filter } from 'lucide-react';
+import { Users, ShoppingBag, Package, DollarSign, TrendingUp, TrendingDown, Search, AlertCircle, BarChart3, Calendar } from 'lucide-react';
 import api from '@/services/api';
 
 interface DashboardMetricas {
@@ -171,16 +171,6 @@ export default function PainelPage() {
     if (valor > 0) return `+${formatado}`;
     return formatado;
   };
-
-  // Cores dinâmicas em degradê estilo bolsa de valores para as barras do gráfico
-  const coresBarras = [
-    'from-amber-400 to-orange-500 border-amber-300',
-    'from-emerald-400 to-teal-600 border-emerald-300',
-    'from-cyan-400 to-blue-600 border-cyan-300',
-    'from-purple-400 to-indigo-600 border-purple-300',
-    'from-pink-400 to-rose-600 border-pink-300',
-    'from-yellow-400 to-amber-600 border-yellow-300',
-  ];
 
   const maxValorGrafico = Math.max(
     ...dadosGrafico.map(p => tipoGrafico === 'faturamento' ? Number(p.faturamento) : Number(p.quantidadeVendas)),
@@ -429,7 +419,7 @@ export default function PainelPage() {
 
         </div>
 
-        {/* SEÇÃO GRÁFICO DE EVOLUÇÃO ESTILO BOLSA DE VALORES */}
+        {/* SEÇÃO GRÁFICO DE EVOLUÇÃO ALINHADO À IDENTIDADE VISUAL DA LOJA */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
             <div className="flex items-center gap-2">
@@ -460,11 +450,11 @@ export default function PainelPage() {
             </div>
           </div>
 
-          {/* Destaque do Pico */}
+          {/* Destaque do Pico e Card Selecionado (Tamanho Fixo Sem Treme-Treme) */}
           {dadosGrafico.length > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-[#f6f7f2] rounded-xl border border-[#e2e5d9]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-[#f6f7f2] rounded-xl border border-[#e2e5d9] min-h-[72px]">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-[#2d3a22] text-white rounded-lg">
+                <div className="p-2 bg-[#2d3a22] text-white rounded-lg shadow-sm">
                   <TrendingUp className="w-4 h-4" />
                 </div>
                 <div>
@@ -477,26 +467,27 @@ export default function PainelPage() {
                 </div>
               </div>
 
-              {pontoHover && (
-                <div className="px-4 py-2 bg-white rounded-lg border border-gray-200 text-right animate-fadeIn shadow-sm">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">Selecionado: {pontoHover.label}</span>
-                  <p className="text-sm font-extrabold text-emerald-800">
-                    {tipoGrafico === 'faturamento' ? formatarMoeda(pontoHover.faturamento) : `${pontoHover.quantidadeVendas} pedidos`}
-                  </p>
-                </div>
-              )}
+              {/* Box Selecionado Fixo: visibilidade controlada sem alterar layout/altura */}
+              <div className={`px-4 py-2 bg-white rounded-lg border border-gray-200 text-right shadow-sm transition-opacity duration-200 ${pontoHover ? 'opacity-100' : 'opacity-0'}`}>
+                <span className="text-[10px] font-bold text-gray-400 uppercase">
+                  {pontoHover ? `SELECIONADO: ${pontoHover.label}` : 'SELECIONADO'}
+                </span>
+                <p className="text-sm font-extrabold text-[#2d3a22]">
+                  {pontoHover ? (tipoGrafico === 'faturamento' ? formatarMoeda(pontoHover.faturamento) : `${pontoHover.quantidadeVendas} pedidos`) : '-'}
+                </p>
+              </div>
             </div>
           )}
 
-          {/* Gráfico Visual Estilo Bolsa de Valores (Barras com degradê e linhas de grade) */}
-          <div className="relative pt-6 pb-2 px-2">
+          {/* Gráfico Visual Fluido e Alinhado à Marca Maria Morena */}
+          <div className="relative pt-8 pb-2 px-2">
             
-            {/* Linhas de Grade de Fundo */}
-            <div className="absolute inset-x-0 top-6 bottom-10 flex flex-col justify-between pointer-events-none opacity-40">
-              <div className="border-b border-gray-200 w-full" />
-              <div className="border-b border-gray-200 w-full" />
-              <div className="border-b border-gray-200 w-full" />
-              <div className="border-b border-gray-200 w-full" />
+            {/* Linhas de Grade de Fundo Suaves */}
+            <div className="absolute inset-x-0 top-8 bottom-10 flex flex-col justify-between pointer-events-none opacity-30">
+              <div className="border-b border-gray-300 w-full border-dashed" />
+              <div className="border-b border-gray-300 w-full border-dashed" />
+              <div className="border-b border-gray-300 w-full border-dashed" />
+              <div className="border-b border-gray-300 w-full border-dashed" />
             </div>
 
             {carregando ? (
@@ -508,36 +499,40 @@ export default function PainelPage() {
                 Nenhum dado encontrado para o período.
               </div>
             ) : (
-              <div className="h-64 flex items-end justify-between gap-2 sm:gap-4 relative z-10 pt-4 pb-2 overflow-x-auto">
+              <div className="h-64 flex items-end justify-between gap-2 sm:gap-4 relative z-10 pt-6 pb-2 overflow-x-auto">
                 {dadosGrafico.map((ponto, index) => {
                   const valor = tipoGrafico === 'faturamento' ? Number(ponto.faturamento) : Number(ponto.quantidadeVendas);
                   const alturaPorcentagem = Math.max(Math.round((valor / maxValorGrafico) * 100), valor > 0 ? 8 : 4);
-                  const corEstilo = coresBarras[index % coresBarras.length];
+                  const ehPico = ponto.label === pontoPico.label && valor > 0;
 
                   return (
                     <div 
                       key={index} 
-                      className="flex-1 min-w-[24px] max-w-[56px] flex flex-col items-center h-full justify-end group cursor-pointer"
+                      className="flex-1 min-w-[24px] max-w-[56px] flex flex-col items-center h-full justify-end group cursor-pointer relative"
                       onMouseEnter={() => setPontoHover(ponto)}
                       onMouseLeave={() => setPontoHover(null)}
                     >
-                      {/* Tooltip Hover no Card */}
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded shadow-lg font-mono font-bold whitespace-nowrap z-20 pointer-events-none">
-                        {tipoGrafico === 'faturamento' ? formatarMoeda(valor) : `${valor} un`}
+                      {/* Tooltip Absoluto Flutuante (Não desloca a tela) */}
+                      <div className="absolute -top-9 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200 px-2.5 py-1 bg-[#2d3a22] text-white text-[11px] rounded-lg shadow-xl font-bold whitespace-nowrap z-30 pointer-events-none">
+                        {tipoGrafico === 'faturamento' ? formatarMoeda(valor) : `${valor} pedidos`}
                       </div>
 
-                      {/* Barra Estilo Bolsa de Valores */}
+                      {/* Barra Estilo Maria Morena (Verde Escuro Brand & Esmeralda) */}
                       <div 
                         style={{ height: `${alturaPorcentagem}%` }}
-                        className={`w-full rounded-t-lg bg-gradient-to-t ${corEstilo} border-t-2 shadow-sm group-hover:brightness-110 group-hover:scale-105 transition-all duration-300 relative`}
+                        className={`w-full rounded-t-lg transition-all duration-300 relative ${
+                          ehPico 
+                            ? 'bg-gradient-to-t from-[#1b2614] to-emerald-600 shadow-md ring-2 ring-emerald-300' 
+                            : 'bg-gradient-to-t from-[#2d3a22] to-[#4c5f3a] group-hover:from-emerald-700 group-hover:to-emerald-500'
+                        }`}
                       >
                         {valor > 0 && (
-                          <div className="absolute top-1 inset-x-0 h-1 bg-white/40 rounded-full mx-1" />
+                          <div className="absolute top-1 inset-x-0 h-1 bg-white/30 rounded-full mx-1" />
                         )}
                       </div>
 
                       {/* Rótulo Eixo X */}
-                      <span className="text-[10px] font-bold text-gray-500 mt-2 truncate w-full text-center group-hover:text-gray-900 transition">
+                      <span className="text-[10px] font-bold text-gray-500 mt-2 truncate w-full text-center group-hover:text-[#2d3a22] transition">
                         {ponto.label}
                       </span>
                     </div>
@@ -547,9 +542,9 @@ export default function PainelPage() {
             )}
           </div>
 
-          <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t">
-            <span>📊 Eixo X: Linha do Tempo ({filtroAtivo === 'este_ano' ? 'Meses' : 'Dias'})</span>
-            <span>💰 Eixo Y: {tipoGrafico === 'faturamento' ? 'Faturamento em R$' : 'Qtd de Pedidos'}</span>
+          <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-100">
+            <span className="font-semibold text-gray-600">Linha do Tempo ({filtroAtivo === 'este_ano' ? 'Meses' : 'Dias'})</span>
+            <span className="font-semibold text-gray-600">{tipoGrafico === 'faturamento' ? 'Faturamento em R$' : 'Quantidade de Pedidos'}</span>
           </div>
 
         </div>
