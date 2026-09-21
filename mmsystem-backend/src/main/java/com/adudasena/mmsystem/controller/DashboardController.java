@@ -68,8 +68,29 @@ public class DashboardController {
             logger.error("Erro ao obter total de produtos no dashboard: ", e);
         }
 
-        LocalDate inicio = dataInicio != null ? LocalDate.parse(dataInicio) : LocalDate.now().withDayOfMonth(1);
-        LocalDate fim = dataFim != null ? LocalDate.parse(dataFim) : LocalDate.now();
+        LocalDate inicio;
+        try {
+            inicio = (dataInicio != null && !dataInicio.isBlank()) 
+                    ? LocalDate.parse(dataInicio.trim()) 
+                    : LocalDate.now().withDayOfMonth(1);
+        } catch (Exception e) {
+            inicio = LocalDate.now().withDayOfMonth(1);
+        }
+
+        LocalDate fim;
+        try {
+            fim = (dataFim != null && !dataFim.isBlank()) 
+                    ? LocalDate.parse(dataFim.trim()) 
+                    : LocalDate.now();
+        } catch (Exception e) {
+            fim = LocalDate.now();
+        }
+
+        if (inicio.isAfter(fim)) {
+            LocalDate temp = inicio;
+            inicio = fim;
+            fim = temp;
+        }
 
         long dias = java.time.temporal.ChronoUnit.DAYS.between(inicio, fim) + 1;
         LocalDate inicioAnterior = inicio.minusDays(dias);
@@ -88,9 +109,11 @@ public class DashboardController {
                     .toList() : Collections.emptyList();
 
             // Período atual
+            final LocalDate dataInicioFinal = inicio;
+            final LocalDate dataFimFinal = fim;
             List<Pedido> pedidosNoPeriodo = pedidosValidos.stream()
-                    .filter(p -> p.getDataPedido() != null && !p.getDataPedido().isBefore(inicio)
-                            && !p.getDataPedido().isAfter(fim))
+                    .filter(p -> p.getDataPedido() != null && !p.getDataPedido().isBefore(dataInicioFinal)
+                            && !p.getDataPedido().isAfter(dataFimFinal))
                     .toList();
 
             totalVendasPeriodo = pedidosNoPeriodo.stream()
@@ -99,9 +122,11 @@ public class DashboardController {
             qtdVendasPeriodo = pedidosNoPeriodo.size();
 
             // Período anterior
+            final LocalDate inicioAntFinal = inicioAnterior;
+            final LocalDate fimAntFinal = fimAnterior;
             List<Pedido> pedidosNoPeriodoAnterior = pedidosValidos.stream()
-                    .filter(p -> p.getDataPedido() != null && !p.getDataPedido().isBefore(inicioAnterior)
-                            && !p.getDataPedido().isAfter(fimAnterior))
+                    .filter(p -> p.getDataPedido() != null && !p.getDataPedido().isBefore(inicioAntFinal)
+                            && !p.getDataPedido().isAfter(fimAntFinal))
                     .toList();
 
             totalVendasAnterior = pedidosNoPeriodoAnterior.stream()

@@ -22,8 +22,16 @@ interface DashboardMetricas {
 export default function PainelPage() {
   const [nomeUsuario, setNomeUsuario] = useState<string>('Proprietária');
   
-  const hoje = new Date().toISOString().split('T')[0];
-  const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+  const getLocalDateString = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const now = new Date();
+  const hoje = getLocalDateString(now);
+  const inicioMes = getLocalDateString(new Date(now.getFullYear(), now.getMonth(), 1));
 
   const [dataInicio, setDataInicio] = useState<string>(inicioMes);
   const [dataFim, setDataFim] = useState<string>(hoje);
@@ -42,12 +50,15 @@ export default function PainelPage() {
   
   const [carregando, setCarregando] = useState<boolean>(true);
 
-  const buscarMetricas = async () => {
+  const buscarMetricas = async (ini?: string, fim?: string) => {
     setCarregando(true);
     try {
       const params = new URLSearchParams();
-      if (dataInicio) params.append('dataInicio', dataInicio);
-      if (dataFim) params.append('dataFim', dataFim);
+      const dtIni = ini !== undefined ? ini : dataInicio;
+      const dtFim = fim !== undefined ? fim : dataFim;
+
+      if (dtIni) params.append('dataInicio', dtIni);
+      if (dtFim) params.append('dataFim', dtFim);
       
       const response = await api.get<DashboardMetricas>(`/dashboard/metricas?${params.toString()}`);
       setMetricas(response.data);
