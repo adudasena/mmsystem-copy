@@ -172,4 +172,86 @@ public class DashboardController {
                 percCrescimentoQtd);
         return ResponseEntity.ok(dto);
     }
+
+    @GetMapping("/grafico")
+    public ResponseEntity<List<com.adudasena.mmsystem.dto.GraficoPontoDTO>> obterDadosGrafico(
+            @RequestParam(required = false) String dataInicio,
+            @RequestParam(required = false) String dataFim) {
+
+        LocalDate inicio;
+        try {
+            inicio = (dataInicio != null && !dataInicio.isBlank())
+                    ? LocalDate.parse(dataInicio.trim())
+                    : LocalDate.now().withDayOfMonth(1);
+        } catch (Exception e) {
+            inicio = LocalDate.now().withDayOfMonth(1);
+        }
+
+        LocalDate fim;
+        try {
+            fim = (dataFim != null && !dataFim.isBlank())
+                    ? LocalDate.parse(dataFim.trim())
+                    : LocalDate.now();
+        } catch (Exception e) {
+            fim = LocalDate.now();
+        }
+
+        if (inicio.isAfter(LocalDate.now())) {
+            inicio = LocalDate.now();
+        }
+
+        if (fim.isBefore(inicio)) {
+            fim = inicio;
+        }
+
+        List<com.adudasena.mmsystem.dto.GraficoPontoDTO> pontos = new java.util.ArrayList<>();
+        long totalDias = java.time.temporal.ChronoUnit.DAYS.between(inicio, fim) + 1;
+
+        try {
+            List<Pedido> pedidos = pedidoRepository.findAll();
+            List<Pedido> pedidosValidos = pedidos != null ? pedidos.stream()
+                    .filter(p -> p != null && p.getStatus() != StatusPedido.CANCELADO && p.getDeletedAt() == null)
+                    .toList() : Collections.emptyList();
+
+            if (totalDias <= 31) {
+                // Agrupar DIA a DIA
+                for (LocalDate d = inicio; !d.isAfter(fim); d = d.plusDays(1)) {
+                    final LocalDate diaAtual = d;
+                    List<Pedido> pedidosDoDia = pedidosValidos.stream()
+                            .filter(p -> p.getDataPedido() != null && p.getDataPedido().equals(diaAtual))
+                            .toList();
+
+                    BigDecimal fat = pedidosDoDia.stream()
+                            .map(p -> p.getValorTotal() != null ? p.getValorTotal() : BigDecimal.ZERO)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    String label = String.format("%02d/%02d", d.getDayOfMonth(), d.getMonthValue());
+                    pontos.add(new com.adudasena.mmsystem.dto.GraficoPontoDTO(label, d.toString(), fat, pedidosDoDia.size()));
+                }
+            } else {
+                // Agrupar MES a MES
+                java.time.YearMonth ymInicio = java.time.YearMonth.from(inicio);
+                java.time.YearMonth ymFim = java.time.YearMonth.from(fim);
+
+                for (java.time.YearMonth ym = ymInicio; !ym.isAfter(ymFim); ym = ym.plusMonths(1)) {
+                    final java.time.YearMonth currentYM = ym;
+                    List<Pedido> pedidosDoMes = pedidosValidos.stream()
+                            .filter(p -> p.getDataPedido() != null && java.time.YearMonth.from(p.getDataPedido()).equals(currentYM))
+                            .toList();
+
+                    BigDecimal fat = pedidosDoMes.stream()
+                            .map(p -> p.getValorTotal() != null ? p.getValorTotal() : BigDecimal.ZERO)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    String label = String.format("%02d/%04d", ym.getMonthValue(), ym.getYear());
+                    pontos.add(new com.adudasena.mmsystem.dto.GraficoPontoDTO(label, ym.toString(), fat, pedidosDoMes.size()));
+                }
+            }
+
+        } catch (Exception e) {
+            logger.error("Erro ao gerar dados do gráfico do dashboard: ", e);
+        }
+
+        return ResponseEntity.ok(pontos);
+    }
 }

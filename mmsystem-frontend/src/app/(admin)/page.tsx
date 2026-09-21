@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, ShoppingBag, Package, DollarSign, TrendingUp, TrendingDown, Search, AlertCircle } from 'lucide-react';
+import { Users, ShoppingBag, Package, DollarSign, TrendingUp, TrendingDown, Search, AlertCircle, BarChart3, Calendar, Filter } from 'lucide-react';
 import api from '@/services/api';
 
 interface DashboardMetricas {
@@ -17,6 +17,13 @@ interface DashboardMetricas {
   
   percentualCrescimentoValor: number;
   percentualCrescimentoQtd: number;
+}
+
+interface GraficoPonto {
+  label: string;
+  data: string;
+  faturamento: number;
+  quantidadeVendas: number;
 }
 
 export default function PainelPage() {
@@ -36,6 +43,7 @@ export default function PainelPage() {
   const [dataInicio, setDataInicio] = useState<string>(inicioMes);
   const [dataFim, setDataFim] = useState<string>(hoje);
   const [erroData, setErroData] = useState<string | null>(null);
+  const [filtroAtivo, setFiltroAtivo] = useState<string>('este_mes');
   
   const [metricas, setMetricas] = useState<DashboardMetricas>({
     totalClientes: 0,
@@ -48,6 +56,10 @@ export default function PainelPage() {
     percentualCrescimentoValor: 0,
     percentualCrescimentoQtd: 0
   });
+
+  const [dadosGrafico, setDadosGrafico] = useState<GraficoPonto[]>([]);
+  const [tipoGrafico, setTipoGrafico] = useState<'faturamento' | 'quantidade'>('faturamento');
+  const [pontoHover, setPontoHover] = useState<GraficoPonto | null>(null);
   
   const [carregando, setCarregando] = useState<boolean>(true);
 
@@ -61,13 +73,51 @@ export default function PainelPage() {
       if (dtIni) params.append('dataInicio', dtIni);
       if (dtFim) params.append('dataFim', dtFim);
       
-      const response = await api.get<DashboardMetricas>(`/dashboard/metricas?${params.toString()}`);
-      setMetricas(response.data);
+      const [resMetricas, resGrafico] = await Promise.all([
+        api.get<DashboardMetricas>(`/dashboard/metricas?${params.toString()}`),
+        api.get<GraficoPonto[]>(`/dashboard/grafico?${params.toString()}`)
+      ]);
+
+      setMetricas(resMetricas.data);
+      setDadosGrafico(resGrafico.data || []);
     } catch (err) {
       console.error('Erro ao carregar métricas do dashboard:', err);
     } finally {
       setCarregando(false);
     }
+  };
+
+  const aplicarAtalhoPeriodo = (chave: string) => {
+    setFiltroAtivo(chave);
+    const d = new Date();
+    let ini = '';
+    let fim = getLocalDateString(d);
+
+    if (chave === 'hoje') {
+      ini = fim;
+    } else if (chave === '7dias') {
+      const d7 = new Date();
+      d7.setDate(d.getDate() - 6);
+      ini = getLocalDateString(d7);
+    } else if (chave === '15dias') {
+      const d15 = new Date();
+      d15.setDate(d.getDate() - 14);
+      ini = getLocalDateString(d15);
+    } else if (chave === 'este_mes') {
+      ini = getLocalDateString(new Date(d.getFullYear(), d.getMonth(), 1));
+    } else if (chave === 'mes_anterior') {
+      const mesAntInicio = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+      const mesAntFim = new Date(d.getFullYear(), d.getMonth(), 0);
+      ini = getLocalDateString(mesAntInicio);
+      fim = getLocalDateString(mesAntFim);
+    } else if (chave === 'este_ano') {
+      ini = getLocalDateString(new Date(d.getFullYear(), 0, 1));
+    }
+
+    setDataInicio(ini);
+    setDataFim(fim);
+    setErroData(null);
+    buscarMetricas(ini, fim);
   };
 
   const validarEBuscar = (iniStr?: string, fimStr?: string) => {
@@ -84,6 +134,7 @@ export default function PainelPage() {
       return;
     }
 
+    setFiltroAtivo('personalizado');
     setErroData(null);
     buscarMetricas(dtIni, dtFim);
   };
@@ -121,6 +172,27 @@ export default function PainelPage() {
     return formatado;
   };
 
+  // Cores dinâmicas em degradê estilo bolsa de valores para as barras do gráfico
+  const coresBarras = [
+    'from-amber-400 to-orange-500 border-amber-300',
+    'from-emerald-400 to-teal-600 border-emerald-300',
+    'from-cyan-400 to-blue-600 border-cyan-300',
+    'from-purple-400 to-indigo-600 border-purple-300',
+    'from-pink-400 to-rose-600 border-pink-300',
+    'from-yellow-400 to-amber-600 border-yellow-300',
+  ];
+
+  const maxValorGrafico = Math.max(
+    ...dadosGrafico.map(p => tipoGrafico === 'faturamento' ? Number(p.faturamento) : Number(p.quantidadeVendas)),
+    1
+  );
+
+  const pontoPico = dadosGrafico.reduce((max, p) => {
+    const val = tipoGrafico === 'faturamento' ? p.faturamento : p.quantidadeVendas;
+    const maxVal = tipoGrafico === 'faturamento' ? max.faturamento : max.quantidadeVendas;
+    return val > maxVal ? p : max;
+  }, dadosGrafico[0] || { label: '-', faturamento: 0, quantidadeVendas: 0 });
+
   return (
     <div className="p-6 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800" suppressHydrationWarning>
       <div className="max-w-7xl mx-auto space-y-6">
@@ -146,6 +218,7 @@ export default function PainelPage() {
                   value={dataInicio}
                   onChange={(e) => {
                     setDataInicio(e.target.value);
+                    setFiltroAtivo('personalizado');
                     if (erroData) setErroData(null);
                   }}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d3a22] transition"
@@ -158,6 +231,7 @@ export default function PainelPage() {
                   value={dataFim}
                   onChange={(e) => {
                     setDataFim(e.target.value);
+                    setFiltroAtivo('personalizado');
                     if (erroData) setErroData(null);
                   }}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d3a22] transition"
@@ -171,6 +245,50 @@ export default function PainelPage() {
                 Filtrar
               </button>
             </div>
+          </div>
+
+          {/* Botões Pílula de Atalho de Períodos Rápidos */}
+          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100">
+            <span className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 mr-1">
+              <Calendar className="w-3.5 h-3.5 text-[#2d3a22]" /> Atalhos:
+            </span>
+
+            <button
+              onClick={() => aplicarAtalhoPeriodo('hoje')}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition ${filtroAtivo === 'hoje' ? 'bg-[#2d3a22] text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            >
+              Hoje
+            </button>
+            <button
+              onClick={() => aplicarAtalhoPeriodo('7dias')}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition ${filtroAtivo === '7dias' ? 'bg-[#2d3a22] text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            >
+              Últimos 7 dias
+            </button>
+            <button
+              onClick={() => aplicarAtalhoPeriodo('15dias')}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition ${filtroAtivo === '15dias' ? 'bg-[#2d3a22] text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            >
+              Últimos 15 dias
+            </button>
+            <button
+              onClick={() => aplicarAtalhoPeriodo('este_mes')}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition ${filtroAtivo === 'este_mes' ? 'bg-[#2d3a22] text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            >
+              Este Mês
+            </button>
+            <button
+              onClick={() => aplicarAtalhoPeriodo('mes_anterior')}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition ${filtroAtivo === 'mes_anterior' ? 'bg-[#2d3a22] text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            >
+              Mês Anterior
+            </button>
+            <button
+              onClick={() => aplicarAtalhoPeriodo('este_ano')}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition ${filtroAtivo === 'este_ano' ? 'bg-[#2d3a22] text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            >
+              Este Ano
+            </button>
           </div>
 
           {erroData && (
@@ -307,6 +425,131 @@ export default function PainelPage() {
             <div className="p-3 bg-[#e8ebe0] rounded-xl text-[#2d3a22]">
               <Package className="w-7 h-7" />
             </div>
+          </div>
+
+        </div>
+
+        {/* SEÇÃO GRÁFICO DE EVOLUÇÃO ESTILO BOLSA DE VALORES */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-[#2d3a22]" />
+              <div>
+                <h2 className="text-lg font-sans font-bold text-gray-900">
+                  Evolução do Período Selecionado
+                </h2>
+                <p className="text-xs text-gray-500">
+                  Acompanhe a curva de faturamento e volume de vendas dia a dia
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl self-start sm:self-auto">
+              <button
+                onClick={() => setTipoGrafico('faturamento')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${tipoGrafico === 'faturamento' ? 'bg-[#2d3a22] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              >
+                Faturamento (R$)
+              </button>
+              <button
+                onClick={() => setTipoGrafico('quantidade')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${tipoGrafico === 'quantidade' ? 'bg-[#2d3a22] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              >
+                Qtd. Pedidos
+              </button>
+            </div>
+          </div>
+
+          {/* Destaque do Pico */}
+          {dadosGrafico.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-[#f6f7f2] rounded-xl border border-[#e2e5d9]">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-[#2d3a22] text-white rounded-lg">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-gray-500">
+                    Pico no Período ({pontoPico.label})
+                  </span>
+                  <p className="text-base font-extrabold text-[#2d3a22]">
+                    {tipoGrafico === 'faturamento' ? formatarMoeda(pontoPico.faturamento) : `${pontoPico.quantidadeVendas} pedidos`}
+                  </p>
+                </div>
+              </div>
+
+              {pontoHover && (
+                <div className="px-4 py-2 bg-white rounded-lg border border-gray-200 text-right animate-fadeIn shadow-sm">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Selecionado: {pontoHover.label}</span>
+                  <p className="text-sm font-extrabold text-emerald-800">
+                    {tipoGrafico === 'faturamento' ? formatarMoeda(pontoHover.faturamento) : `${pontoHover.quantidadeVendas} pedidos`}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Gráfico Visual Estilo Bolsa de Valores (Barras com degradê e linhas de grade) */}
+          <div className="relative pt-6 pb-2 px-2">
+            
+            {/* Linhas de Grade de Fundo */}
+            <div className="absolute inset-x-0 top-6 bottom-10 flex flex-col justify-between pointer-events-none opacity-40">
+              <div className="border-b border-gray-200 w-full" />
+              <div className="border-b border-gray-200 w-full" />
+              <div className="border-b border-gray-200 w-full" />
+              <div className="border-b border-gray-200 w-full" />
+            </div>
+
+            {carregando ? (
+              <div className="h-64 flex items-center justify-center text-sm font-bold text-gray-400">
+                Carregando gráfico...
+              </div>
+            ) : dadosGrafico.length === 0 ? (
+              <div className="h-64 flex items-center justify-center text-sm font-bold text-gray-400">
+                Nenhum dado encontrado para o período.
+              </div>
+            ) : (
+              <div className="h-64 flex items-end justify-between gap-2 sm:gap-4 relative z-10 pt-4 pb-2 overflow-x-auto">
+                {dadosGrafico.map((ponto, index) => {
+                  const valor = tipoGrafico === 'faturamento' ? Number(ponto.faturamento) : Number(ponto.quantidadeVendas);
+                  const alturaPorcentagem = Math.max(Math.round((valor / maxValorGrafico) * 100), valor > 0 ? 8 : 4);
+                  const corEstilo = coresBarras[index % coresBarras.length];
+
+                  return (
+                    <div 
+                      key={index} 
+                      className="flex-1 min-w-[24px] max-w-[56px] flex flex-col items-center h-full justify-end group cursor-pointer"
+                      onMouseEnter={() => setPontoHover(ponto)}
+                      onMouseLeave={() => setPontoHover(null)}
+                    >
+                      {/* Tooltip Hover no Card */}
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded shadow-lg font-mono font-bold whitespace-nowrap z-20 pointer-events-none">
+                        {tipoGrafico === 'faturamento' ? formatarMoeda(valor) : `${valor} un`}
+                      </div>
+
+                      {/* Barra Estilo Bolsa de Valores */}
+                      <div 
+                        style={{ height: `${alturaPorcentagem}%` }}
+                        className={`w-full rounded-t-lg bg-gradient-to-t ${corEstilo} border-t-2 shadow-sm group-hover:brightness-110 group-hover:scale-105 transition-all duration-300 relative`}
+                      >
+                        {valor > 0 && (
+                          <div className="absolute top-1 inset-x-0 h-1 bg-white/40 rounded-full mx-1" />
+                        )}
+                      </div>
+
+                      {/* Rótulo Eixo X */}
+                      <span className="text-[10px] font-bold text-gray-500 mt-2 truncate w-full text-center group-hover:text-gray-900 transition">
+                        {ponto.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t">
+            <span>📊 Eixo X: Linha do Tempo ({filtroAtivo === 'este_ano' ? 'Meses' : 'Dias'})</span>
+            <span>💰 Eixo Y: {tipoGrafico === 'faturamento' ? 'Faturamento em R$' : 'Qtd de Pedidos'}</span>
           </div>
 
         </div>
