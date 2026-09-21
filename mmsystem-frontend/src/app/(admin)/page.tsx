@@ -480,10 +480,10 @@ export default function PainelPage() {
           )}
 
           {/* Gráfico Visual Fluido e Alinhado à Marca Maria Morena */}
-          <div className="relative pt-8 pb-2 px-2">
+          <div className="relative pt-12 pb-2 px-2">
             
             {/* Linhas de Grade de Fundo Suaves */}
-            <div className="absolute inset-x-0 top-8 bottom-10 flex flex-col justify-between pointer-events-none opacity-30">
+            <div className="absolute inset-x-0 top-12 bottom-10 flex flex-col justify-between pointer-events-none opacity-30">
               <div className="border-b border-gray-300 w-full border-dashed" />
               <div className="border-b border-gray-300 w-full border-dashed" />
               <div className="border-b border-gray-300 w-full border-dashed" />
@@ -491,18 +491,19 @@ export default function PainelPage() {
             </div>
 
             {carregando ? (
-              <div className="h-64 flex items-center justify-center text-sm font-bold text-gray-400">
+              <div className="h-72 flex items-center justify-center text-sm font-bold text-gray-400">
                 Carregando gráfico...
               </div>
             ) : dadosGrafico.length === 0 ? (
-              <div className="h-64 flex items-center justify-center text-sm font-bold text-gray-400">
+              <div className="h-72 flex items-center justify-center text-sm font-bold text-gray-400">
                 Nenhum dado encontrado para o período.
               </div>
             ) : (
-              <div className="h-64 flex items-end justify-between gap-2 sm:gap-4 relative z-10 pt-6 pb-2 overflow-x-auto">
+              <div className="h-72 flex items-end justify-between gap-2 sm:gap-4 relative z-10 pt-10 pb-2 overflow-x-auto overflow-y-visible">
                 {dadosGrafico.map((ponto, index) => {
                   const valor = tipoGrafico === 'faturamento' ? Number(ponto.faturamento) : Number(ponto.quantidadeVendas);
-                  const alturaPorcentagem = Math.max(Math.round((valor / maxValorGrafico) * 100), valor > 0 ? 8 : 4);
+                  // Escala máxima de 75% para garantir espaço livre de sobra para o tooltip sem cortar no topo
+                  const alturaPorcentagem = Math.max(Math.round((valor / maxValorGrafico) * 75), valor > 0 ? 8 : 4);
                   const ehPico = ponto.label === pontoPico.label && valor > 0;
 
                   return (
@@ -512,9 +513,9 @@ export default function PainelPage() {
                       onMouseEnter={() => setPontoHover(ponto)}
                       onMouseLeave={() => setPontoHover(null)}
                     >
-                      {/* Tooltip Absoluto Flutuante (Não desloca a tela) */}
-                      <div className="absolute -top-9 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200 px-2.5 py-1 bg-[#2d3a22] text-white text-[11px] rounded-lg shadow-xl font-bold whitespace-nowrap z-30 pointer-events-none">
-                        {tipoGrafico === 'faturamento' ? formatarMoeda(valor) : `${valor} pedidos`}
+                      {/* Tooltip Absoluto Flutuante Sem Corte (z-30) */}
+                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200 px-2.5 py-1 bg-[#2d3a22] text-white text-[11px] rounded-lg shadow-xl font-bold whitespace-nowrap z-30 pointer-events-none border border-[#4c5f3a]">
+                        {tipoGrafico === 'faturamento' ? formatarMoeda(valor) : `${valor} ${valor === 1 ? 'pedido' : 'pedidos'}`}
                       </div>
 
                       {/* Barra Estilo Maria Morena (Verde Escuro Brand & Esmeralda) */}
