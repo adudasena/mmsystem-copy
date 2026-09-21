@@ -324,6 +324,7 @@ const TelaPagamentos: React.FC = () => {
             { label: 'Todos os Status', value: 'TODOS' },
             { label: 'Pendente', value: 'PENDENTE' },
             { label: 'Aprovado', value: 'APROVADO' },
+            { label: 'Pago', value: 'PAGO' },
             { label: 'Cancelado', value: 'CANCELADO' },
             { label: 'Estornado', value: 'ESTORNADO' }
           ]}
@@ -407,7 +408,7 @@ const TelaPagamentos: React.FC = () => {
                         <td className="p-3">
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
-                              pag.status === 'APROVADO'
+                              pag.status === 'APROVADO' || pag.status === 'PAGO'
                                 ? 'bg-green-100 text-green-800 border-green-300'
                                 : pag.status === 'CANCELADO' || pag.status === 'ESTORNADO'
                                 ? 'bg-red-100 text-red-800 border-red-300'

@@ -17,7 +17,7 @@ const gerarUuid = (): string => {
 };
 
 // ─── Tipagens e Interfaces ──────────────────────────────────────────────────
-export type StatusPedido = 'AGUARDANDO_PAGAMENTO' | 'CANCELADO' | 'CONCLUIDO';
+export type StatusPedido = 'AGUARDANDO_PAGAMENTO' | 'PENDENTE' | 'CANCELADO' | 'CONCLUIDO' | 'PAGO';
 
 export interface ClientePedido {
   id: number;
@@ -434,15 +434,25 @@ const TelaPedidos: React.FC = () => {
   };
 
   const renderBadgeStatus = (status: StatusPedido) => {
-    const estilos: Record<StatusPedido, string> = {
+    const estilos: Record<string, string> = {
       AGUARDANDO_PAGAMENTO: 'bg-amber-100 text-amber-800 border-amber-300',
+      PENDENTE: 'bg-amber-100 text-amber-800 border-amber-300',
       CANCELADO: 'bg-rose-100 text-rose-800 border-rose-300',
       CONCLUIDO: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      PAGO: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    };
+
+    const labels: Record<string, string> = {
+      AGUARDANDO_PAGAMENTO: 'Aguardando Pagamento',
+      PENDENTE: 'Pendente',
+      CANCELADO: 'Cancelado',
+      CONCLUIDO: 'Concluído',
+      PAGO: 'Pago',
     };
 
     return (
       <span className={`px-2.5 py-0.5 rounded border text-[10px] font-bold uppercase ${estilos[status] || 'bg-gray-100 text-gray-800'}`}>
-        {status}
+        {labels[status] || status}
       </span>
     );
   };
@@ -492,8 +502,10 @@ const TelaPedidos: React.FC = () => {
           opcoesFiltro={[
             { label: 'Todos os Status', value: 'TODOS' },
             { label: 'Aguardando Pagamento', value: 'AGUARDANDO_PAGAMENTO' },
+            { label: 'Pendente', value: 'PENDENTE' },
             { label: 'Cancelado', value: 'CANCELADO' },
-            { label: 'Concluído', value: 'CONCLUIDO' }
+            { label: 'Concluído', value: 'CONCLUIDO' },
+            { label: 'Pago', value: 'PAGO' }
           ]}
         />
 
@@ -800,27 +812,6 @@ const TelaPedidos: React.FC = () => {
                 </button>
               </div>
 
-              {/* Atualização Rápida de Etapa */}
-              <div className="bg-gray-50 p-3 rounded-lg border space-y-2">
-                <label className="block text-[10px] font-bold uppercase text-gray-500">
-                  Alterar Status do Pedido:
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {(['PENDENTE', 'PAGO', 'ENVIADO', 'ENTREGUE', 'CANCELADO'] as StatusPedido[]).map((st) => (
-                    <button
-                      key={st}
-                      onClick={() => handleAtualizarStatus(pedidoSelecionado.id, st)}
-                      className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase border transition-all cursor-pointer ${
-                        pedidoSelecionado.status === st
-                          ? 'bg-[#2d3a22] text-white border-[#2d3a22]'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                      }`}
-                    >
-                      {st}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               {/* Informações do Cliente */}
               <div className="grid grid-cols-2 gap-3 text-xs">
