@@ -506,7 +506,7 @@ export default function VitrineProdutos() {
                   )}
                 </div>
                 {produtoSelecionado.descricao && (
-                  <p className="text-xs text-gray-600 italic mt-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100 leading-relaxed">
+                  <p className="text-xs text-gray-600 italic mt-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100 leading-relaxed whitespace-pre-wrap">
                     {produtoSelecionado.descricao}
                   </p>
                 )}

@@ -6,7 +6,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,13 +39,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                 if (usuario != null && usuario.getDeletedAt() == null) {
                     String role = usuario.getPerfil() != null ? usuario.getPerfil().name() : "ROLE_CLIENTE";
-                    List<SimpleGrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority(role));
+                    List<SimpleGrantedAuthority> authorities = Collections
+                            .singletonList(new SimpleGrantedAuthority(role));
 
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             usuario,
                             null,
-                            authorities
-                    );
+                            authorities);
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }

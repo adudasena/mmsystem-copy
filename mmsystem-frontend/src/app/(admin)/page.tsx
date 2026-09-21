@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Users, ShoppingBag, Package, DollarSign, TrendingUp, TrendingDown, Calendar, Search } from 'lucide-react';
+import { Users, ShoppingBag, Package, DollarSign, TrendingUp, TrendingDown, Search } from 'lucide-react';
 import api from '@/services/api';
 
 interface DashboardMetricas {
@@ -21,7 +20,6 @@ interface DashboardMetricas {
 }
 
 export default function PainelPage() {
-  const router = useRouter();
   const [nomeUsuario, setNomeUsuario] = useState<string>('Proprietária');
   
   const hoje = new Date().toISOString().split('T')[0];
@@ -60,13 +58,22 @@ export default function PainelPage() {
     }
   };
 
+  const [montado, setMontado] = useState(false);
+
   useEffect(() => {
+    setMontado(true);
     const user = localStorage.getItem('mm_user');
     if (user) {
       setNomeUsuario(user);
     }
-    buscarMetricas();
-  }, []); // Executa ao montar
+  }, []);
+
+  useEffect(() => {
+    if (montado) {
+      buscarMetricas();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [montado]);
 
   const formatarMoeda = (val?: number) => {
     return Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
