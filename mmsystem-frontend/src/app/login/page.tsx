@@ -22,13 +22,18 @@ export default function LoginPage() {
       if (res.data.token) {
         localStorage.setItem('mm_token', res.data.token);
         localStorage.setItem('mm_user', res.data.usuario);
+        if (res.data.perfil) {
+          localStorage.setItem('mm_perfil', res.data.perfil);
+        }
 
         // Redireciona limpando a rota interna (admin) da URL
         window.location.href = '/';
       }
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        setErro(err.response?.data || 'Falha ao realizar login. Verifique suas credenciais.');
+        const data = err.response?.data as { mensagem?: string } | string | undefined;
+        const mensagem = typeof data === 'string' ? data : data?.mensagem;
+        setErro(mensagem || 'Falha ao realizar login. Verifique suas credenciais.');
       } else {
         setErro('Ocorreu um erro inesperado ao conectar com o servidor.');
       }

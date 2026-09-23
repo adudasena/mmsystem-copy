@@ -20,3 +20,9 @@
 .bg-table-header {
   background-color: #cdd5bd;
 }
+
+@media (max-width: 1023px) {
+  table {
+    min-width: 640px;
+  }
+}

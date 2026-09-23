@@ -1,6 +1,7 @@
 package com.adudasena.mmsystem.model;
 
 import com.adudasena.mmsystem.enums.Perfil;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -23,6 +24,7 @@ public class Usuario {
     @Column(unique = true)
     private String email;
 
+    @JsonIgnore
     private String senha;
 
     @Enumerated(EnumType.STRING)

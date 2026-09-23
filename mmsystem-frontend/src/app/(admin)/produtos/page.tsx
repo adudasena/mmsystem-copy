@@ -438,7 +438,7 @@ const TelaProdutos: React.FC = () => {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="p-6 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
+    <div className="p-4 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
       <div className="max-w-7xl mx-auto space-y-6">
         <header className="mb-2">
           <h1 className="text-3xl font-sans font-bold text-[#2d3a22] tracking-wide">

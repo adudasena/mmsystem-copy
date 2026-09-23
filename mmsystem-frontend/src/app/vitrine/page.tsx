@@ -76,7 +76,7 @@ export default function VitrineProdutos() {
       try {
         setLoading(true);
         setErro(null);
-        const res = await api.get<PageSpring<ProdutoVitrine> | ProdutoVitrine[]>('/produtos?size=50');
+        const res = await api.get<PageSpring<ProdutoVitrine> | ProdutoVitrine[]>('/vitrine/produtos?size=50');
 
         if (montado) {
           if (res.data && Array.isArray((res.data as PageSpring<ProdutoVitrine>).content)) {
@@ -324,7 +324,7 @@ export default function VitrineProdutos() {
   const totalCarrinho = carrinho.reduce((acc, item) => acc + item.preco * item.quantidade, 0);
 
   return (
-    <div className="min-h-screen bg-[#dcded0] text-gray-800 font-sans pb-12">
+    <div className="min-h-screen bg-[#dcded0] text-gray-800 font-sans pb-24">
       {/* HEADER / BARRA SUPERIOR */}
       <header className="bg-[#2c3e1c] text-white py-4 px-4 md:px-8 sticky top-0 z-40 shadow-md relative flex items-center justify-between min-h-[64px]">
         <div className="text-xs uppercase font-bold tracking-widest text-[#a8b896] hidden md:block">
@@ -343,9 +343,10 @@ export default function VitrineProdutos() {
           <button
             type="button"
             onClick={() => setMostrarCarrinho(true)}
-            className="relative bg-[#3d5427] hover:bg-[#48632e] text-white text-xs md:text-sm px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 shadow-md cursor-pointer border border-[#527035]"
+            className="relative bg-[#3d5427] hover:bg-[#48632e] text-white text-xs md:text-sm px-3 md:px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 shadow-md cursor-pointer border border-[#527035] min-h-11"
           >
-            <span>🛒 Sacola Condicional</span>
+            <ShoppingBag className="w-4 h-4" />
+            <span className="hidden sm:inline">Sacola Condicional</span>
             {carrinho.length > 0 && (
               <span className="bg-white text-[#2c3e1c] text-xs font-extrabold rounded-full w-5 h-5 flex items-center justify-center shadow-xs">
                 {carrinho.length}
@@ -363,11 +364,11 @@ export default function VitrineProdutos() {
         </div>
 
         {/* CONTROLES DE FILTRO */}
-        <div className="flex gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <select
             value={categoriaFiltro}
             onChange={(e: ChangeEvent<HTMLSelectElement>) => setCategoriaFiltro(e.target.value)}
-            className="bg-white border border-gray-300 rounded-xl px-4 py-2 text-sm font-medium text-gray-700 shadow-sm focus:outline-none"
+            className="bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:outline-none w-full sm:w-auto min-h-11"
           >
             <option value="">Todas as Categorias ▼</option>
             <option value="Vestidos">Vestidos</option>
@@ -467,8 +468,8 @@ export default function VitrineProdutos() {
         );
 
         return (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-            <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl relative">
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-xs">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl relative max-h-[92vh] overflow-y-auto">
               <button
                 type="button"
                 onClick={() => setProdutoSelecionado(null)}
@@ -687,6 +688,21 @@ export default function VitrineProdutos() {
           </div>
         </div>
       )}
+
+      {/* FAB sacola — visível no celular */}
+      <button
+        type="button"
+        onClick={() => setMostrarCarrinho(true)}
+        className="sm:hidden fixed bottom-5 right-4 z-30 bg-[#2c3e1c] text-white rounded-full shadow-lg px-4 py-3 min-h-14 flex items-center gap-2 font-bold text-sm border border-[#527035]"
+      >
+        <ShoppingBag className="w-5 h-5" />
+        Sacola
+        {carrinho.length > 0 && (
+          <span className="bg-white text-[#2c3e1c] text-xs font-extrabold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
+            {carrinho.length}
+          </span>
+        )}
+      </button>
 
       {/* Modal Customizado do Sistema */}
       <SystemModal

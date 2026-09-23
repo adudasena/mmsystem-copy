@@ -287,7 +287,7 @@ const TelaPagamentos: React.FC = () => {
   });
 
   return (
-    <div className="p-6 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
+    <div className="p-4 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Cabeçalho */}

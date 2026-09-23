@@ -41,7 +41,7 @@ public class CondicionalService {
     private final ObjectMapper objectMapper;
 
     public List<Condicional> listarTodos() {
-        return repository.findAll();
+        return repository.findByDeletedAtIsNull();
     }
 
     public Page<Condicional> listarTodos(Pageable pageable) {
@@ -49,7 +49,7 @@ public class CondicionalService {
     }
 
     public Condicional buscarPorId(Long id) {
-        return repository.findById(id)
+        return repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Condicional não encontrada: " + id));
     }
 

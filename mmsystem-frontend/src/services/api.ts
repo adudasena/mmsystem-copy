@@ -20,6 +20,8 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         localStorage.removeItem('mm_token');
+        localStorage.removeItem('mm_user');
+        localStorage.removeItem('mm_perfil');
         window.location.href = '/login';
       }
     }

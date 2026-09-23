@@ -22,6 +22,7 @@ public class Condicional {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "fk_cliente_id", nullable = false)
+    @JsonIgnoreProperties({"senha", "hibernateLazyInitializer", "handler"})
     private Usuario usuario;
 
     @Column(name = "data_saida", nullable = false)

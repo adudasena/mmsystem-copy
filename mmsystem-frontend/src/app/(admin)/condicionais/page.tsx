@@ -523,7 +523,7 @@ const TelaCondicionais: React.FC = () => {
   });
 
   return (
-    <div className="p-6 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
+    <div className="p-4 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* CABEÇALHO */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

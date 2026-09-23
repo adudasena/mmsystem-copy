@@ -184,7 +184,7 @@ export default function PainelPage() {
   }, dadosGrafico[0] || { label: '-', faturamento: 0, quantidadeVendas: 0 });
 
   return (
-    <div className="p-6 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800" suppressHydrationWarning>
+    <div className="p-4 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800" suppressHydrationWarning>
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Cabeçalho e Filtros */}

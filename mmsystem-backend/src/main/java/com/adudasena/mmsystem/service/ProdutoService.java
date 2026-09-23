@@ -72,6 +72,10 @@ public class ProdutoService {
         return repository.findByDeletedAtIsNull(pageable);
     }
 
+    public Page<Produto> listarVitrine(Pageable pageable) {
+        return repository.findByDeletedAtIsNull(pageable);
+    }
+
     // Listar apenas o que está na lixeira
     public List<Produto> listarExcluidos() {
         return repository.findByDeletedAtIsNotNull();

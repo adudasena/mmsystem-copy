@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface ProdutoRepository extends JpaRepository<Produto, Long> {
     List<Produto> findByDeletedAtIsNull();
     Page<Produto> findByDeletedAtIsNull(Pageable pageable);
+    Page<Produto> findByDeletedAtIsNullAndStatusIgnoreCase(String status, Pageable pageable);
 
     Optional<Produto> findByIdAndDeletedAtIsNull(Long id);
 

@@ -34,7 +34,9 @@ public class PagamentoService {
 
     @Transactional(readOnly = true)
     public Pagamento buscarPorId(Long id) {
-        return pagamentoRepository.findById(id).orElse(null);
+        return pagamentoRepository.findById(id)
+                .filter(p -> p.getDeletedAt() == null)
+                .orElse(null);
     }
 
     @Transactional
