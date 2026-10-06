@@ -1,12 +1,22 @@
 package com.adudasena.mmsystem.dto;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public class PagamentoDTO {
     private Long id;
+
+    @NotNull(message = "O valor é obrigatório.")
+    @DecimalMin(value = "0.01", message = "O valor deve ser maior que zero.")
     private BigDecimal valor;
+
+    @NotBlank(message = "O método de pagamento é obrigatório.")
     private String metodoPagamento;
+
     private LocalDate dataVencimento;
     private String status;
     private Long fkPedidoId;

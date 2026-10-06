@@ -1,11 +1,22 @@
 package com.adudasena.mmsystem.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+
 import java.util.List;
 
 public class VitrinePedidoDTO {
     private Long usuarioId;
+
+    @NotBlank(message = "O nome é obrigatório.")
     private String nomeCliente;
+
+    @NotBlank(message = "O WhatsApp é obrigatório.")
     private String telefoneCliente;
+
+    @NotEmpty(message = "A sacola precisa ter ao menos um item.")
+    @Valid
     private List<VitrineItemDTO> itens;
 
     public Long getUsuarioId() { return usuarioId; }

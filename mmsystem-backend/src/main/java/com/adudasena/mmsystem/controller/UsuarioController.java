@@ -3,6 +3,7 @@ package com.adudasena.mmsystem.controller;
 import com.adudasena.mmsystem.dto.UsuarioDTO;
 import com.adudasena.mmsystem.dto.UsuarioResponseDTO;
 import com.adudasena.mmsystem.service.UsuarioService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -41,12 +42,12 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public ResponseEntity<UsuarioResponseDTO> salvar(@RequestBody UsuarioDTO dto) {
+    public ResponseEntity<UsuarioResponseDTO> salvar(@Valid @RequestBody UsuarioDTO dto) {
         return ResponseEntity.status(201).body(UsuarioResponseDTO.from(service.salvar(dto)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UsuarioResponseDTO> atualizar(@PathVariable Long id, @RequestBody UsuarioDTO dto) {
+    public ResponseEntity<UsuarioResponseDTO> atualizar(@PathVariable Long id, @Valid @RequestBody UsuarioDTO dto) {
         return ResponseEntity.ok(UsuarioResponseDTO.from(service.atualizar(id, dto)));
     }
 

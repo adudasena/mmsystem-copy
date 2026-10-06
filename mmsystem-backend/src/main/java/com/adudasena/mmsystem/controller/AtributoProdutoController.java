@@ -1,8 +1,10 @@
 package com.adudasena.mmsystem.controller;
 
-import com.adudasena.mmsystem.model.*;
-import com.adudasena.mmsystem.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.adudasena.mmsystem.dto.AtributoRequestDTO;
+import com.adudasena.mmsystem.dto.AtributoResponseDTO;
+import com.adudasena.mmsystem.service.AtributoProdutoService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,29 +13,38 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/atributos")
-@CrossOrigin(origins = "*")
-@lombok.RequiredArgsConstructor
+@RequiredArgsConstructor
 public class AtributoProdutoController {
 
-    private final CategoriaRepository categoriaRepository;
-    private final TamanhoRepository tamanhoRepository;
-    private final CorRepository corRepository;
+    private final AtributoProdutoService service;
 
     @GetMapping("/categorias")
-    public ResponseEntity<List<Categoria>> listarCategorias() { return ResponseEntity.ok(categoriaRepository.findAll()); }
+    public ResponseEntity<List<AtributoResponseDTO>> listarCategorias() {
+        return ResponseEntity.ok(service.listarCategorias());
+    }
 
     @PostMapping("/categorias")
-    public ResponseEntity<Categoria> criarCategoria(@RequestBody Categoria categoria) { return ResponseEntity.status(HttpStatus.CREATED).body(categoriaRepository.save(categoria)); }
+    public ResponseEntity<AtributoResponseDTO> criarCategoria(@Valid @RequestBody AtributoRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.criarCategoria(dto));
+    }
 
     @GetMapping("/tamanhos")
-    public ResponseEntity<List<Tamanho>> listarTamanhos() { return ResponseEntity.ok(tamanhoRepository.findAll()); }
+    public ResponseEntity<List<AtributoResponseDTO>> listarTamanhos() {
+        return ResponseEntity.ok(service.listarTamanhos());
+    }
 
     @PostMapping("/tamanhos")
-    public ResponseEntity<Tamanho> criarTamanho(@RequestBody Tamanho tamanho) { return ResponseEntity.status(HttpStatus.CREATED).body(tamanhoRepository.save(tamanho)); }
+    public ResponseEntity<AtributoResponseDTO> criarTamanho(@Valid @RequestBody AtributoRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.criarTamanho(dto));
+    }
 
     @GetMapping("/cores")
-    public ResponseEntity<List<Cor>> listarCores() { return ResponseEntity.ok(corRepository.findAll()); }
+    public ResponseEntity<List<AtributoResponseDTO>> listarCores() {
+        return ResponseEntity.ok(service.listarCores());
+    }
 
     @PostMapping("/cores")
-    public ResponseEntity<Cor> criarCor(@RequestBody Cor cor) { return ResponseEntity.status(HttpStatus.CREATED).body(corRepository.save(cor)); }
+    public ResponseEntity<AtributoResponseDTO> criarCor(@Valid @RequestBody AtributoRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.criarCor(dto));
+    }
 }

@@ -1,7 +1,14 @@
 package com.adudasena.mmsystem.dto;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+
 public class ItemPedidoDTO {
+    @NotNull(message = "O produto do item é obrigatório.")
     private Long fkProdutoId;
+
+    @NotNull(message = "A quantidade é obrigatória.")
+    @Min(value = 1, message = "A quantidade deve ser pelo menos 1.")
     private Integer quantidade;
 
     public ItemPedidoDTO() {}

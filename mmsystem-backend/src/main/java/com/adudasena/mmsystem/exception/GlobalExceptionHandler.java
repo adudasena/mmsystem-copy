@@ -1,4 +1,4 @@
-package com.adudasena.mmsystem.controller;
+package com.adudasena.mmsystem.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,4 +68,3 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(erro);
     }
 }
-

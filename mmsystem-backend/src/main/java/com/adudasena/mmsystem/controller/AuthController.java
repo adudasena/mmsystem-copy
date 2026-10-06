@@ -1,10 +1,14 @@
 package com.adudasena.mmsystem.controller;
 
+import com.adudasena.mmsystem.dto.LoginRequestDTO;
+import com.adudasena.mmsystem.dto.UsuarioDTO;
 import com.adudasena.mmsystem.dto.UsuarioResponseDTO;
 import com.adudasena.mmsystem.enums.Perfil;
 import com.adudasena.mmsystem.model.Usuario;
 import com.adudasena.mmsystem.repository.UsuarioRepository;
 import com.adudasena.mmsystem.security.JwtService;
+import com.adudasena.mmsystem.service.UsuarioService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -20,18 +24,16 @@ public class AuthController {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final UsuarioService usuarioService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
-        String email = body.get("email");
-        String senha = body.get("senha");
-
-        Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDTO body) {
+        Usuario usuario = usuarioRepository.findByEmail(body.email()).orElse(null);
 
         if (usuario == null
                 || usuario.getDeletedAt() != null
                 || usuario.getSenha() == null
-                || !passwordEncoder.matches(senha, usuario.getSenha())) {
+                || !passwordEncoder.matches(body.senha(), usuario.getSenha())) {
             return ResponseEntity.status(401).body(Map.of(
                     "erro", "Unauthorized",
                     "mensagem", "E-mail ou senha inválidos."
@@ -58,23 +60,15 @@ public class AuthController {
     }
 
     @PostMapping("/registrar")
-    public ResponseEntity<?> registrarCliente(@RequestBody Usuario usuario) {
-        if (usuario.getEmail() != null && usuarioRepository.findByEmail(usuario.getEmail()).isPresent()) {
+    public ResponseEntity<?> registrarCliente(@Valid @RequestBody UsuarioDTO dto) {
+        if (dto.getEmail() != null && usuarioRepository.findByEmail(dto.getEmail()).isPresent()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "erro", "Validação de dados",
                     "mensagem", "E-mail já cadastrado."
             ));
         }
 
-        usuario.setId(null);
-        usuario.setPerfil(Perfil.ROLE_CLIENTE);
-        usuario.setDeletedAt(null);
-
-        if (usuario.getSenha() != null && !usuario.getSenha().isBlank()) {
-            usuario.setSenha(passwordEncoder.encode(usuario.getSenha()));
-        }
-
-        Usuario salvo = usuarioRepository.save(usuario);
-        return ResponseEntity.status(201).body(UsuarioResponseDTO.from(salvo));
+        dto.setPerfil(Perfil.ROLE_CLIENTE.name());
+        return ResponseEntity.status(201).body(UsuarioResponseDTO.from(usuarioService.salvar(dto)));
     }
 }

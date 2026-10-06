@@ -1,64 +1,62 @@
 package com.adudasena.mmsystem.controller;
 
 import com.adudasena.mmsystem.dto.CondicionalDTO;
-import com.adudasena.mmsystem.model.Condicional;
+import com.adudasena.mmsystem.dto.CondicionalResponseDTO;
 import com.adudasena.mmsystem.service.CondicionalService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import java.util.List;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/condicionais")
-@CrossOrigin("*")
-@lombok.RequiredArgsConstructor
+@RequiredArgsConstructor
 public class CondicionalController {
 
     private final CondicionalService service;
 
     @GetMapping
-    public ResponseEntity<Page<Condicional>> listarTodos(
+    public ResponseEntity<Page<CondicionalResponseDTO>> listarTodos(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        return ResponseEntity.ok(service.listarTodos(pageable));
+        return ResponseEntity.ok(service.listarTodos(pageable).map(CondicionalResponseDTO::from));
     }
 
     @GetMapping("/excluidos")
-    public ResponseEntity<Page<Condicional>> listarExcluidos(
+    public ResponseEntity<Page<CondicionalResponseDTO>> listarExcluidos(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        return ResponseEntity.ok(service.listarExcluidos(pageable));
+        return ResponseEntity.ok(service.listarExcluidos(pageable).map(CondicionalResponseDTO::from));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Condicional> buscarPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(service.buscarPorId(id));
+    public ResponseEntity<CondicionalResponseDTO> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(CondicionalResponseDTO.from(service.buscarPorId(id)));
     }
 
     @PostMapping
-    public ResponseEntity<Condicional> criar(@RequestBody CondicionalDTO dto) {
-        return ResponseEntity.status(201).body(service.criar(dto));
+    public ResponseEntity<CondicionalResponseDTO> criar(@Valid @RequestBody CondicionalDTO dto) {
+        return ResponseEntity.status(201).body(CondicionalResponseDTO.from(service.criar(dto)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Condicional> atualizar(@PathVariable Long id,
-                                                 @RequestBody CondicionalDTO dto) {
-        return ResponseEntity.ok(service.atualizar(id, dto));
+    public ResponseEntity<CondicionalResponseDTO> atualizar(@PathVariable Long id,
+                                                            @Valid @RequestBody CondicionalDTO dto) {
+        return ResponseEntity.ok(CondicionalResponseDTO.from(service.atualizar(id, dto)));
     }
 
-    // Ajustado para receber o DTO com a lista vinda do Front-end
     @PutMapping("/{id}/finalizar")
-    public ResponseEntity<Condicional> finalizar(@PathVariable Long id,
-                                                 @RequestBody CondicionalDTO dto) {
-        return ResponseEntity.ok(service.finalizar(id, dto));
+    public ResponseEntity<CondicionalResponseDTO> finalizar(@PathVariable Long id,
+                                                            @Valid @RequestBody CondicionalDTO dto) {
+        return ResponseEntity.ok(CondicionalResponseDTO.from(service.finalizar(id, dto)));
     }
 
     @DeleteMapping("/{id}")

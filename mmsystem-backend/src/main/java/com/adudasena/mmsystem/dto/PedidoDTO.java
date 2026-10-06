@@ -1,5 +1,9 @@
 package com.adudasena.mmsystem.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -9,8 +13,14 @@ public class PedidoDTO {
     private LocalDate dataPedido;
     private String status;
     private BigDecimal valorTotal;
+
+    @NotNull(message = "O cliente é obrigatório.")
     private Long fkClienteId;
+
     private Long fkCondicionalId;
+
+    @NotEmpty(message = "Informe ao menos um item.")
+    @Valid
     private List<ItemPedidoDTO> itens;
 
     public PedidoDTO() {}
