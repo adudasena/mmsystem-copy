@@ -45,7 +45,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <>
           <MenuLateral aberto={menuAberto} onFechar={() => setMenuAberto(false)} />
 
-          <header className="lg:hidden sticky top-0 z-30 bg-[#2c3e1c] text-white px-4 py-3 flex items-center gap-3 shadow-md">
+          <header className="lg:hidden sticky top-0 z-30 bg-[#2c3e1c] text-white px-3 py-2 flex items-center shadow-md">
             <button
               type="button"
               onClick={() => setMenuAberto(true)}
@@ -54,7 +54,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               <Menu className="w-6 h-6" />
             </button>
-            <span className="font-serif font-bold tracking-wide text-sm">Maria Morena</span>
           </header>
 
           <main className="lg:pl-72 min-h-screen min-w-0 overflow-x-hidden">

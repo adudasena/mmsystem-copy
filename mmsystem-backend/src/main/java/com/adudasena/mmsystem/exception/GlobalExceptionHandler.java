@@ -21,7 +21,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         logger.error("Violação de integridade de dados: ", ex);
         Map<String, String> erro = new HashMap<>();
-        erro.put("mensagem", "Não foi possível concluir a ação. Verifique se os dados inseridos possuem registros ou relacionamentos pendentes.");
+        String detalhe = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : "";
+        String mensagem = "Não foi possível concluir a ação. Verifique se os dados inseridos possuem registros ou relacionamentos pendentes.";
+        if (detalhe != null && detalhe.toLowerCase().contains("telefone")) {
+            mensagem = "Este WhatsApp já está cadastrado. Confirme o número na sacola e tente de novo.";
+        }
+        erro.put("mensagem", mensagem);
+        erro.put("message", mensagem);
         erro.put("erro", "Dados em conflito");
         return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
     }

@@ -1,9 +1,9 @@
 'use client';
 
 /* eslint-disable @next/next/no-img-element */
-import React, { useState, useEffect, ChangeEvent } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AxiosError } from 'axios';
-import { ShoppingBag, MessageSquare, Camera, Search, Trash2 } from 'lucide-react';
+import { ShoppingBag, MessageSquare, ChevronDown } from 'lucide-react';
 import api from '@/services/api';
 import SystemModal, { ModalType } from '@/components/SystemModal';
 
@@ -44,8 +44,11 @@ interface PageSpring<T> {
 
 interface ApiErrorResponse {
   message?: string;
+  mensagem?: string;
   erro?: string;
 }
+
+const CATEGORIAS_VITRINE = ['Vestidos', 'Blusas', 'Calças', 'Saias', 'Conjuntos'] as const;
 
 export default function VitrineProdutos() {
   const [produtos, setProdutos] = useState<ProdutoVitrine[]>([]);
@@ -54,7 +57,8 @@ export default function VitrineProdutos() {
 
   // Filtros
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>('');
-  const [tamanhoFiltro, setTamanhoFiltro] = useState<string>('');
+  const [filtroAberto, setFiltroAberto] = useState<boolean>(false);
+  const filtroRef = useRef<HTMLDivElement>(null);
 
   // Estados do Modal / Sacola
   const [produtoSelecionado, setProdutoSelecionado] = useState<ProdutoVitrine | null>(null);
@@ -110,6 +114,16 @@ export default function VitrineProdutos() {
     return () => {
       montado = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const fecharFora = (evento: MouseEvent) => {
+      if (filtroRef.current && !filtroRef.current.contains(evento.target as Node)) {
+        setFiltroAberto(false);
+      }
+    };
+    document.addEventListener('mousedown', fecharFora);
+    return () => document.removeEventListener('mousedown', fecharFora);
   }, []);
 
   // Helper para obter a foto do produto
@@ -314,7 +328,10 @@ export default function VitrineProdutos() {
     } catch (err) {
       const erroAxios = err as AxiosError<ApiErrorResponse>;
       console.error('Erro ao registrar pedido:', erroAxios);
-      const mensagemErro = erroAxios.response?.data?.message || erroAxios.response?.data?.erro || 'Falha na conexão com o servidor.';
+      const mensagemErro = erroAxios.response?.data?.mensagem
+        || erroAxios.response?.data?.message
+        || erroAxios.response?.data?.erro
+        || 'Falha na conexão com o servidor.';
       
       setModalSistema({
         isOpen: true,
@@ -361,60 +378,90 @@ export default function VitrineProdutos() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#dcded0] text-gray-800 font-sans pb-24">
-      {/* HEADER / BARRA SUPERIOR */}
-      <header className="bg-[#2c3e1c] text-white py-4 px-4 md:px-8 sticky top-0 z-40 shadow-md relative flex items-center justify-between min-h-[64px]">
-        <div className="text-xs uppercase font-bold tracking-widest text-[#a8b896] hidden md:block">
-          Maria Morena • Modas
-        </div>
+  const rotuloCategoria = categoriaFiltro || 'Todas as categorias';
 
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
+  return (
+    <div className="min-h-screen bg-[#dcded0] text-gray-800 font-sans pb-28 overflow-x-hidden">
+      {/* HEADER / BARRA SUPERIOR */}
+      <header className="bg-[#2c3e1c] text-white py-3 px-3 sm:px-6 md:px-8 sticky top-0 z-40 shadow-md flex items-center justify-between gap-2 min-h-[56px] overflow-hidden">
+        <div className="w-10 shrink-0 hidden md:block" aria-hidden />
+
+        <div className="flex-1 min-w-0 flex items-center justify-center overflow-hidden h-8 md:h-9">
           <img
             src="/escritocompleto1linha.svg"
-            alt="Maria Morena Logo"
-            className="h-9 md:h-10 w-auto filter brightness-0 invert"
+            alt="Maria Morena"
+            className="h-8 md:h-9 w-auto max-w-full object-contain object-center"
           />
         </div>
 
-        <div className="ml-auto">
-          <button
-            type="button"
-            onClick={() => setMostrarCarrinho(true)}
-            className="relative bg-[#3d5427] hover:bg-[#48632e] text-white text-xs md:text-sm px-3 md:px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 shadow-md cursor-pointer border border-[#527035] min-h-11"
-          >
-            <ShoppingBag className="w-4 h-4" />
-            <span className="hidden sm:inline">Sacola Condicional</span>
-            {carrinho.length > 0 && (
-              <span className="bg-white text-[#2c3e1c] text-xs font-extrabold rounded-full w-5 h-5 flex items-center justify-center shadow-xs">
-                {carrinho.length}
-              </span>
-            )}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setMostrarCarrinho(true)}
+          className="relative shrink-0 bg-white/10 hover:bg-white/15 text-white p-2.5 rounded-full font-bold transition flex items-center justify-center cursor-pointer min-h-11 min-w-11"
+          aria-label="Abrir sacola"
+        >
+          <ShoppingBag className="w-5 h-5" />
+          {carrinho.length > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 bg-white text-[#2c3e1c] text-[10px] font-extrabold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
+              {carrinho.length}
+            </span>
+          )}
+        </button>
       </header>
 
       {/* TITULO DA VITRINE + FILTROS */}
-      <section className="p-4 md:p-6 max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">Vitrine Digital</h1>
-          <p className="text-xs text-gray-600 mt-1">Escolha suas peças para experimentar em casa no condicional ou comprar diretamente.</p>
+      <section className="p-4 md:p-6 max-w-7xl mx-auto min-w-0">
+        <div className="mb-5">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#2d3a22]">Vitrine Digital</h1>
+          <p className="text-sm text-gray-600 mt-1 leading-snug">
+            Escolha as peças para experimentar em casa ou comprar agora.
+          </p>
         </div>
 
-        {/* CONTROLES DE FILTRO */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <select
-            value={categoriaFiltro}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => setCategoriaFiltro(e.target.value)}
-            className="bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 shadow-sm focus:outline-none w-full sm:w-auto min-h-11"
+        <div className="relative mb-6 z-20" ref={filtroRef}>
+          <button
+            type="button"
+            onClick={() => setFiltroAberto((aberto) => !aberto)}
+            className="w-full sm:w-64 bg-white border border-[#c5cbb8] rounded-xl px-4 py-3 text-sm font-medium text-gray-800 shadow-sm flex items-center justify-between gap-2 min-h-11"
+            aria-expanded={filtroAberto}
+            aria-haspopup="listbox"
           >
-            <option value="">Todas as Categorias ▼</option>
-            <option value="Vestidos">Vestidos</option>
-            <option value="Blusas">Blusas</option>
-            <option value="Calças">Calças</option>
-            <option value="Saias">Saias</option>
-            <option value="Conjuntos">Conjuntos</option>
-          </select>
+            <span className="truncate">{rotuloCategoria}</span>
+            <ChevronDown className={`w-4 h-4 shrink-0 text-gray-500 transition-transform ${filtroAberto ? 'rotate-180' : ''}`} />
+          </button>
+          {filtroAberto && (
+            <ul
+              role="listbox"
+              className="absolute left-0 right-0 sm:right-auto sm:w-64 mt-1.5 bg-white border border-[#c5cbb8] rounded-xl shadow-lg overflow-hidden z-30 max-h-64 overflow-y-auto"
+            >
+              <li>
+                <button
+                  type="button"
+                  className={`w-full text-left px-4 py-2.5 text-sm hover:bg-[#eef2e4] ${!categoriaFiltro ? 'font-semibold text-[#2c3e1c] bg-[#eef2e4]' : 'text-gray-700'}`}
+                  onClick={() => {
+                    setCategoriaFiltro('');
+                    setFiltroAberto(false);
+                  }}
+                >
+                  Todas as categorias
+                </button>
+              </li>
+              {CATEGORIAS_VITRINE.map((cat) => (
+                <li key={cat}>
+                  <button
+                    type="button"
+                    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-[#eef2e4] ${categoriaFiltro === cat ? 'font-semibold text-[#2c3e1c] bg-[#eef2e4]' : 'text-gray-700'}`}
+                    onClick={() => {
+                      setCategoriaFiltro(cat);
+                      setFiltroAberto(false);
+                    }}
+                  >
+                    {cat}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* FEEDBACKS */}
@@ -432,53 +479,47 @@ export default function VitrineProdutos() {
 
         {/* GRID DE PRODUTOS */}
         {!loading && !erro && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
             {produtosFiltrados.map((prod) => {
               const src = obterImagemUrl(prod);
               return (
                 <div
                   key={prod.id}
-                  className="bg-white rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between border border-gray-100"
+                  className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col border border-[#e4e6dc] min-w-0"
                 >
-                  <div className="relative h-48 sm:h-52 w-full bg-gray-100 overflow-hidden">
+                  <div className="relative aspect-[3/4] w-full bg-[#eceee4] overflow-hidden">
                     {src ? (
                       <img
                         src={src}
                         alt={prod.nome}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover hover:scale-[1.03] transition-transform duration-300"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300 text-4xl">
-                        👗
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-medium">
+                        Sem foto
                       </div>
                     )}
-                    <span className="absolute top-2 left-2 bg-[#2c3e1c]/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs uppercase">
+                    <span className="absolute top-2 left-2 bg-[#2c3e1c]/85 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide">
                       {prod.categoria || 'Geral'}
                     </span>
                   </div>
 
-                  <div className="p-3.5 flex flex-col justify-between flex-1">
-                    <div>
-                      <h3 className="font-bold text-xs md:text-sm text-gray-800 line-clamp-1">{prod.nome}</h3>
-                      <p className="text-[11px] text-gray-500 line-clamp-2 mt-0.5">
-                        {prod.descricao || 'Peça exclusiva da coleção.'}
+                  <div className="p-3 flex flex-col flex-1 min-w-0">
+                    <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 leading-snug">{prod.nome}</h3>
+                    <p className="text-xs text-gray-500 line-clamp-2 mt-1 min-h-[2rem]">
+                      {prod.descricao || 'Peça da coleção Maria Morena.'}
+                    </p>
+
+                    <div className="mt-auto pt-3 flex flex-col gap-2">
+                      <p className="text-base font-semibold text-[#2c3e1c] tabular-nums">
+                        R$ {Number(prod.preco || 0).toFixed(2).replace('.', ',')}
                       </p>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between pt-2 border-t border-gray-100">
-                      <div>
-                        <span className="text-[10px] text-gray-400 block uppercase font-semibold">Valor</span>
-                        <span className="text-sm md:text-base font-extrabold text-[#2c3e1c]">
-                          R$ {Number(prod.preco || 0).toFixed(2).replace('.', ',')}
-                        </span>
-                      </div>
-
                       <button
                         type="button"
                         onClick={() => abrirModalProduto(prod)}
-                        className="bg-[#2c3e1c] hover:bg-[#3d5427] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-xs cursor-pointer"
+                        className="w-full bg-[#2c3e1c] hover:bg-[#3d5427] text-white text-xs font-semibold py-2.5 rounded-lg transition cursor-pointer min-h-10"
                       >
-                        + Escolher
+                        Escolher
                       </button>
                     </div>
                   </div>
@@ -635,22 +676,28 @@ export default function VitrineProdutos() {
 
       {/* DRAWER DA SACOLA */}
       {mostrarCarrinho && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex justify-end backdrop-blur-xs">
-          <div className="bg-white w-full max-w-sm h-full p-6 flex flex-col justify-between shadow-2xl overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-stretch sm:justify-end">
+          <button
+            type="button"
+            className="absolute inset-0 cursor-pointer"
+            aria-label="Fechar sacola"
+            onClick={() => setMostrarCarrinho(false)}
+          />
+          <div className="relative z-10 bg-white w-full sm:max-w-sm sm:h-full max-h-[72vh] sm:max-h-none rounded-t-2xl sm:rounded-none p-5 sm:p-6 flex flex-col shadow-2xl overflow-y-auto">
             <div>
-              <div className="flex justify-between items-center mb-6 border-b pb-3">
-                <h2 className="text-base font-bold text-[#2c3e1c]">Sacola Condicional 🛍️</h2>
+              <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+                <h2 className="text-base font-semibold text-[#2c3e1c]">Sacola</h2>
                 <button
                   type="button"
                   onClick={() => setMostrarCarrinho(false)}
-                  className="text-gray-400 hover:text-black font-bold cursor-pointer text-base"
+                  className="text-gray-400 hover:text-black font-bold cursor-pointer text-base min-w-8 min-h-8"
                 >
                   ✕
                 </button>
               </div>
 
               {carrinho.length === 0 ? (
-                <p className="text-gray-400 text-xs text-center py-10">Nenhum item adicionado ainda.</p>
+                <p className="text-gray-500 text-sm text-center py-6">Nenhum item adicionado ainda.</p>
               ) : (
                 <div className="space-y-3 max-h-[42vh] overflow-y-auto pr-1">
                   {carrinho.map((item, index) => (
@@ -798,16 +845,16 @@ export default function VitrineProdutos() {
         </div>
       )}
 
-      {/* FAB sacola — visível no celular */}
+      {/* FAB sacola — visível no celular, não cobre o último card */}
       <button
         type="button"
         onClick={() => setMostrarCarrinho(true)}
-        className="sm:hidden fixed bottom-5 right-4 z-30 bg-[#2c3e1c] text-white rounded-full shadow-lg px-4 py-3 min-h-14 flex items-center gap-2 font-bold text-sm border border-[#527035]"
+        className="sm:hidden fixed bottom-5 right-4 z-30 bg-[#2c3e1c] text-white rounded-full shadow-lg p-3.5 min-h-12 min-w-12 flex items-center justify-center"
+        aria-label="Abrir sacola"
       >
         <ShoppingBag className="w-5 h-5" />
-        Sacola
         {carrinho.length > 0 && (
-          <span className="bg-white text-[#2c3e1c] text-xs font-extrabold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 bg-white text-[#2c3e1c] text-[10px] font-extrabold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
             {carrinho.length}
           </span>
         )}

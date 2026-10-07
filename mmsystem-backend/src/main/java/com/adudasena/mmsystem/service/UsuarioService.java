@@ -37,8 +37,8 @@ public class UsuarioService {
 
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public VitrineClienteLookupDTO consultarClienteVitrine(String telefoneCliente) {
-        Usuario existente = localizarClientePorTelefone(telefoneCliente);
-        if (existente == null) {
+        Usuario existente = localizarPorTelefone(telefoneCliente);
+        if (existente == null || existente.getDeletedAt() != null || !ehCliente(existente)) {
             return new VitrineClienteLookupDTO(false, null);
         }
         return new VitrineClienteLookupDTO(true, existente.getNome());
@@ -59,12 +59,19 @@ public class UsuarioService {
         }
 
         if (telefoneCliente != null && !telefoneCliente.trim().isEmpty()) {
-            String telefone = telefoneCliente.trim();
-            Usuario existente = localizarClientePorTelefone(telefone);
+            Usuario existente = localizarPorTelefone(telefoneCliente);
             if (existente != null) {
+                if (!ehCliente(existente)) {
+                    throw new IllegalArgumentException(
+                            "Este WhatsApp já está cadastrado na loja. Use outro número ou fale com a atendente.");
+                }
                 existente.setDeletedAt(null);
                 if (existente.getPerfil() == null) {
                     existente.setPerfil(Perfil.ROLE_CLIENTE);
+                }
+                String digits = somenteDigitos(telefoneCliente);
+                if (!digits.isEmpty()) {
+                    existente.setTelefone(digits);
                 }
                 return aplicarNomeSeSolicitado(existente, nomeCliente, atualizarNome);
             }
@@ -73,8 +80,8 @@ public class UsuarioService {
             novoCliente.setNome(nomeCliente != null && !nomeCliente.trim().isEmpty()
                     ? nomeCliente.trim()
                     : "Cliente Vitrine");
-            String soDigitos = telefone.replaceAll("\\D", "");
-            novoCliente.setTelefone(soDigitos.isEmpty() ? telefone : soDigitos);
+            String soDigitos = somenteDigitos(telefoneCliente);
+            novoCliente.setTelefone(soDigitos.isEmpty() ? telefoneCliente.trim() : soDigitos);
             novoCliente.setPerfil(Perfil.ROLE_CLIENTE);
             return repository.save(novoCliente);
         }
@@ -82,23 +89,57 @@ public class UsuarioService {
         throw new IllegalArgumentException("Informe o WhatsApp para identificar a cliente.");
     }
 
-    private Usuario localizarClientePorTelefone(String telefoneCliente) {
+    private Usuario localizarPorTelefone(String telefoneCliente) {
         if (telefoneCliente == null || telefoneCliente.isBlank()) {
             return null;
         }
-        String telefone = telefoneCliente.trim();
-        String soDigitos = telefone.replaceAll("\\D", "");
-        Usuario existente = repository.findByTelefone(telefone).orElse(null);
-        if (existente == null && !soDigitos.isEmpty() && !soDigitos.equals(telefone)) {
-            existente = repository.findByTelefone(soDigitos).orElse(null);
+        for (String candidato : variantesTelefone(telefoneCliente)) {
+            Usuario existente = repository.findByTelefone(candidato).orElse(null);
+            if (existente != null) {
+                return existente;
+            }
         }
-        if (existente == null || existente.getDeletedAt() != null) {
+        String chave = chaveWhatsapp(somenteDigitos(telefoneCliente));
+        if (chave.length() < 10) {
             return null;
         }
-        if (existente.getPerfil() != Perfil.ROLE_CLIENTE) {
-            return null;
+        for (Usuario candidato : repository.findAll()) {
+            if (chave.equals(chaveWhatsapp(somenteDigitos(candidato.getTelefone())))) {
+                return candidato;
+            }
         }
-        return existente;
+        return null;
+    }
+
+    private String chaveWhatsapp(String digits) {
+        if (digits == null || digits.isEmpty()) {
+            return "";
+        }
+        return digits.length() > 11 ? digits.substring(digits.length() - 11) : digits;
+    }
+
+    private boolean ehCliente(Usuario usuario) {
+        return usuario.getPerfil() == null || usuario.getPerfil() == Perfil.ROLE_CLIENTE;
+    }
+
+    private String somenteDigitos(String valor) {
+        return valor == null ? "" : valor.replaceAll("\\D", "");
+    }
+
+    private java.util.LinkedHashSet<String> variantesTelefone(String telefoneCliente) {
+        java.util.LinkedHashSet<String> variantes = new java.util.LinkedHashSet<>();
+        String trim = telefoneCliente.trim();
+        variantes.add(trim);
+        String digits = somenteDigitos(trim);
+        if (!digits.isEmpty()) {
+            variantes.add(digits);
+            if (digits.startsWith("55") && digits.length() >= 12) {
+                variantes.add(digits.substring(2));
+            } else if (digits.length() == 10 || digits.length() == 11) {
+                variantes.add("55" + digits);
+            }
+        }
+        return variantes;
     }
 
     private Usuario aplicarNomeSeSolicitado(Usuario usuario, String nomeCliente, boolean atualizarNome) {
