@@ -67,6 +67,11 @@ export default function VitrineProdutos() {
   // Dados da cliente para a sacola
   const [nomeCliente, setNomeCliente] = useState<string>('');
   const [telefoneCliente, setTelefoneCliente] = useState<string>('');
+  const [compraDireta, setCompraDireta] = useState<boolean>(false);
+  const [identidade, setIdentidade] = useState<'nova' | 'pendente' | 'confirmada'>('nova');
+  const [nomeCadastrado, setNomeCadastrado] = useState<string>('');
+  const [editarNome, setEditarNome] = useState<boolean>(false);
+  const [consultandoCliente, setConsultandoCliente] = useState<boolean>(false);
 
   // ─── Efeito de Inicialização Compatível com Paginação ───
   useEffect(() => {
@@ -244,12 +249,32 @@ export default function VitrineProdutos() {
   const finalizarPedido = async (): Promise<void> => {
     if (carrinho.length === 0) return;
 
-    if (!nomeCliente.trim() || !telefoneCliente.trim()) {
+    if (!telefoneCliente.trim()) {
       setModalSistema({
         isOpen: true,
         type: 'warning',
         title: 'Dados Obrigatórios',
-        message: 'Por favor, informe seu Nome e WhatsApp para agendar sua sacola condicional.',
+        message: 'Informe seu WhatsApp para identificarmos seu cadastro.',
+      });
+      return;
+    }
+
+    if (identidade === 'pendente') {
+      setModalSistema({
+        isOpen: true,
+        type: 'warning',
+        title: 'Confirme seu cadastro',
+        message: 'Este WhatsApp já está cadastrado. Confirme se é você antes de continuar.',
+      });
+      return;
+    }
+
+    if (!nomeCliente.trim()) {
+      setModalSistema({
+        isOpen: true,
+        type: 'warning',
+        title: 'Dados Obrigatórios',
+        message: 'Por favor, informe seu nome.',
       });
       return;
     }
@@ -257,6 +282,8 @@ export default function VitrineProdutos() {
     const payload = {
       nomeCliente: nomeCliente.trim(),
       telefoneCliente: telefoneCliente.trim(),
+      tipoFluxo: compraDireta ? 'VENDA_DIRETA' : 'CONDICIONAL',
+      atualizarNome: identidade === 'confirmada' && editarNome,
       itens: carrinho.map((item) => ({
         produtoId: item.produtoId,
         quantidade: item.quantidade,
@@ -266,41 +293,24 @@ export default function VitrineProdutos() {
     };
 
     try {
-      try {
-        await api.post('/vitrine/pedido', payload);
-      } catch {
-        // Tenta o endpoint alternativo caso ocorra divergência de rota
-        await api.post('/pedidos/vitrine', payload);
-      }
-
-      const resumo = carrinho
-        .map((i) => `• ${i.quantidade}x ${i.nome} (${i.tamanhoEscolhido} / ${i.corEscolhida}) — R$ ${(i.preco * i.quantidade).toFixed(2).replace('.', ',')}`)
-        .join('\n');
-
-      const msgWhatsapp = encodeURIComponent(
-        `Olá Maria Morena! Meu nome é *${nomeCliente.trim()}*.\n\n` +
-        `Gostaria de solicitar as seguintes peças para provar em condicional:\n\n${resumo}\n\n` +
-        `*Total Estimado:* R$ ${totalCarrinho.toFixed(2).replace('.', ',')}\n\n` +
-        `Por favor, me confirme a disponibilidade para retirada/entrega!`
-      );
+      await api.post('/vitrine/pedido', payload);
 
       setCarrinho([]);
       setNomeCliente('');
       setTelefoneCliente('');
+      setIdentidade('nova');
+      setNomeCadastrado('');
+      setEditarNome(false);
       setMostrarCarrinho(false);
 
       setModalSistema({
         isOpen: true,
         type: 'success',
-        title: 'Sacola Solicitada com Sucesso!',
-        message: 'Sua solicitação de sacola condicional foi registrada! Redirecionando para o WhatsApp da loja...',
-        onConfirm: () => {
-          window.open(`https://wa.me/5543996623157?text=${msgWhatsapp}`, '_blank');
-        }
+        title: compraDireta ? 'Pedido registrado!' : 'Sacola solicitada!',
+        message: compraDireta
+          ? 'Sua compra direta foi registrada. A loja confirma o pagamento em seguida.'
+          : 'Sua sacola condicional foi registrada. A loja entra em contato pelo WhatsApp informado.',
       });
-
-      // Redireciona diretamente para o WhatsApp
-      window.open(`https://wa.me/5543996623157?text=${msgWhatsapp}`, '_blank');
     } catch (err) {
       const erroAxios = err as AxiosError<ApiErrorResponse>;
       console.error('Erro ao registrar pedido:', erroAxios);
@@ -322,6 +332,34 @@ export default function VitrineProdutos() {
   });
 
   const totalCarrinho = carrinho.reduce((acc, item) => acc + item.preco * item.quantidade, 0);
+
+  const consultarCadastroPorTelefone = async (): Promise<void> => {
+    const tel = telefoneCliente.replace(/\D/g, '');
+    if (tel.length < 10) {
+      setIdentidade('nova');
+      setNomeCadastrado('');
+      setEditarNome(false);
+      return;
+    }
+    try {
+      setConsultandoCliente(true);
+      const res = await api.get<{ existe: boolean; nome?: string }>(`/vitrine/cliente?telefone=${encodeURIComponent(tel)}`);
+      if (res.data?.existe && res.data.nome) {
+        setIdentidade('pendente');
+        setNomeCadastrado(res.data.nome);
+        setNomeCliente(res.data.nome);
+        setEditarNome(false);
+      } else {
+        setIdentidade('nova');
+        setNomeCadastrado('');
+        setEditarNome(false);
+      }
+    } catch {
+      setIdentidade('nova');
+    } finally {
+      setConsultandoCliente(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#dcded0] text-gray-800 font-sans pb-24">
@@ -646,25 +684,96 @@ export default function VitrineProdutos() {
                 <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
                   <h3 className="text-xs font-bold text-gray-700 uppercase">Seus Dados para Contato:</h3>
                   <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Seu WhatsApp *</label>
+                    <input
+                      type="text"
+                      value={telefoneCliente}
+                      onChange={(e) => {
+                        setTelefoneCliente(e.target.value);
+                        setIdentidade('nova');
+                        setNomeCadastrado('');
+                        setEditarNome(false);
+                      }}
+                      onBlur={() => { void consultarCadastroPorTelefone(); }}
+                      placeholder="Ex: (43) 99999-9999"
+                      className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none focus:border-[#2c3e1c]"
+                    />
+                    {consultandoCliente && (
+                      <p className="text-[10px] text-gray-500 mt-1">Consultando cadastro…</p>
+                    )}
+                  </div>
+
+                  {identidade === 'pendente' && (
+                    <div className="bg-[#eef2e4] border border-[#2c3e1c]/20 rounded-lg p-3 space-y-2">
+                      <p className="text-xs text-gray-800">
+                        Este WhatsApp já está cadastrado. Cliente: <strong>{nomeCadastrado}</strong>. É você?
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIdentidade('confirmada')}
+                          className="px-3 py-1.5 bg-[#2c3e1c] text-white text-[10px] font-bold uppercase rounded-md cursor-pointer"
+                        >
+                          Sim, sou eu
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTelefoneCliente('');
+                            setNomeCliente('');
+                            setNomeCadastrado('');
+                            setIdentidade('nova');
+                            setEditarNome(false);
+                          }}
+                          className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-[10px] font-bold uppercase rounded-md cursor-pointer"
+                        >
+                          Não é meu número
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {identidade === 'confirmada' && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-3 space-y-2">
+                      <p className="text-xs text-gray-700">
+                        Cadastro confirmado: <strong>{nomeCadastrado}</strong>
+                      </p>
+                      {!editarNome ? (
+                        <button
+                          type="button"
+                          onClick={() => setEditarNome(true)}
+                          className="text-[10px] font-bold text-[#2c3e1c] underline cursor-pointer"
+                        >
+                          Nome desatualizado?
+                        </button>
+                      ) : (
+                        <p className="text-[10px] text-gray-500">
+                          O pedido fica neste WhatsApp. Só o nome do cadastro será atualizado.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div>
                     <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Seu Nome *</label>
                     <input
                       type="text"
                       value={nomeCliente}
                       onChange={(e) => setNomeCliente(e.target.value)}
                       placeholder="Ex: Maria da Silva"
-                      className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none focus:border-[#2c3e1c]"
+                      disabled={identidade === 'pendente' || (identidade === 'confirmada' && !editarNome)}
+                      className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none focus:border-[#2c3e1c] disabled:bg-gray-100 disabled:text-gray-600"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Seu WhatsApp *</label>
+                  <label className="flex items-start gap-2 text-[11px] text-gray-700 cursor-pointer">
                     <input
-                      type="text"
-                      value={telefoneCliente}
-                      onChange={(e) => setTelefoneCliente(e.target.value)}
-                      placeholder="Ex: (43) 99999-9999"
-                      className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none focus:border-[#2c3e1c]"
+                      type="checkbox"
+                      checked={compraDireta}
+                      onChange={(e) => setCompraDireta(e.target.checked)}
+                      className="mt-0.5"
                     />
-                  </div>
+                    <span>Quero comprar agora, sem prova em casa (venda à vista).</span>
+                  </label>
                 </div>
               )}
             </div>
@@ -681,7 +790,7 @@ export default function VitrineProdutos() {
                   className="w-full bg-[#2c3e1c] hover:bg-[#3d5427] text-white py-3 rounded-xl text-xs font-bold uppercase transition shadow-md cursor-pointer flex items-center justify-center gap-2"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  SOLICITAR SACOLA VIA WHATSAPP
+                  {compraDireta ? 'CONFIRMAR COMPRA DIRETA' : 'SOLICITAR SACOLA CONDICIONAL'}
                 </button>
               </div>
             )}

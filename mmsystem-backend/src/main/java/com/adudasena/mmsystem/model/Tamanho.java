@@ -8,4 +8,7 @@ public class Tamanho {
     private Long id;
     @Column(nullable = false, unique = true)
     private String nome;
+
+    @Column(name = "deleted_at")
+    private java.time.LocalDateTime deletedAt;
 }

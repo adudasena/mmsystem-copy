@@ -12,6 +12,7 @@ import java.util.List;
 public class CondicionalDTO {
     @NotNull(message = "O cliente é obrigatório.")
     private Long clienteId;
+    private Long funcionarioId;
     private LocalDate dataSaida;
     private LocalDate dataRetorno;
     private String status;

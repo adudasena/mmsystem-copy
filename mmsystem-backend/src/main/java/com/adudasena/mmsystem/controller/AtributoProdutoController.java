@@ -47,4 +47,22 @@ public class AtributoProdutoController {
     public ResponseEntity<AtributoResponseDTO> criarCor(@Valid @RequestBody AtributoRequestDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.criarCor(dto));
     }
+
+    @DeleteMapping("/categorias/{id}")
+    public ResponseEntity<Void> excluirCategoria(@PathVariable Long id) {
+        service.excluirCategoria(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/tamanhos/{id}")
+    public ResponseEntity<Void> excluirTamanho(@PathVariable Long id) {
+        service.excluirTamanho(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/cores/{id}")
+    public ResponseEntity<Void> excluirCor(@PathVariable Long id) {
+        service.excluirCor(id);
+        return ResponseEntity.noContent().build();
+    }
 }

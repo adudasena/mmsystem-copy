@@ -8,6 +8,7 @@ import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import SystemModal from '@/components/SystemModal';
 import { formatErrorMessage } from '@/utils/errorUtils';
+import { enviarWhatsApp } from '@/utils/whatsapp';
 
 // ─── Interfaces e Tipagens ─────────────────────────────────────────────────
 export interface Usuario {
@@ -56,6 +57,7 @@ export interface Condicional {
   id: number;
   usuario?: Usuario;
   cliente?: Usuario;
+  funcionario?: Usuario;
   valorTotal?: number;
   dataSaida: string;
   dataRetorno: string;
@@ -504,7 +506,7 @@ const TelaCondicionais: React.FC = () => {
       `*Data limite para retorno:* ${c.dataRetorno} (${prazo.texto}).\n\n` +
       `Já decidiu quais peças vai levar para arrasar? Se precisar de mais tempo, nos avise!`;
 
-    window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+    void enviarWhatsApp(tel, msg);
   };
 
   // ─── Filtro Local dos Condicionais ───────────────────────────────────────
@@ -649,6 +651,9 @@ const TelaCondicionais: React.FC = () => {
                         <td className="p-3">
                           <p className="font-semibold text-gray-900">{c.usuario?.nome || c.cliente?.nome || '—'}</p>
                           <p className="text-[10px] text-gray-500">{c.usuario?.telefone || c.cliente?.telefone || ''}</p>
+                          {c.funcionario?.nome && (
+                            <p className="text-[10px] text-[#2d3a22]">Resp.: {c.funcionario.nome}</p>
+                          )}
                         </td>
                         <td className="p-3 font-bold text-gray-900">
                           R$ {Number(c.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}

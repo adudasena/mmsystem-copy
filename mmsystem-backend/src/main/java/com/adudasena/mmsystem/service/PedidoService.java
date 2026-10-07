@@ -2,6 +2,8 @@ package com.adudasena.mmsystem.service;
 
 import com.adudasena.mmsystem.dto.ItemPedidoDTO;
 import com.adudasena.mmsystem.dto.PedidoDTO;
+import com.adudasena.mmsystem.dto.VitrineItemDTO;
+import com.adudasena.mmsystem.dto.VitrinePedidoDTO;
 import com.adudasena.mmsystem.enums.MetodoPagamento;
 import com.adudasena.mmsystem.enums.StatusPagamento;
 import com.adudasena.mmsystem.enums.StatusPedido;
@@ -16,7 +18,7 @@ import com.adudasena.mmsystem.repository.ProdutoRepository;
 import com.adudasena.mmsystem.repository.UsuarioRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,11 @@ public class PedidoService {
     private final PagamentoRepository pagamentoRepository;
 
     private final ObjectMapper objectMapper;
+
+    private final UsuarioService usuarioService;
+
+    @Lazy
+    private final CondicionalService condicionalService;
 
     @Transactional(readOnly = true)
     public Page<Pedido> listarTodos(Pageable pageable) {
@@ -298,5 +305,47 @@ public class PedidoService {
         } catch (Exception e) {
             System.err.println("Erro ao gerar pagamento automático do pedido: " + e.getMessage());
         }
+    }
+
+    @Transactional
+    public Pedido processarVendaVitrine(VitrinePedidoDTO dto) {
+        Usuario cliente = usuarioService.buscarOuCriarClienteVitrine(
+                dto.getUsuarioId(), dto.getNomeCliente(), dto.getTelefoneCliente(), dto.isAtualizarNome());
+
+        Pedido pedido = new Pedido();
+        pedido.setCliente(cliente);
+        pedido.setDataPedido(LocalDate.now());
+        pedido.setStatus(StatusPedido.AGUARDANDO_PAGAMENTO);
+
+        BigDecimal total = BigDecimal.ZERO;
+        for (VitrineItemDTO itemDto : dto.getItens()) {
+            Produto produto = produtoRepository.findById(itemDto.getProdutoId())
+                    .orElseThrow(() -> new RuntimeException("Produto não encontrado ID: " + itemDto.getProdutoId()));
+            int qtd = itemDto.getQuantidade() != null ? itemDto.getQuantidade() : 1;
+            condicionalService.validarEstoqueDisponivel(produto, itemDto.getCorEscolhida(), itemDto.getTamanhoEscolhido(), qtd);
+            condicionalService.alterarEstoqueProduto(produto, itemDto.getCorEscolhida(), itemDto.getTamanhoEscolhido(), -qtd);
+
+            ItemPedido item = new ItemPedido();
+            item.setPedido(pedido);
+            item.setProduto(produto);
+            item.setQuantidade(qtd);
+            pedido.getItens().add(item);
+
+            BigDecimal preco = produto.getPreco() != null ? produto.getPreco() : BigDecimal.ZERO;
+            total = total.add(preco.multiply(BigDecimal.valueOf(qtd)));
+        }
+
+        pedido.setValorTotal(total);
+        Pedido salvo = pedidoRepository.save(pedido);
+
+        Pagamento pagamento = new Pagamento();
+        pagamento.setPedido(salvo);
+        pagamento.setValor(total);
+        pagamento.setMetodoPagamento(MetodoPagamento.PIX);
+        pagamento.setDataVencimento(LocalDate.now());
+        pagamento.setStatus(StatusPagamento.PENDENTE);
+        pagamentoRepository.save(pagamento);
+
+        return salvo;
     }
 }

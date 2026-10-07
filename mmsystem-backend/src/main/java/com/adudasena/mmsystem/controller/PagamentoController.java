@@ -29,6 +29,15 @@ public class PagamentoController {
         return ResponseEntity.ok(service.listarTodos(pageable).map(PagamentoResponseDTO::from));
     }
 
+    @GetMapping("/vencidos")
+    public ResponseEntity<Page<PagamentoResponseDTO>> listarFiadosVencidos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("dataVencimento").ascending());
+        return ResponseEntity.ok(service.listarFiadosVencidos(pageable).map(PagamentoResponseDTO::from));
+    }
+
     @GetMapping("/excluidos")
     public ResponseEntity<Page<PagamentoResponseDTO>> listarExcluidos(
             @RequestParam(defaultValue = "0") int page,

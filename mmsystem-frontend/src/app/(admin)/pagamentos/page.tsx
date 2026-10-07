@@ -48,7 +48,7 @@ const TelaPagamentos: React.FC = () => {
   const [pedidosOpcoes, setPedidosOpcoes] = useState<PedidoRef[]>([]);
   
   // Controle de Abas (Pagamentos Ativos vs Removidos / Lixeira)
-  const [abaAtiva, setAbaAtiva] = useState<'ATIVOS' | 'EXCLUIDOS'>('ATIVOS');
+  const [abaAtiva, setAbaAtiva] = useState<'ATIVOS' | 'EXCLUIDOS' | 'VENCIDOS'>('ATIVOS');
 
   // ─── Estados de Filtro e Busca ───────────────────────────────────────────
   const [termoBusca, setTermoBusca] = useState<string>('');
@@ -83,12 +83,14 @@ const TelaPagamentos: React.FC = () => {
   const tamanhoPagina = 5;
 
   // ─── Busca Paginada de Pagamentos ──────────────────────────────────────────
-  const buscarPagamentos = useCallback(async (pagina: number = 0, tipoAba: 'ATIVOS' | 'EXCLUIDOS' = abaAtiva): Promise<void> => {
+  const buscarPagamentos = useCallback(async (pagina: number = 0, tipoAba: 'ATIVOS' | 'EXCLUIDOS' | 'VENCIDOS' = abaAtiva): Promise<void> => {
     try {
       setLoading(true);
       const url = tipoAba === 'EXCLUIDOS'
         ? `/pagamentos/excluidos?page=${pagina}&size=${tamanhoPagina}`
-        : `/pagamentos?page=${pagina}&size=${tamanhoPagina}`;
+        : tipoAba === 'VENCIDOS'
+          ? `/pagamentos/vencidos?page=${pagina}&size=${tamanhoPagina}`
+          : `/pagamentos?page=${pagina}&size=${tamanhoPagina}`;
 
       const res = await api.get<PageSpring<Pagamento> | Pagamento[]>(url);
       
@@ -348,6 +350,18 @@ const TelaPagamentos: React.FC = () => {
 
               <button
                 type="button"
+                onClick={() => setAbaAtiva('VENCIDOS')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  abaAtiva === 'VENCIDOS'
+                    ? 'bg-amber-700 text-white shadow-sm'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Fiados vencidos
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setAbaAtiva('EXCLUIDOS')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
                   abaAtiva === 'EXCLUIDOS'
@@ -386,7 +400,11 @@ const TelaPagamentos: React.FC = () => {
                   {pagamentosFiltrados.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="p-8 text-center italic text-gray-500">
-                        {abaAtiva === 'EXCLUIDOS' ? 'Nenhum pagamento removido na lixeira.' : 'Nenhum pagamento registrado.'}
+                        {abaAtiva === 'EXCLUIDOS'
+                          ? 'Nenhum pagamento removido na lixeira.'
+                          : abaAtiva === 'VENCIDOS'
+                            ? 'Nenhum fiado vencido no momento.'
+                            : 'Nenhum pagamento registrado.'}
                       </td>
                     </tr>
                   ) : (

@@ -10,4 +10,7 @@ public class Cor {
     private String nome;
     @Column(name = "hex_code")
     private String hexCode;
+
+    @Column(name = "deleted_at")
+    private java.time.LocalDateTime deletedAt;
 }

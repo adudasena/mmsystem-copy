@@ -70,7 +70,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/login", "/auth/registrar").permitAll()
                         .requestMatchers("/vitrine/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/pedidos/vitrine").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().hasAnyRole("PROPRIETARIA", "FUNCIONARIO")
                 )

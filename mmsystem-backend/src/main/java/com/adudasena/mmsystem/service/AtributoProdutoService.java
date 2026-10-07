@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -24,7 +25,7 @@ public class AtributoProdutoService {
 
     @Transactional(readOnly = true)
     public List<AtributoResponseDTO> listarCategorias() {
-        return categoriaRepository.findAll().stream()
+        return categoriaRepository.findByDeletedAtIsNull().stream()
                 .map(c -> new AtributoResponseDTO(c.getId(), c.getNome(), null))
                 .toList();
     }
@@ -37,9 +38,17 @@ public class AtributoProdutoService {
         return new AtributoResponseDTO(salvo.getId(), salvo.getNome(), null);
     }
 
+    @Transactional
+    public void excluirCategoria(Long id) {
+        Categoria categoria = categoriaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Categoria não encontrada."));
+        categoria.setDeletedAt(LocalDateTime.now());
+        categoriaRepository.save(categoria);
+    }
+
     @Transactional(readOnly = true)
     public List<AtributoResponseDTO> listarTamanhos() {
-        return tamanhoRepository.findAll().stream()
+        return tamanhoRepository.findByDeletedAtIsNull().stream()
                 .map(t -> new AtributoResponseDTO(t.getId(), t.getNome(), null))
                 .toList();
     }
@@ -52,9 +61,17 @@ public class AtributoProdutoService {
         return new AtributoResponseDTO(salvo.getId(), salvo.getNome(), null);
     }
 
+    @Transactional
+    public void excluirTamanho(Long id) {
+        Tamanho tamanho = tamanhoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Tamanho não encontrado."));
+        tamanho.setDeletedAt(LocalDateTime.now());
+        tamanhoRepository.save(tamanho);
+    }
+
     @Transactional(readOnly = true)
     public List<AtributoResponseDTO> listarCores() {
-        return corRepository.findAll().stream()
+        return corRepository.findByDeletedAtIsNull().stream()
                 .map(c -> new AtributoResponseDTO(c.getId(), c.getNome(), c.getHexCode()))
                 .toList();
     }
@@ -66,5 +83,13 @@ public class AtributoProdutoService {
         cor.setHexCode(dto.hexCode());
         Cor salvo = corRepository.save(cor);
         return new AtributoResponseDTO(salvo.getId(), salvo.getNome(), salvo.getHexCode());
+    }
+
+    @Transactional
+    public void excluirCor(Long id) {
+        Cor cor = corRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cor não encontrada."));
+        cor.setDeletedAt(LocalDateTime.now());
+        corRepository.save(cor);
     }
 }

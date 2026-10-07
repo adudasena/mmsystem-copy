@@ -25,6 +25,11 @@ public class Condicional {
     @JsonIgnoreProperties({"senha", "hibernateLazyInitializer", "handler"})
     private Usuario usuario;
 
+    @ManyToOne
+    @JoinColumn(name = "fk_funcionario_id")
+    @JsonIgnoreProperties({"senha", "hibernateLazyInitializer", "handler"})
+    private Usuario funcionario;
+
     @Column(name = "data_saida", nullable = false)
     private LocalDate dataSaida;
 

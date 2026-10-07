@@ -33,6 +33,7 @@ public class DashboardService {
     private final CondicionalRepository condicionalRepository;
     private final ProdutoRepository produtoRepository;
     private final PedidoRepository pedidoRepository;
+    private final PagamentoService pagamentoService;
 
     @Transactional(readOnly = true)
     public DashboardMetricasDTO obterMetricas(String dataInicio, String dataFim) {
@@ -134,7 +135,8 @@ public class DashboardService {
                 totalVendasAnterior,
                 qtdVendasAnterior,
                 percCrescimentoValor,
-                percCrescimentoQtd);
+                percCrescimentoQtd,
+                pagamentoService.contarFiadosVencidos());
     }
 
     @Transactional(readOnly = true)

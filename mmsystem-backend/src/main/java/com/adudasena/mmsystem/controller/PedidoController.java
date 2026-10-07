@@ -1,12 +1,9 @@
 package com.adudasena.mmsystem.controller;
 
-import com.adudasena.mmsystem.dto.CondicionalResponseDTO;
 import com.adudasena.mmsystem.dto.PedidoDTO;
 import com.adudasena.mmsystem.dto.PedidoResponseDTO;
 import com.adudasena.mmsystem.dto.StatusPatchDTO;
-import com.adudasena.mmsystem.dto.VitrinePedidoDTO;
 import com.adudasena.mmsystem.model.Pedido;
-import com.adudasena.mmsystem.service.CondicionalService;
 import com.adudasena.mmsystem.service.PedidoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,14 +20,6 @@ import org.springframework.web.bind.annotation.*;
 public class PedidoController {
 
     private final PedidoService service;
-    private final CondicionalService condicionalService;
-
-    @PostMapping("/vitrine")
-    public ResponseEntity<CondicionalResponseDTO> criarPedidoVitrine(
-            @Valid @RequestBody VitrinePedidoDTO dto) {
-        return ResponseEntity.status(201).body(
-                CondicionalResponseDTO.from(condicionalService.processarPedidoVitrine(dto)));
-    }
 
     @GetMapping
     public ResponseEntity<Page<PedidoResponseDTO>> listarTodos(

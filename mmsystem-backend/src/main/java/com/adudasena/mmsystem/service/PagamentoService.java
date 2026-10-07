@@ -33,6 +33,25 @@ public class PagamentoService {
     }
 
     @Transactional(readOnly = true)
+    public Page<Pagamento> listarFiadosVencidos(Pageable pageable) {
+        return pagamentoRepository.findByDeletedAtIsNullAndStatusAndMetodoPagamentoAndDataVencimentoLessThanEqual(
+                StatusPagamento.PENDENTE,
+                MetodoPagamento.PAGAMENTO_FUTURO,
+                java.time.LocalDate.now(),
+                pageable
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public long contarFiadosVencidos() {
+        return pagamentoRepository.countByDeletedAtIsNullAndStatusAndMetodoPagamentoAndDataVencimentoLessThanEqual(
+                StatusPagamento.PENDENTE,
+                MetodoPagamento.PAGAMENTO_FUTURO,
+                java.time.LocalDate.now()
+        );
+    }
+
+    @Transactional(readOnly = true)
     public Pagamento buscarPorId(Long id) {
         return pagamentoRepository.findById(id)
                 .filter(p -> p.getDeletedAt() == null)

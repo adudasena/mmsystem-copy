@@ -10,6 +10,7 @@ import java.util.List;
 public record CondicionalResponseDTO(
         Long id,
         UsuarioResponseDTO usuario,
+        UsuarioResponseDTO funcionario,
         LocalDate dataSaida,
         LocalDate dataRetorno,
         String status,
@@ -27,6 +28,7 @@ public record CondicionalResponseDTO(
         return new CondicionalResponseDTO(
                 condicional.getId(),
                 UsuarioResponseDTO.from(condicional.getUsuario()),
+                UsuarioResponseDTO.from(condicional.getFuncionario()),
                 condicional.getDataSaida(),
                 condicional.getDataRetorno(),
                 condicional.getStatus(),

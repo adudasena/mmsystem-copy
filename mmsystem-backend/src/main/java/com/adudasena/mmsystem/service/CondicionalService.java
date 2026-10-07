@@ -3,11 +3,11 @@ package com.adudasena.mmsystem.service;
 import com.adudasena.mmsystem.dto.CondicionalDTO;
 import com.adudasena.mmsystem.dto.VitrinePedidoDTO;
 import com.adudasena.mmsystem.enums.MetodoPagamento;
-import com.adudasena.mmsystem.enums.Perfil;
 import com.adudasena.mmsystem.enums.StatusPagamento;
 import com.adudasena.mmsystem.enums.StatusPedido;
 import com.adudasena.mmsystem.model.*;
 import com.adudasena.mmsystem.repository.*;
+import com.adudasena.mmsystem.security.SecurityUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.Page;
@@ -21,7 +21,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,6 +38,8 @@ public class CondicionalService {
     private final PagamentoRepository pagamentoRepository;
 
     private final ObjectMapper objectMapper;
+
+    private final UsuarioService usuarioService;
 
     public List<Condicional> listarTodos() {
         return repository.findByDeletedAtIsNull();
@@ -62,6 +63,7 @@ public class CondicionalService {
 
         Condicional condicional = new Condicional();
         condicional.setUsuario(usuario);
+        condicional.setFuncionario(resolverFuncionario(dto.getFuncionarioId()));
         condicional.setDataSaida(dto.getDataSaida());
         condicional.setDataRetorno(dto.getDataRetorno());
         condicional.setStatus(dto.getStatus() != null ? dto.getStatus().toUpperCase() : "ABERTA");
@@ -82,6 +84,11 @@ public class CondicionalService {
                 .orElseThrow(() -> new RuntimeException("Cliente não encontrado: " + dto.getClienteId()));
 
         condicional.setUsuario(usuario);
+        if (dto.getFuncionarioId() != null) {
+            condicional.setFuncionario(resolverFuncionario(dto.getFuncionarioId()));
+        } else if (condicional.getFuncionario() == null) {
+            condicional.setFuncionario(SecurityUtils.usuarioLogado());
+        }
         condicional.setDataSaida(dto.getDataSaida());
         condicional.setDataRetorno(dto.getDataRetorno());
         if (dto.getStatus() != null) {
@@ -218,46 +225,8 @@ public class CondicionalService {
 
     @Transactional
     public Condicional processarPedidoVitrine(VitrinePedidoDTO dto) {
-        Usuario usuario = null;
-
-        if (dto.getUsuarioId() != null) {
-            usuario = usuarioRepository.findById(dto.getUsuarioId()).orElse(null);
-        }
-
-        if (usuario == null && dto.getTelefoneCliente() != null && !dto.getTelefoneCliente().trim().isEmpty()) {
-            Optional<Usuario> porTelefone = usuarioRepository.findByTelefone(dto.getTelefoneCliente().trim());
-            if (porTelefone.isPresent()) {
-                usuario = porTelefone.get();
-            } else {
-                Usuario novoCliente = new Usuario();
-                novoCliente.setNome(dto.getNomeCliente() != null && !dto.getNomeCliente().trim().isEmpty()
-                        ? dto.getNomeCliente().trim()
-                        : "Cliente Vitrine");
-                novoCliente.setTelefone(dto.getTelefoneCliente().trim());
-                novoCliente.setPerfil(Perfil.ROLE_CLIENTE);
-                usuario = usuarioRepository.save(novoCliente);
-            }
-        }
-
-        if (usuario == null) {
-            List<Usuario> lista = usuarioRepository.findByDeletedAtIsNull();
-            usuario = lista.stream().filter(u -> u.getPerfil() == Perfil.ROLE_CLIENTE).findFirst().orElse(null);
-            if (usuario == null && !lista.isEmpty()) {
-                usuario = lista.get(0);
-            }
-        }
-
-        if (usuario == null) {
-            Usuario fallback = new Usuario();
-            fallback.setNome(
-                    dto.getNomeCliente() != null && !dto.getNomeCliente().trim().isEmpty() ? dto.getNomeCliente().trim()
-                            : "Cliente Vitrine");
-            fallback.setTelefone(dto.getTelefoneCliente() != null && !dto.getTelefoneCliente().trim().isEmpty()
-                    ? dto.getTelefoneCliente().trim()
-                    : "00000000000");
-            fallback.setPerfil(Perfil.ROLE_CLIENTE);
-            usuario = usuarioRepository.save(fallback);
-        }
+        Usuario usuario = usuarioService.buscarOuCriarClienteVitrine(
+                dto.getUsuarioId(), dto.getNomeCliente(), dto.getTelefoneCliente(), dto.isAtualizarNome());
 
         Condicional condicional = new Condicional();
         condicional.setUsuario(usuario);
@@ -403,7 +372,15 @@ public class CondicionalService {
         }
     }
 
-    private void alterarEstoqueProduto(Produto produtoOriginal, String cor, String tamanho, int deltaQtd) {
+    private Usuario resolverFuncionario(Long funcionarioId) {
+        if (funcionarioId != null) {
+            return usuarioRepository.findById(funcionarioId)
+                    .orElseThrow(() -> new RuntimeException("Funcionário não encontrado: " + funcionarioId));
+        }
+        return SecurityUtils.usuarioLogado();
+    }
+
+    public void alterarEstoqueProduto(Produto produtoOriginal, String cor, String tamanho, int deltaQtd) {
         try {
             Produto produto = produtoRepository.findById(produtoOriginal.getId())
                     .orElseThrow(() -> new RuntimeException("Produto não localizado para atualização de estoque."));

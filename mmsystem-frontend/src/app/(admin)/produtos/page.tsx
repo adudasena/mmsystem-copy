@@ -64,15 +64,6 @@ const CORES_PADRAO: Cor[] = [
   { nome: 'Roxo', hex: '#9333ea' },
 ];
 
-const lerStorage = <T,>(chave: string, padrao: T): T => {
-  try {
-    const salvo = localStorage.getItem(chave);
-    return salvo ? (JSON.parse(salvo) as T) : padrao;
-  } catch {
-    return padrao;
-  }
-};
-
 const TelaProdutos: React.FC = () => {
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [listaProdutos, setListaProdutos] = useState<Produto[]>([]);
@@ -109,9 +100,9 @@ const TelaProdutos: React.FC = () => {
   });
 
   // ─── Opções customizáveis ──────────────────────────────────────────────────
-  const [tamanhos, setTamanhos] = useState<string[]>(() => lerStorage<string[]>('mm_tamanhos', TAMANHOS_PADRAO));
-  const [categorias, setCategorias] = useState<string[]>(() => lerStorage<string[]>('mm_categorias', CATEGORIAS_PADRAO));
-  const [listaCores, setListaCores] = useState<Cor[]>(() => lerStorage<Cor[]>('mm_cores', CORES_PADRAO));
+  const [tamanhos, setTamanhos] = useState<string[]>(TAMANHOS_PADRAO);
+  const [categorias, setCategorias] = useState<string[]>(CATEGORIAS_PADRAO);
+  const [listaCores, setListaCores] = useState<Cor[]>(CORES_PADRAO);
 
   // ─── Lixeira / Removidos ──────────────────────────────────────────────────
   const [produtosExcluidos, setProdutosExcluidos] = useState<Produto[]>([]);
@@ -155,6 +146,28 @@ const TelaProdutos: React.FC = () => {
 
     carregarInicial();
 
+    const carregarAtributos = async () => {
+      try {
+        const [resCat, resTam, resCor] = await Promise.all([
+          api.get<{ id: number; nome: string }[]>('/api/atributos/categorias'),
+          api.get<{ id: number; nome: string }[]>('/api/atributos/tamanhos'),
+          api.get<{ id: number; nome: string; hexCode?: string }[]>('/api/atributos/cores'),
+        ]);
+        if (Array.isArray(resCat.data) && resCat.data.length > 0) {
+          setCategorias(resCat.data.map((c) => c.nome));
+        }
+        if (Array.isArray(resTam.data) && resTam.data.length > 0) {
+          setTamanhos(resTam.data.map((t) => t.nome));
+        }
+        if (Array.isArray(resCor.data) && resCor.data.length > 0) {
+          setListaCores(resCor.data.map((c) => ({ nome: c.nome, hex: c.hexCode || '#000000' })));
+        }
+      } catch (erro) {
+        console.error('Erro ao carregar atributos:', erro);
+      }
+    };
+    void carregarAtributos();
+
     return () => {
       montado = false;
     };
@@ -169,7 +182,7 @@ const TelaProdutos: React.FC = () => {
   };
 
   // ─── Adicionar opções customizadas ────────────────────────────────────────
-  const adicionarCategoriaCustomizada = (): void => {
+  const adicionarCategoriaCustomizada = async (): Promise<void> => {
     const cat = novaCategoriaTexto.trim();
     if (!cat) return;
     const catFormatada = cat.charAt(0).toUpperCase() + cat.slice(1);
@@ -179,13 +192,17 @@ const TelaProdutos: React.FC = () => {
     }
     const novas = [...categorias, catFormatada];
     setCategorias(novas);
-    localStorage.setItem('mm_categorias', JSON.stringify(novas));
+    try {
+      await api.post('/api/atributos/categorias', { nome: catFormatada });
+    } catch (err) {
+      console.error('Erro ao persistir categoria:', err);
+    }
     setProduto({ ...produto, categoria: catFormatada });
     setNovaCategoriaTexto('');
     setErrosValidacao([]);
   };
 
-  const adicionarTamanhoCustomizado = (): void => {
+  const adicionarTamanhoCustomizado = async (): Promise<void> => {
     const tam = novoTamanhoTexto.trim().toUpperCase();
     if (!tam) return;
     if (tamanhos.includes(tam)) {
@@ -194,12 +211,16 @@ const TelaProdutos: React.FC = () => {
     }
     const novos = [...tamanhos, tam];
     setTamanhos(novos);
-    localStorage.setItem('mm_tamanhos', JSON.stringify(novos));
+    try {
+      await api.post('/api/atributos/tamanhos', { nome: tam });
+    } catch (err) {
+      console.error('Erro ao persistir tamanho:', err);
+    }
     setNovoTamanhoTexto('');
     setErrosValidacao([]);
   };
 
-  const adicionarCorCustomizada = (): void => {
+  const adicionarCorCustomizada = async (): Promise<void> => {
     const nome = novaCorNome.trim();
     if (!nome) return;
     if (listaCores.some(c => c.nome.toLowerCase() === nome.toLowerCase())) {
@@ -208,7 +229,11 @@ const TelaProdutos: React.FC = () => {
     }
     const novas = [...listaCores, { nome, hex: novaCorHex }];
     setListaCores(novas);
-    localStorage.setItem('mm_cores', JSON.stringify(novas));
+    try {
+      await api.post('/api/atributos/cores', { nome, hexCode: novaCorHex });
+    } catch (err) {
+      console.error('Erro ao persistir cor:', err);
+    }
     setNovaCorNome('');
     setNovaCorHex('#000000');
     setErrosValidacao([]);

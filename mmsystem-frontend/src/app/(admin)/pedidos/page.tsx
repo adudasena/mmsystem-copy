@@ -7,6 +7,7 @@ import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import SelectProdutoFilter from '@/components/SelectProdutoFilter';
 import { formatErrorMessage } from '@/utils/errorUtils';
+import { enviarWhatsApp } from '@/utils/whatsapp';
 
 // ─── Auxiliar de UUID ────────────────────────────────────────────────────────
 const gerarUuid = (): string => {
@@ -424,8 +425,7 @@ const TelaPedidos: React.FC = () => {
       `*Status:* ${pedido.status}\n\n` +
       `Obrigada pela preferência!`;
 
-    const url = `https://wa.me/55${telefone}?text=${encodeURIComponent(texto)}`;
-    window.open(url, '_blank');
+    void enviarWhatsApp(telefone, texto);
   };
 
   const abrirDetalhes = (pedido: Pedido): void => {
