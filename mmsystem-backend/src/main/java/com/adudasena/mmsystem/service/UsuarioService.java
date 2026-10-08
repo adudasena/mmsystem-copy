@@ -7,6 +7,7 @@ import com.adudasena.mmsystem.dto.VitrineClienteLookupDTO;
 import com.adudasena.mmsystem.enums.Perfil;
 import com.adudasena.mmsystem.model.Usuario;
 import com.adudasena.mmsystem.repository.UsuarioRepository;
+import com.adudasena.mmsystem.security.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -38,7 +39,7 @@ public class UsuarioService {
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public VitrineClienteLookupDTO consultarClienteVitrine(String telefoneCliente) {
         Usuario existente = localizarPorTelefone(telefoneCliente);
-        if (existente == null || existente.getDeletedAt() != null || !ehCliente(existente)) {
+        if (existente == null || !ehCliente(existente)) {
             return new VitrineClienteLookupDTO(false, null);
         }
         return new VitrineClienteLookupDTO(true, existente.getNome());
@@ -177,6 +178,21 @@ public class UsuarioService {
                 .orElseThrow(() -> new RuntimeException("Cliente/Usuário não encontrado com o ID: " + id));
         usuario.setDeletedAt(null);
         repository.save(usuario);
+    }
+
+    public Usuario usuarioLogadoOuErro() {
+        Usuario logado = SecurityUtils.usuarioLogado();
+        if (logado == null) {
+            throw new IllegalArgumentException("Não autenticado.");
+        }
+        return buscarPorId(logado.getId());
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public Usuario marcarGuiaProdutoVisto() {
+        Usuario logado = usuarioLogadoOuErro();
+        logado.setGuiaProdutoVisto(true);
+        return repository.save(logado);
     }
 
     private void copiarDtoParaEntidade(UsuarioDTO dto, Usuario usuario) {

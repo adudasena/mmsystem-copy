@@ -126,6 +126,19 @@ public class DashboardService {
             percCrescimentoQtd = new BigDecimal("100");
         }
 
+        long condicionaisAtrasadas = 0;
+        try {
+            LocalDate hoje = LocalDate.now();
+            condicionaisAtrasadas = condicionalRepository.findAll().stream()
+                    .filter(c -> c != null && c.getDeletedAt() == null)
+                    .filter(c -> "ABERTA".equalsIgnoreCase(c.getStatus())
+                            || "EM_CONDICIONAL".equalsIgnoreCase(c.getStatus()))
+                    .filter(c -> c.getDataRetorno() != null && !c.getDataRetorno().isAfter(hoje))
+                    .count();
+        } catch (Exception e) {
+            logger.error("Erro ao obter condicionais atrasadas no dashboard: ", e);
+        }
+
         return new DashboardMetricasDTO(
                 totalClientes,
                 condicionaisAtivos,
@@ -136,7 +149,8 @@ public class DashboardService {
                 qtdVendasAnterior,
                 percCrescimentoValor,
                 percCrescimentoQtd,
-                pagamentoService.contarFiadosVencidos());
+                pagamentoService.contarFiadosVencidos(),
+                condicionaisAtrasadas);
     }
 
     @Transactional(readOnly = true)

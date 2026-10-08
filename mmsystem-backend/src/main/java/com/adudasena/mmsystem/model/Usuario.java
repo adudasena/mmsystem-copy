@@ -31,6 +31,9 @@ public class Usuario {
     @Column(nullable = false)
     private Perfil perfil = Perfil.ROLE_CLIENTE;
 
+    @Column(name = "guia_produto_visto", nullable = false, columnDefinition = "boolean default false")
+    private boolean guiaProdutoVisto = false;
+
     // Soft delete
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;

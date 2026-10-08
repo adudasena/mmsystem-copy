@@ -18,6 +18,24 @@ public class UsuarioController {
 
     private final UsuarioService service;
 
+    @GetMapping("/me")
+    public ResponseEntity<java.util.Map<String, Object>> eu() {
+        var u = service.usuarioLogadoOuErro();
+        return ResponseEntity.ok(java.util.Map.of(
+                "id", u.getId(),
+                "nome", u.getNome(),
+                "email", u.getEmail() != null ? u.getEmail() : "",
+                "perfil", u.getPerfil() != null ? u.getPerfil().name() : "",
+                "guiaProdutoVisto", u.isGuiaProdutoVisto()
+        ));
+    }
+
+    @PatchMapping("/me/guia-produto")
+    public ResponseEntity<java.util.Map<String, Object>> marcarGuiaProduto() {
+        var u = service.marcarGuiaProdutoVisto();
+        return ResponseEntity.ok(java.util.Map.of("guiaProdutoVisto", u.isGuiaProdutoVisto()));
+    }
+
     @GetMapping
     public ResponseEntity<Page<UsuarioResponseDTO>> listarTodos(
             @RequestParam(defaultValue = "0") int page,

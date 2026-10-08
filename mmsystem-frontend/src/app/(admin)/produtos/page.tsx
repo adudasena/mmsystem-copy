@@ -3,10 +3,12 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect, ChangeEvent, KeyboardEvent, useCallback, useRef } from 'react';
 import { AxiosError } from 'axios';
-import { Pencil, Trash2, Eye, Camera, Settings, Package, Plus, AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Pencil, Trash2, Eye, Camera, Package, Plus, AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
+import CampoAjuda from '@/components/CampoAjuda';
+import GuiaCadastroProduto from '@/components/GuiaCadastroProduto';
 import { formatErrorMessage } from '@/utils/errorUtils';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────
@@ -107,6 +109,7 @@ const TelaProdutos: React.FC = () => {
   // ─── Lixeira / Removidos ──────────────────────────────────────────────────
   const [produtosExcluidos, setProdutosExcluidos] = useState<Produto[]>([]);
   const [visualizandoExcluidos, setVisualizandoExcluidos] = useState<boolean>(false);
+  const [guiaAtivo, setGuiaAtivo] = useState<boolean>(false);
 
   // ─── Busca Paginada de Produtos ───────────────────────────────────────────
   const buscarProdutos = useCallback(async (pagina: number = 0): Promise<void> => {
@@ -172,6 +175,10 @@ const TelaProdutos: React.FC = () => {
       montado = false;
     };
   }, [tamanhoPagina]);
+
+  const encerrarGuia = (): void => {
+    setGuiaAtivo(false);
+  };
 
   // ─── Navegação da Paginação com Auto-Scroll ──────────────────────────────
   const mudarPagina = (novaPagina: number) => {
@@ -465,11 +472,18 @@ const TelaProdutos: React.FC = () => {
   return (
     <div className="p-4 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
       <div className="max-w-7xl mx-auto space-y-6">
-        <header className="mb-2">
-          <h1 className="text-3xl font-sans font-bold text-[#2d3a22] tracking-wide">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">
             {editandoId ? 'Editando Produto' : 'Produtos'}
           </h1>
-        </header>
+          <button
+            type="button"
+            onClick={() => setGuiaAtivo(true)}
+            className="text-[11px] font-bold uppercase text-[#2c3e1c] underline cursor-pointer self-start md:self-auto"
+          >
+            Como cadastrar?
+          </button>
+        </div>
 
         {errosValidacao.length > 0 && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-600 p-4 text-red-900 rounded-lg shadow-sm">
@@ -487,74 +501,88 @@ const TelaProdutos: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 items-start">
         <div className="lg:col-span-2 space-y-6">
 
           {/* INFORMAÇÕES BÁSICAS */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <label className="block text-[11px] font-bold uppercase mb-2 text-gray-500">Nome do produto (Max 80 caracteres)</label>
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#e4e6dc]">
+            <div data-guia="nome">
+            <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mb-2 text-gray-500">
+              Nome do produto (máx. 80)
+              <CampoAjuda texto="Como a cliente vê o card. Objetivo, sem emoji. O limite evita título cortado na vitrine." />
+            </label>
             <input
               maxLength={80}
               value={produto.nome}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setProduto({ ...produto, nome: e.target.value })}
-              className="w-full border p-2.5 bg-gray-50 outline-none focus:border-gray-400 rounded-lg text-xs"
+              className="w-full border border-gray-200 p-2.5 bg-gray-50 outline-none focus:border-[#2c3e1c] rounded-lg text-xs h-10 font-sans"
             />
+            </div>
 
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-end" data-guia="categoria">
               <div>
-                <label className="block text-[11px] font-bold uppercase mb-2 text-gray-500">Categoria</label>
+                <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mb-2 text-gray-500">
+                  Categoria
+                  <CampoAjuda texto="Agrupa na vitrine (Vestidos, Saias…). Uma categoria por tipo de peça." />
+                </label>
                 <select
                   value={produto.categoria}
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => setProduto({ ...produto, categoria: e.target.value })}
-                  className="w-full border p-2.5 bg-gray-50 outline-none focus:border-gray-400 rounded-lg text-xs h-10"
+                  className="w-full border border-gray-200 p-2.5 bg-gray-50 outline-none focus:border-[#2c3e1c] rounded-lg text-xs h-10 font-sans"
                 >
                   <option value="">Selecione...</option>
                   {categorias.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-[11px] font-bold uppercase mb-2 text-gray-500">Nova Categoria</label>
-                <div className="flex gap-1">
+                <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mb-2 text-gray-500">Nova categoria</label>
+                <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Adicionar..."
                     value={novaCategoriaTexto}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setNovaCategoriaTexto(e.target.value)}
                     onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && adicionarCategoriaCustomizada()}
-                    className="w-full text-xs border p-2.5 outline-none bg-gray-50 focus:border-gray-400 rounded-lg h-10"
+                    className="w-full text-xs border border-gray-200 p-2.5 outline-none bg-gray-50 focus:border-[#2c3e1c] rounded-lg h-10 font-sans"
                   />
-                  <button type="button" onClick={adicionarCategoriaCustomizada} className="bg-gray-800 text-white text-xs px-3.5 font-bold hover:bg-black rounded-lg cursor-pointer h-10 shrink-0">+</button>
+                  <button type="button" onClick={adicionarCategoriaCustomizada} className="bg-[#2c3e1c] text-white text-xs w-10 font-bold hover:bg-[#3d5427] rounded-lg cursor-pointer h-10 shrink-0">+</button>
                 </div>
               </div>
             </div>
 
-            <label className="block text-[11px] font-bold uppercase mt-4 mb-2 text-gray-500">
+            <div data-guia="descricao">
+            <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mt-4 mb-2 text-gray-500">
               Descrição curta ({produto.descricao.length}/500)
+              <CampoAjuda texto="Tecido, caimento e detalhes. Texto menor no card da vitrine." />
             </label>
             <textarea
               maxLength={500}
               value={produto.descricao}
               onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setProduto({ ...produto, descricao: e.target.value })}
-              className="w-full border p-2.5 h-28 bg-gray-50 outline-none resize-none focus:border-gray-400 rounded-lg text-xs"
+              className="w-full border border-gray-200 p-2.5 h-28 bg-gray-50 outline-none resize-none focus:border-[#2c3e1c] rounded-lg text-xs font-sans"
             />
+            </div>
           </div>
 
           {/* FOTOS */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#e4e6dc]" data-guia="imagens">
             <div className="flex justify-between items-center mb-4">
-              <label className="block text-[11px] font-bold uppercase text-gray-500">Imagens do produto (Mínimo 1, Máximo 4)</label>
-              <span className="text-[10px] font-mono text-gray-400">{produto.fotos.length}/4 Carregadas</span>
+              <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase text-gray-500">
+                Imagens do produto (mín. 1, máx. 4)
+                <CampoAjuda texto="Foto nítida, fundo limpo. É o que a cliente vê. Com mais de uma foto, ela passa para o lado na vitrine." />
+              </label>
+              <span className="text-[10px] text-gray-400 font-sans">{produto.fotos.length}/4 carregadas</span>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-2">
+            <div className="flex flex-wrap gap-3">
               {produto.fotos.length < 4 && (
-                <label className="min-w-25 h-25 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 rounded-xl transition">
-                  <Camera className="w-6 h-6 text-gray-400 mb-1" />
-                  <span className="text-[8px] font-bold uppercase text-gray-500">ADICIONAR</span>
+                <label className="w-24 h-24 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 rounded-xl transition shrink-0">
+                  <Camera className="w-5 h-5 text-gray-400 mb-1" />
+                  <span className="text-[8px] font-bold uppercase text-gray-500">Adicionar</span>
                   <input type="file" accept="image/*" multiple onChange={handleFotos} className="hidden" />
                 </label>
               )}
               {produto.fotos.map((foto, i) => (
-                <div key={i} className="min-w-25 h-25 border bg-gray-50 rounded-xl flex items-center justify-center relative overflow-hidden group">
+                <div key={i} className="w-24 h-24 border border-gray-200 bg-gray-50 rounded-xl flex items-center justify-center relative overflow-hidden group shrink-0">
                   <img src={foto} className="w-full h-full object-cover" alt="preview" />
                   <button
                     type="button"
@@ -571,30 +599,37 @@ const TelaProdutos: React.FC = () => {
 
         <div className="space-y-6">
           {/* PREÇO E ESTOQUE */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[11px] font-bold uppercase mb-2 text-gray-500">Preço (R$)</label>
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#e4e6dc] grid grid-cols-2 gap-4 items-end">
+            <div data-guia="preco">
+              <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mb-2 text-gray-500">
+                Preço (R$)
+                <CampoAjuda texto="Valor da peça na vitrine e na venda." />
+              </label>
               <input
                 type="number" min="0.01" max="99999.99" step="0.01"
                 value={produto.preco}
                 onChange={handlePrecoInput}
                 placeholder="0.00"
-                className="w-full border p-2.5 bg-gray-50 outline-none focus:border-gray-400 font-medium rounded-lg text-xs"
+                className="w-full border border-gray-200 p-2.5 bg-gray-50 outline-none focus:border-[#2c3e1c] rounded-lg text-xs h-10 font-sans"
               />
             </div>
-            <div onClick={abrirGestaoEstoque} className="cursor-pointer group">
-              <label className="block text-[11px] font-bold uppercase mb-2 text-gray-500 group-hover:text-black flex items-center gap-1">
-                Grade Estoque <Settings className="w-3.5 h-3.5 text-gray-500" />
+            <div onClick={abrirGestaoEstoque} className="cursor-pointer group" data-guia="estoque">
+              <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mb-2 text-gray-500 group-hover:text-[#2c3e1c]">
+                Grade estoque
+                <CampoAjuda texto="Quantidade por cor e tamanho. Zero nessa combinação = esgotado." />
               </label>
-              <div className="w-full border p-2.5 bg-gray-100 font-bold text-center text-[#4a5d33] rounded-lg group-hover:bg-[#4a5d33] group-hover:text-white transition">
+              <div className="w-full border border-gray-200 h-10 flex items-center justify-center bg-gray-50 font-semibold text-xs text-[#2c3e1c] rounded-lg group-hover:bg-[#2c3e1c] group-hover:text-white transition">
                 {Object.values(produto.estoqueDetalhado).reduce((a, b) => a + b, 0)} un
               </div>
             </div>
           </div>
 
           {/* TAMANHOS */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <label className="block text-[11px] font-bold uppercase mb-3 text-center text-gray-500">Tamanhos Disponíveis</label>
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#e4e6dc]" data-guia="variacoes">
+            <label className="flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase mb-3 text-gray-500">
+              Tamanhos disponíveis
+              <CampoAjuda texto="Variações da peça. Marque os tamanhos que realmente existem neste modelo." />
+            </label>
             <div className="flex flex-wrap gap-1.5 justify-center mb-4">
               {tamanhos.map(t => (
                 <button
@@ -605,34 +640,37 @@ const TelaProdutos: React.FC = () => {
                       : [...produto.tamanhosSelecionados, t];
                     setProduto({ ...produto, tamanhosSelecionados: novos });
                   }}
-                  className={`w-9 h-9 text-[10px] font-bold border rounded-lg transition-all cursor-pointer ${produto.tamanhosSelecionados.includes(t) ? 'bg-black text-white border-black' : 'bg-white text-gray-400 hover:border-gray-400'}`}
+                  className={`w-9 h-9 text-[10px] font-bold border rounded-lg transition-all cursor-pointer ${produto.tamanhosSelecionados.includes(t) ? 'bg-[#2c3e1c] text-white border-[#2c3e1c]' : 'bg-white text-gray-400 border-gray-200 hover:border-gray-400'}`}
                 >
                   {t}
                 </button>
               ))}
             </div>
-            <div className="flex gap-1 border-t pt-3">
+            <div className="flex gap-2 border-t border-gray-100 pt-3">
               <input
                 type="text"
-                placeholder="Novo tamanho (ex: G3)"
+                placeholder="Adicionar..."
                 value={novoTamanhoTexto}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNovoTamanhoTexto(e.target.value)}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && adicionarTamanhoCustomizado()}
-                className="flex-1 text-xs border p-2 outline-none uppercase font-mono rounded-lg"
+                className="flex-1 text-xs border border-gray-200 p-2.5 outline-none bg-gray-50 focus:border-[#2c3e1c] rounded-lg h-10 font-sans"
               />
-              <button type="button" onClick={adicionarTamanhoCustomizado} className="bg-gray-800 text-white text-xs px-3 font-bold hover:bg-black rounded-lg cursor-pointer">+</button>
+              <button type="button" onClick={adicionarTamanhoCustomizado} className="bg-[#2c3e1c] text-white text-xs w-10 h-10 font-bold hover:bg-[#3d5427] rounded-lg cursor-pointer shrink-0">+</button>
             </div>
           </div>
 
           {/* CORES */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <label className="block text-[11px] font-bold uppercase mb-3 text-gray-500">Cores Disponíveis</label>
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#e4e6dc]">
+            <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mb-3 text-gray-500">
+              Cores disponíveis
+              <CampoAjuda texto="Variações de cor desta peça. Combinam com os tamanhos na grade de estoque." />
+            </label>
             <div className="grid grid-cols-2 gap-y-2.5 max-h-40 overflow-y-auto mb-4 pr-1">
               {listaCores.map(c => (
-                <label key={c.nome} className="flex items-center gap-2 cursor-pointer select-none">
+                <label key={c.nome} className="flex items-center gap-2 cursor-pointer select-none min-w-0">
                   <input
                     type="checkbox"
-                    className="w-3.5 h-3.5 accent-[#4a5d33]"
+                    className="w-3.5 h-3.5 accent-[#2c3e1c] shrink-0"
                     checked={produto.coresSelecionadas.includes(c.nome)}
                     onChange={() => {
                       const novos = produto.coresSelecionadas.includes(c.nome)
@@ -641,27 +679,27 @@ const TelaProdutos: React.FC = () => {
                       setProduto({ ...produto, coresSelecionadas: novos });
                     }}
                   />
-                  <div className="w-3.5 h-3.5 rounded-full border border-gray-300" style={{ backgroundColor: c.hex }} />
-                  <span className="text-[10px] text-gray-600 font-semibold">{c.nome}</span>
+                  <div className="w-3.5 h-3.5 rounded-full border border-gray-300 shrink-0" style={{ backgroundColor: c.hex }} />
+                  <span className="text-xs text-gray-600 font-sans truncate">{c.nome}</span>
                 </label>
               ))}
             </div>
-            <div className="flex gap-1 border-t pt-3">
+            <div className="flex gap-2 border-t border-gray-100 pt-3 items-center">
               <input
                 type="text"
                 placeholder="Nome da cor"
                 value={novaCorNome}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNovaCorNome(e.target.value)}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && adicionarCorCustomizada()}
-                className="flex-1 text-xs border p-2 outline-none rounded-lg"
+                className="flex-1 text-xs border border-gray-200 p-2.5 outline-none bg-gray-50 focus:border-[#2c3e1c] rounded-lg h-10 font-sans"
               />
               <input
                 type="color"
                 value={novaCorHex}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNovaCorHex(e.target.value)}
-                className="w-8 h-8 cursor-pointer border p-0.5 rounded-lg"
+                className="w-10 h-10 cursor-pointer border border-gray-200 p-0.5 rounded-lg shrink-0"
               />
-              <button type="button" onClick={adicionarCorCustomizada} className="bg-gray-800 text-white text-xs px-3 font-bold hover:bg-black rounded-lg cursor-pointer">+</button>
+              <button type="button" onClick={adicionarCorCustomizada} className="bg-[#2c3e1c] text-white text-xs w-10 h-10 font-bold hover:bg-[#3d5427] rounded-lg cursor-pointer shrink-0">+</button>
             </div>
           </div>
         </div>
@@ -928,6 +966,7 @@ const TelaProdutos: React.FC = () => {
           </div>
         </div>
       )}
+      <GuiaCadastroProduto ativo={guiaAtivo} onPular={encerrarGuia} onConcluir={encerrarGuia} />
       </div>
     </div>
   );

@@ -18,6 +18,7 @@ interface DashboardMetricas {
   percentualCrescimentoValor: number;
   percentualCrescimentoQtd: number;
   fiadosVencidos: number;
+  condicionaisAtrasadas: number;
 }
 
 interface GraficoPonto {
@@ -56,7 +57,8 @@ export default function PainelPage() {
     qtdVendasAnterior: 0,
     percentualCrescimentoValor: 0,
     percentualCrescimentoQtd: 0,
-    fiadosVencidos: 0
+    fiadosVencidos: 0,
+    condicionaisAtrasadas: 0
   });
 
   const [dadosGrafico, setDadosGrafico] = useState<GraficoPonto[]>([]);
@@ -290,12 +292,6 @@ export default function PainelPage() {
             </div>
           )}
 
-          {metricas.fiadosVencidos > 0 && (
-            <a href="/pagamentos" className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs font-bold">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{metricas.fiadosVencidos} fiado(s) vencido(s). Abra Pagamentos → Fiados vencidos.</span>
-            </a>
-          )}
         </div>
 
         {/* SEÇÃO FLUXO DE VENDAS */}

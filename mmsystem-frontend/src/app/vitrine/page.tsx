@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect, useRef } from 'react';
 import { AxiosError } from 'axios';
-import { ShoppingBag, MessageSquare, ChevronDown } from 'lucide-react';
+import { ShoppingBag, MessageSquare, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '@/services/api';
 import SystemModal, { ModalType } from '@/components/SystemModal';
 
@@ -59,6 +59,8 @@ export default function VitrineProdutos() {
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>('');
   const [filtroAberto, setFiltroAberto] = useState<boolean>(false);
   const filtroRef = useRef<HTMLDivElement>(null);
+  const [indiceFoto, setIndiceFoto] = useState<Record<number, number>>({});
+  const [indiceFotoModal, setIndiceFotoModal] = useState<number>(0);
 
   // Estados do Modal / Sacola
   const [produtoSelecionado, setProdutoSelecionado] = useState<ProdutoVitrine | null>(null);
@@ -127,18 +129,23 @@ export default function VitrineProdutos() {
   }, []);
 
   // Helper para obter a foto do produto
-  const obterImagemUrl = (prod: ProdutoVitrine): string => {
-    if (prod.imagemUrl) return prod.imagemUrl;
+  const obterImagens = (prod: ProdutoVitrine): string[] => {
+    const lista: string[] = [];
     if (prod.fotos) {
       try {
         const arr = typeof prod.fotos === 'string' ? JSON.parse(prod.fotos) : prod.fotos;
-        if (Array.isArray(arr) && arr.length > 0) return arr[0];
+        if (Array.isArray(arr)) {
+          arr.forEach((f) => { if (f) lista.push(String(f)); });
+        }
       } catch {
-        return '';
+        /* ignora JSON inválido */
       }
     }
-    return '';
+    if (lista.length === 0 && prod.imagemUrl) lista.push(prod.imagemUrl);
+    return lista;
   };
+
+  const obterImagemUrl = (prod: ProdutoVitrine): string => obterImagens(prod)[0] || '';
 
   // ─── Helpers para Variações e Estoque Dinâmico ──────────────────────────────
   const extrairLista = (val: string[] | string | undefined, padrao: string[]): string[] => {
@@ -217,6 +224,7 @@ export default function VitrineProdutos() {
     setTamanho(tamInicial);
     setCor(corInicial);
     setQuantidade(1);
+    setIndiceFotoModal(0);
   };
 
   // Adicionar à Sacola
@@ -271,6 +279,28 @@ export default function VitrineProdutos() {
         message: 'Informe seu WhatsApp para identificarmos seu cadastro.',
       });
       return;
+    }
+
+    if (identidade === 'nova') {
+      try {
+        const tel = telefoneCliente.replace(/\D/g, '');
+        const res = await api.get<{ existe: boolean; nome?: string }>(`/vitrine/cliente?telefone=${encodeURIComponent(tel)}`);
+        if (res.data?.existe && res.data.nome) {
+          setIdentidade('pendente');
+          setNomeCadastrado(res.data.nome);
+          setNomeCliente(res.data.nome);
+          setEditarNome(false);
+          setModalSistema({
+            isOpen: true,
+            type: 'warning',
+            title: 'Confirme seu cadastro',
+            message: `Este WhatsApp já está cadastrado (${res.data.nome}). Confirme se é você na sacola antes de continuar.`,
+          });
+          return;
+        }
+      } catch {
+        /* segue como cliente nova */
+      }
     }
 
     if (identidade === 'pendente') {
@@ -481,7 +511,9 @@ export default function VitrineProdutos() {
         {!loading && !erro && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
             {produtosFiltrados.map((prod) => {
-              const src = obterImagemUrl(prod);
+              const fotos = obterImagens(prod);
+              const iFoto = Math.min(indiceFoto[prod.id] || 0, Math.max(fotos.length - 1, 0));
+              const src = fotos[iFoto] || '';
               return (
                 <div
                   key={prod.id}
@@ -492,12 +524,43 @@ export default function VitrineProdutos() {
                       <img
                         src={src}
                         alt={prod.nome}
-                        className="w-full h-full object-cover hover:scale-[1.03] transition-transform duration-300"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-medium">
                         Sem foto
                       </div>
+                    )}
+                    {fotos.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          className="absolute left-1 top-1/2 -translate-y-1/2 bg-white/85 rounded-full p-1 cursor-pointer"
+                          aria-label="Foto anterior"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIndiceFoto((m) => ({ ...m, [prod.id]: (iFoto - 1 + fotos.length) % fotos.length }));
+                          }}
+                        >
+                          <ChevronLeft className="w-4 h-4 text-[#2c3e1c]" />
+                        </button>
+                        <button
+                          type="button"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 bg-white/85 rounded-full p-1 cursor-pointer"
+                          aria-label="Próxima foto"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIndiceFoto((m) => ({ ...m, [prod.id]: (iFoto + 1) % fotos.length }));
+                          }}
+                        >
+                          <ChevronRight className="w-4 h-4 text-[#2c3e1c]" />
+                        </button>
+                        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
+                          {fotos.map((_, i) => (
+                            <span key={i} className={`h-1.5 rounded-full ${i === iFoto ? 'w-3 bg-white' : 'w-1.5 bg-white/60'}`} />
+                          ))}
+                        </div>
+                      </>
                     )}
                     <span className="absolute top-2 left-2 bg-[#2c3e1c]/85 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide">
                       {prod.categoria || 'Geral'}
@@ -557,16 +620,30 @@ export default function VitrineProdutos() {
                 ✕
               </button>
 
-              <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden">
-                {obterImagemUrl(produtoSelecionado) ? (
-                  <img
-                    src={obterImagemUrl(produtoSelecionado)}
-                    alt={produtoSelecionado.nome}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-4xl">👗</div>
-                )}
+              <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden relative">
+                {(() => {
+                  const fotosModal = obterImagens(produtoSelecionado);
+                  const iM = Math.min(indiceFotoModal, Math.max(fotosModal.length - 1, 0));
+                  const srcM = fotosModal[iM];
+                  if (!srcM) {
+                    return <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">Sem foto</div>;
+                  }
+                  return (
+                    <>
+                      <img src={srcM} alt={produtoSelecionado.nome} className="w-full h-full object-cover" />
+                      {fotosModal.length > 1 && (
+                        <>
+                          <button type="button" className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/85 rounded-full p-1 cursor-pointer" onClick={() => setIndiceFotoModal((iM - 1 + fotosModal.length) % fotosModal.length)}>
+                            <ChevronLeft className="w-5 h-5 text-[#2c3e1c]" />
+                          </button>
+                          <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/85 rounded-full p-1 cursor-pointer" onClick={() => setIndiceFotoModal((iM + 1) % fotosModal.length)}>
+                            <ChevronRight className="w-5 h-5 text-[#2c3e1c]" />
+                          </button>
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               <div>

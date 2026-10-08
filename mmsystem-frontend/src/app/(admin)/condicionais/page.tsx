@@ -9,6 +9,7 @@ import Paginacao from '@/components/Paginacao';
 import SystemModal from '@/components/SystemModal';
 import { formatErrorMessage } from '@/utils/errorUtils';
 import { enviarWhatsApp } from '@/utils/whatsapp';
+import CampoAjuda from '@/components/CampoAjuda';
 
 // ─── Interfaces e Tipagens ─────────────────────────────────────────────────
 export interface Usuario {
@@ -514,7 +515,11 @@ const TelaCondicionais: React.FC = () => {
     const atendeAba = abaAtiva === 'excluidas'
       ? true
       : (abaAtiva === 'ativas' ? c.status === 'ABERTA' : (c.status === 'FINALIZADA' || c.status === 'DEVOLVIDA'));
-    const atendeStatus = statusFiltro === 'TODOS' || c.status === statusFiltro;
+    const atrasada = (c.status === 'ABERTA' || c.status === 'EM_CONDICIONAL')
+      && c.dataRetorno
+      && new Date(c.dataRetorno + 'T00:00:00') <= new Date(new Date().toDateString());
+    const atendeStatus = statusFiltro === 'TODOS'
+      || (statusFiltro === 'ATRASADA' ? atrasada : c.status === statusFiltro);
     
     const termo = termoBusca.toLowerCase();
     const nomeCliente = (c.usuario?.nome || c.cliente?.nome || '').toLowerCase();
@@ -531,7 +536,6 @@ const TelaCondicionais: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">Painel de Condicionais</h1>
-            <p className="text-xs text-gray-600 mt-1">Gerenciamento ágil de peças com saída condicional para prova domiciliar.</p>
           </div>
 
           <button 
@@ -572,6 +576,7 @@ const TelaCondicionais: React.FC = () => {
             opcoesFiltro={[
               { label: 'Todos os Status', value: 'TODOS' },
               { label: 'Aberta', value: 'ABERTA' },
+              { label: 'Atrasada (prazo vencido)', value: 'ATRASADA' },
               { label: 'Finalizada', value: 'FINALIZADA' },
               { label: 'Devolvida', value: 'DEVOLVIDA' }
             ]}
@@ -785,7 +790,10 @@ const TelaCondicionais: React.FC = () => {
                 </div>
               )}
               <div>
-                <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Selecione a Cliente *</label>
+                <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-gray-500 mb-1">
+                  Selecione a cliente *
+                  <CampoAjuda texto="Quem leva as peças. Cadastro pelo WhatsApp/telefone." />
+                </label>
                 <select
                   value={formCondicional.clienteId}
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormCondicional({ ...formCondicional, clienteId: e.target.value })}
@@ -800,7 +808,10 @@ const TelaCondicionais: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Data de Saída</label>
+                  <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-gray-500 mb-1">
+                    Data de saída
+                    <CampoAjuda texto="Dia em que a sacola saiu da loja." />
+                  </label>
                   <input 
                     type="date" 
                     value={formCondicional.dataSaida} 
@@ -809,7 +820,10 @@ const TelaCondicionais: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Data Limite de Retorno *</label>
+                  <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-gray-500 mb-1">
+                    Data limite de retorno *
+                    <CampoAjuda texto="Prazo para devolver ou comprar. Usada para saber se a sacola está atrasada." />
+                  </label>
                   <input 
                     type="date" 
                     value={formCondicional.dataRetorno} 
@@ -822,7 +836,10 @@ const TelaCondicionais: React.FC = () => {
               {/* SESSÃO DINÂMICA DE ITENS */}
               <div className="border-t pt-3">
                 <div className="flex justify-between items-center mb-2">
-                  <label className="block text-[10px] font-bold uppercase text-gray-500">Peças na Sacola Condicional</label>
+                  <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-gray-500">
+                    Peças na sacola
+                    <CampoAjuda texto="Produto, cor, tamanho e quantidade que saíram do estoque para esta cliente." />
+                  </label>
                   <button type="button" onClick={adicionarLinhaProduto} className="text-[#4a5d33] hover:underline text-[10px] font-bold cursor-pointer">+ Adicionar Peça</button>
                 </div>
 
@@ -913,75 +930,60 @@ const TelaCondicionais: React.FC = () => {
                       : 99;
 
                     return (
-                      <div key={idx} className="grid grid-cols-12 gap-2 bg-gray-50 p-2 border rounded-md items-center">
-                        <div className="col-span-5">
+                      <div key={idx} className="bg-gray-50 p-2 border rounded-md min-w-0 space-y-1">
+                        <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center min-w-0">
                           <select 
                             value={item.produtoId} 
                             onChange={(e: ChangeEvent<HTMLSelectElement>) => handleItemChange(idx, 'produtoId', e.target.value)} 
-                            className="w-full border p-1 bg-white text-xs outline-none rounded"
+                            className="min-w-0 flex-1 border p-1.5 bg-white text-xs outline-none rounded"
                           >
-                            <option value="">Selecione o Produto...</option>
+                            <option value="">Produto...</option>
                             {produtosDisponiveis.map(p => (
                               <option key={p.id} value={p.id}>
-                                {p.nome} ({obterEstoqueTotalProduto(p)} un. em estoque)
+                                {p.nome}
                               </option>
                             ))}
                           </select>
-                        </div>
-
-                        <div className="col-span-2">
                           <select 
                             value={item.corEscolhida} 
                             onChange={(e: ChangeEvent<HTMLSelectElement>) => handleItemChange(idx, 'corEscolhida', e.target.value)} 
-                            className="w-full border p-1 bg-white text-xs outline-none rounded" 
+                            className="w-24 shrink-0 border p-1.5 bg-white text-xs outline-none rounded" 
                             disabled={!item.produtoId}
                           >
-                            <option value="">Cor...</option>
+                            <option value="">Cor</option>
                             {coresDisponiveisNoProduto.map(c => (
-                              <option key={c.nome} value={c.nome}>
-                                {c.nome} ({c.estoque} un.)
-                              </option>
+                              <option key={c.nome} value={c.nome}>{c.nome}</option>
                             ))}
                           </select>
-                        </div>
-
-                        <div className="col-span-2">
                           <select 
                             value={item.tamanhoEscolhido} 
                             onChange={(e: ChangeEvent<HTMLSelectElement>) => handleItemChange(idx, 'tamanhoEscolhido', e.target.value)} 
-                            className="w-full border p-1 bg-white text-xs outline-none rounded" 
+                            className="w-16 shrink-0 border p-1.5 bg-white text-xs outline-none rounded" 
                             disabled={!item.corEscolhida}
                           >
-                            <option value="">Tam...</option>
+                            <option value="">Tam</option>
                             {tamanhosDisponiveisNoProduto.map(t => (
-                              <option key={t.nome} value={t.nome}>
-                                {t.nome} ({t.estoque} un. disp.)
-                              </option>
+                              <option key={t.nome} value={t.nome}>{t.nome}</option>
                             ))}
                           </select>
-                        </div>
-
-                        <div className="col-span-2 flex flex-col items-center">
                           <input 
                             type="number" 
                             min="1" 
                             max={estoqueMaxVar > 0 ? estoqueMaxVar : 1}
                             value={item.quantidade} 
                             onChange={(e: ChangeEvent<HTMLInputElement>) => handleItemChange(idx, 'quantidade', parseInt(e.target.value, 10) || 1)} 
-                            className="w-full border p-1 text-center bg-white text-xs rounded font-bold" 
+                            className="w-14 shrink-0 border p-1.5 text-center bg-white text-xs rounded font-bold" 
+                            aria-label="Quantidade"
                           />
-                          {prodSelecionado && (
-                            <span className="text-[9px] font-bold text-[#4a5d33] mt-0.5">
-                              ({estoqueMaxVar} un. disp.)
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="col-span-1 text-center">
                           {formCondicional.itens.length > 1 && (
-                            <button type="button" onClick={() => removerLinhaProduto(idx)} className="text-red-600 font-bold hover:text-red-800 cursor-pointer">×</button>
+                            <button type="button" onClick={() => removerLinhaProduto(idx)} className="text-red-600 font-bold hover:text-red-800 cursor-pointer w-6 shrink-0">×</button>
                           )}
                         </div>
+                        {prodSelecionado && (
+                          <p className="text-[10px] text-[#4a5d33]">
+                            {estoqueMaxVar} un. disponíveis nesta variação
+                          </p>
+                        )}
                       </div>
                     );
                   })}

@@ -19,4 +19,5 @@ public class DashboardMetricasDTO {
     private BigDecimal percentualCrescimentoValor;
     private BigDecimal percentualCrescimentoQtd;
     private long fiadosVencidos;
+    private long condicionaisAtrasadas;
 }

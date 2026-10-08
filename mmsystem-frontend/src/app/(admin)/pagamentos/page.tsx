@@ -43,6 +43,19 @@ interface ModalExcluirState {
   id: number | null;
 }
 
+function rotuloMetodoPagamento(metodo?: string): string {
+  const mapa: Record<string, string> = {
+    PIX: 'PIX',
+    CARTAO_CREDITO: 'Cartão de crédito',
+    CARTAO_DEBITO: 'Cartão de débito',
+    DINHEIRO: 'Dinheiro',
+    BOLETO: 'Boleto',
+    PAGAMENTO_FUTURO: 'Pagamento futuro',
+  };
+  if (!metodo) return '—';
+  return mapa[metodo] || metodo.replace(/_/g, ' ');
+}
+
 const TelaPagamentos: React.FC = () => {
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [pedidosOpcoes, setPedidosOpcoes] = useState<PedidoRef[]>([]);
@@ -357,7 +370,7 @@ const TelaPagamentos: React.FC = () => {
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                Fiados vencidos
+                Pagamentos vencidos
               </button>
 
               <button
@@ -403,7 +416,7 @@ const TelaPagamentos: React.FC = () => {
                         {abaAtiva === 'EXCLUIDOS'
                           ? 'Nenhum pagamento removido na lixeira.'
                           : abaAtiva === 'VENCIDOS'
-                            ? 'Nenhum fiado vencido no momento.'
+                            ? 'Nenhum pagamento vencido no momento.'
                             : 'Nenhum pagamento registrado.'}
                       </td>
                     </tr>
@@ -414,8 +427,8 @@ const TelaPagamentos: React.FC = () => {
                         <td className="p-3 font-bold text-gray-800">
                           {pag.pedido?.id ? `Pedido #${pag.pedido.id}` : '—'}
                         </td>
-                        <td className="p-3 font-mono text-gray-700 uppercase">
-                          {pag.metodoPagamento}
+                        <td className="p-3 text-xs font-sans text-gray-700">
+                          {rotuloMetodoPagamento(pag.metodoPagamento)}
                         </td>
                         <td className="p-3 text-gray-600">
                           {pag.dataVencimento || '—'}
@@ -565,14 +578,14 @@ const TelaPagamentos: React.FC = () => {
                       onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                         setFormPagamento({ ...formPagamento, metodoPagamento: e.target.value })
                       }
-                      className="w-full border p-2 bg-gray-50 text-xs outline-none uppercase font-mono"
+                      className="w-full border p-2 bg-gray-50 text-xs outline-none font-sans rounded-md"
                     >
                       <option value="PIX">PIX</option>
-                      <option value="CARTAO_CREDITO">Cartão de Crédito</option>
-                      <option value="CARTAO_DEBITO">Cartão de Débito</option>
+                      <option value="CARTAO_CREDITO">Cartão de crédito</option>
+                      <option value="CARTAO_DEBITO">Cartão de débito</option>
                       <option value="DINHEIRO">Dinheiro</option>
                       <option value="BOLETO">Boleto</option>
-                      <option value="PAGAMENTO_FUTURO">Pagamento Futuro</option>
+                      <option value="PAGAMENTO_FUTURO">Pagamento futuro</option>
                     </select>
                   </div>
                 </div>
