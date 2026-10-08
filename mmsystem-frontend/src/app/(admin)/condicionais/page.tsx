@@ -515,7 +515,7 @@ const TelaCondicionais: React.FC = () => {
     const atendeAba = abaAtiva === 'excluidas'
       ? true
       : (abaAtiva === 'ativas' ? c.status === 'ABERTA' : (c.status === 'FINALIZADA' || c.status === 'DEVOLVIDA'));
-    const atrasada = (c.status === 'ABERTA' || c.status === 'EM_CONDICIONAL')
+    const atrasada = c.status === 'ABERTA'
       && c.dataRetorno
       && new Date(c.dataRetorno + 'T00:00:00') <= new Date(new Date().toDateString());
     const atendeStatus = statusFiltro === 'TODOS'
