@@ -6,6 +6,7 @@ import { AxiosError } from 'axios';
 import { ShoppingBag, MessageSquare, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '@/services/api';
 import SystemModal, { ModalType } from '@/components/SystemModal';
+import { abrirWhatsAppLoja } from '@/utils/whatsapp';
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface ProdutoVitrine {
@@ -46,6 +47,12 @@ interface ApiErrorResponse {
   message?: string;
   mensagem?: string;
   erro?: string;
+}
+
+interface CheckoutVitrine {
+  tipoFluxo?: string;
+  condicional?: { id?: number };
+  pedido?: { id?: number };
 }
 
 const CATEGORIAS_VITRINE = ['Vestidos', 'Blusas', 'Calças', 'Saias', 'Conjuntos'] as const;
@@ -337,7 +344,42 @@ export default function VitrineProdutos() {
     };
 
     try {
-      await api.post('/vitrine/pedido', payload);
+      const res = await api.post<CheckoutVitrine>('/vitrine/pedido', payload);
+      const idPedido = res.data?.pedido?.id;
+      const idCondicional = res.data?.condicional?.id;
+      const linhasItens = carrinho
+        .map((item) => `- ${item.nome} (${item.corEscolhida}/${item.tamanhoEscolhido}) x${item.quantidade}`)
+        .join('\n');
+      const telCliente = telefoneCliente.replace(/\D/g, '');
+
+      let mensagemLoja: string;
+      if (compraDireta && idPedido) {
+        mensagemLoja =
+          `Olá, Maria Morena! Sou ${nomeCliente.trim()}.\n` +
+          `WhatsApp: ${telCliente}\n` +
+          `Compra direta — Pedido #${idPedido} já está no sistema.\n` +
+          `${linhasItens}`;
+      } else if (idCondicional) {
+        mensagemLoja =
+          `Olá, Maria Morena! Sou ${nomeCliente.trim()}.\n` +
+          `WhatsApp: ${telCliente}\n` +
+          `Sacola condicional #${idCondicional} já está no sistema.\n` +
+          `${linhasItens}`;
+      } else {
+        mensagemLoja =
+          `Olá, Maria Morena! Sou ${nomeCliente.trim()}.\n` +
+          `WhatsApp: ${telCliente}\n` +
+          `Acabei de finalizar na vitrine.\n${linhasItens}`;
+      }
+
+      let telefoneLoja = '';
+      try {
+        const loja = await api.get<{ telefone?: string }>('/vitrine/loja');
+        telefoneLoja = loja.data?.telefone || '';
+      } catch {
+        /* segue sem WhatsApp se a dona não tiver telefone */
+      }
+      const whatsAberto = abrirWhatsAppLoja(mensagemLoja, telefoneLoja);
 
       setCarrinho([]);
       setNomeCliente('');
@@ -347,13 +389,17 @@ export default function VitrineProdutos() {
       setEditarNome(false);
       setMostrarCarrinho(false);
 
+      const idTxt = compraDireta
+        ? (idPedido ? ` Pedido #${idPedido} já aparece em Pedidos.` : '')
+        : (idCondicional ? ` Sacola #${idCondicional} já aparece em Condicionais.` : '');
+
       setModalSistema({
         isOpen: true,
         type: 'success',
         title: compraDireta ? 'Pedido registrado!' : 'Sacola solicitada!',
-        message: compraDireta
-          ? 'Sua compra direta foi registrada. A loja confirma o pagamento em seguida.'
-          : 'Sua sacola condicional foi registrada. A loja entra em contato pelo WhatsApp informado.',
+        message: whatsAberto
+          ? `Envie a mensagem no WhatsApp para a loja combinarmos os detalhes.${idTxt}`
+          : `Registro feito no sistema.${idTxt} Cadastre o WhatsApp da proprietária para a cliente poder avisar a loja.`,
       });
     } catch (err) {
       const erroAxios = err as AxiosError<ApiErrorResponse>;

@@ -2,6 +2,7 @@ package com.adudasena.mmsystem.repository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import com.adudasena.mmsystem.enums.Perfil;
 import com.adudasena.mmsystem.model.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -17,4 +18,5 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findByIdAndDeletedAtIsNull(Long id);
     Optional<Usuario> findByEmail(String email);
     Optional<Usuario> findByTelefone(String telefone);
+    Optional<Usuario> findFirstByPerfilAndDeletedAtIsNull(Perfil perfil);
 }

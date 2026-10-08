@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.adudasena.mmsystem.dto.UsuarioDTO;
 import com.adudasena.mmsystem.dto.VitrineClienteLookupDTO;
+import com.adudasena.mmsystem.dto.VitrineLojaDTO;
 import com.adudasena.mmsystem.enums.Perfil;
 import com.adudasena.mmsystem.model.Usuario;
 import com.adudasena.mmsystem.repository.UsuarioRepository;
@@ -34,6 +35,16 @@ public class UsuarioService {
     public Usuario buscarPorId(Long id) {
         return repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Cliente/Usuário não encontrado com o ID: " + id));
+    }
+
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public VitrineLojaDTO contatoLojaVitrine() {
+        Usuario dona = repository.findFirstByPerfilAndDeletedAtIsNull(Perfil.ROLE_PROPRIETARIA).orElse(null);
+        if (dona == null || dona.getTelefone() == null || dona.getTelefone().isBlank()) {
+            return new VitrineLojaDTO(null, null);
+        }
+        String digits = dona.getTelefone().replaceAll("\\D", "");
+        return new VitrineLojaDTO(digits.isEmpty() ? null : digits, dona.getNome());
     }
 
     @org.springframework.transaction.annotation.Transactional(readOnly = true)

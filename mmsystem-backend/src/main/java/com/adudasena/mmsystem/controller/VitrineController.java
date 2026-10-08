@@ -5,6 +5,7 @@ import com.adudasena.mmsystem.dto.PedidoResponseDTO;
 import com.adudasena.mmsystem.dto.ProdutoResponseDTO;
 import com.adudasena.mmsystem.dto.VitrineCheckoutResponseDTO;
 import com.adudasena.mmsystem.dto.VitrineClienteLookupDTO;
+import com.adudasena.mmsystem.dto.VitrineLojaDTO;
 import com.adudasena.mmsystem.dto.VitrinePedidoDTO;
 import com.adudasena.mmsystem.dto.WhatsAppMensagemDTO;
 import com.adudasena.mmsystem.service.CondicionalService;
@@ -39,6 +40,11 @@ public class VitrineController {
     ) {
         Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("id").descending());
         return ResponseEntity.ok(produtoService.listarVitrine(pageable).map(ProdutoResponseDTO::from));
+    }
+
+    @GetMapping("/loja")
+    public ResponseEntity<VitrineLojaDTO> contatoLoja() {
+        return ResponseEntity.ok(usuarioService.contatoLojaVitrine());
     }
 
     @GetMapping("/cliente")
