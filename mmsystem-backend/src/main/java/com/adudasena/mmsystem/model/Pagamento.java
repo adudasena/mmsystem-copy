@@ -38,6 +38,12 @@ public class Pagamento {
     @Column(name = "deleted_at")
     private java.time.LocalDateTime deletedAt;
 
+    @Column(name = "whatsapp_aviso_vencimento_em")
+    private java.time.LocalDateTime whatsappAvisoVencimentoEm;
+
+    @Column(name = "whatsapp_aviso_atraso_em")
+    private java.time.LocalDateTime whatsappAvisoAtrasoEm;
+
     public Pagamento() {}
 
     public Long getId() { return id; }
@@ -60,4 +66,14 @@ public class Pagamento {
 
     public java.time.LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(java.time.LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+
+    public java.time.LocalDateTime getWhatsappAvisoVencimentoEm() { return whatsappAvisoVencimentoEm; }
+    public void setWhatsappAvisoVencimentoEm(java.time.LocalDateTime whatsappAvisoVencimentoEm) {
+        this.whatsappAvisoVencimentoEm = whatsappAvisoVencimentoEm;
+    }
+
+    public java.time.LocalDateTime getWhatsappAvisoAtrasoEm() { return whatsappAvisoAtrasoEm; }
+    public void setWhatsappAvisoAtrasoEm(java.time.LocalDateTime whatsappAvisoAtrasoEm) {
+        this.whatsappAvisoAtrasoEm = whatsappAvisoAtrasoEm;
+    }
 }

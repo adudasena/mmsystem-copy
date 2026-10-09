@@ -45,6 +45,14 @@ public class Condicional {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt; // Campo para Soft Delete
 
+    /** Último aviso de “está vencendo” enviado ao WhatsApp da cliente. */
+    @Column(name = "whatsapp_aviso_vencimento_em")
+    private LocalDateTime whatsappAvisoVencimentoEm;
+
+    /** Último aviso de atraso enviado ao WhatsApp da cliente. */
+    @Column(name = "whatsapp_aviso_atraso_em")
+    private LocalDateTime whatsappAvisoAtrasoEm;
+
     // Relacionamento 1 para N com a entidade ItemCondicional separada
     @OneToMany(mappedBy = "condicional", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemCondicional> itens = new ArrayList<>();
