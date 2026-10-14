@@ -66,6 +66,9 @@ const TelaPagamentos: React.FC = () => {
   // ─── Estados de Filtro e Busca ───────────────────────────────────────────
   const [termoBusca, setTermoBusca] = useState<string>('');
   const [statusFiltro, setStatusFiltro] = useState<string>('TODOS');
+  const [opcoesStatus, setOpcoesStatus] = useState<{ label: string; value: string }[]>([
+    { label: 'Todos os Status', value: 'TODOS' },
+  ]);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Mensagens de Feedback
@@ -146,9 +149,10 @@ const TelaPagamentos: React.FC = () => {
       try {
         setLoading(true);
 
-        const [resPagamentos, resPedidos] = await Promise.allSettled([
+        const [resPagamentos, resPedidos, resFiltro] = await Promise.allSettled([
           api.get<PageSpring<Pagamento> | Pagamento[]>(`/pagamentos?page=0&size=${tamanhoPagina}`),
-          api.get<PageSpring<PedidoRef> | PedidoRef[]>('/pedidos?size=1000')
+          api.get<PageSpring<PedidoRef> | PedidoRef[]>('/pedidos?size=1000'),
+          api.get<string[]>('/pagamentos/opcoes-filtro'),
         ]);
 
         if (!montado) return;
@@ -164,6 +168,19 @@ const TelaPagamentos: React.FC = () => {
           } else if (Array.isArray(dados)) {
             setPagamentos(dados);
           }
+        }
+
+        if (resFiltro.status === 'fulfilled' && Array.isArray(resFiltro.value.data)) {
+          const rotulos: Record<string, string> = {
+            PENDENTE: 'Pendente',
+            APROVADO: 'Aprovado',
+            CANCELADO: 'Cancelado',
+            ESTORNADO: 'Estornado',
+          };
+          setOpcoesStatus([
+            { label: 'Todos os Status', value: 'TODOS' },
+            ...resFiltro.value.data.map((value) => ({ label: rotulos[value] || value, value })),
+          ]);
         }
 
         if (resPedidos.status === 'fulfilled' && resPedidos.value.data) {
@@ -289,7 +306,10 @@ const TelaPagamentos: React.FC = () => {
 
   // ─── Lógica de Filtro do Lançamento ───────────────────────────────────────
   const pagamentosFiltrados = (Array.isArray(pagamentos) ? pagamentos : []).filter((pag) => {
-    const atendeStatus = statusFiltro === 'TODOS' || pag.status === statusFiltro;
+    const atendeStatus =
+      statusFiltro === 'TODOS'
+      || pag.status === statusFiltro
+      || (statusFiltro === 'APROVADO' && pag.status === 'PAGO');
 
     const termo = termoBusca.toLowerCase().trim();
     if (!termo) return atendeStatus;
@@ -309,7 +329,7 @@ const TelaPagamentos: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">
-              Pagamentos &amp; Lançamentos
+              Pagamentos
             </h1>
           </div>
 
@@ -335,20 +355,13 @@ const TelaPagamentos: React.FC = () => {
           placeholder="Buscar por #ID do lançamento, pedido ref. ou método..."
           filtroValor={statusFiltro}
           onFiltroChange={setStatusFiltro}
-          opcoesFiltro={[
-            { label: 'Todos os Status', value: 'TODOS' },
-            { label: 'Pendente', value: 'PENDENTE' },
-            { label: 'Aprovado', value: 'APROVADO' },
-            { label: 'Pago', value: 'PAGO' },
-            { label: 'Cancelado', value: 'CANCELADO' },
-            { label: 'Estornado', value: 'ESTORNADO' }
-          ]}
+          opcoesFiltro={opcoesStatus}
         />
 
         {/* Tabela de Lançamentos */}
         <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-4 border-b bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setAbaAtiva('ATIVOS')}
@@ -446,7 +459,7 @@ const TelaPagamentos: React.FC = () => {
                                 : 'bg-amber-100 text-amber-800 border-amber-300'
                             }`}
                           >
-                            {pag.status}
+                            {pag.status === 'PAGO' ? 'APROVADO' : pag.status}
                           </span>
                         </td>
                         <td className="p-3 text-center">

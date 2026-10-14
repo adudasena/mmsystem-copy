@@ -22,6 +22,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/vitrine")
 @RequiredArgsConstructor
@@ -36,10 +38,16 @@ public class VitrineController {
     @GetMapping("/produtos")
     public ResponseEntity<Page<ProdutoResponseDTO>> listarCatalogo(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) String categoria
     ) {
         Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("id").descending());
-        return ResponseEntity.ok(produtoService.listarVitrine(pageable).map(ProdutoResponseDTO::from));
+        return ResponseEntity.ok(produtoService.listarVitrine(pageable, categoria).map(ProdutoResponseDTO::from));
+    }
+
+    @GetMapping("/categorias")
+    public ResponseEntity<List<String>> listarCategorias() {
+        return ResponseEntity.ok(produtoService.listarCategoriasVitrine());
     }
 
     @GetMapping("/loja")

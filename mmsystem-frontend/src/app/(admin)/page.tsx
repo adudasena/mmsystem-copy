@@ -192,19 +192,19 @@ export default function PainelPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Cabeçalho e Filtros */}
-        <div className="flex flex-col bg-white p-6 rounded-2xl shadow-sm border border-gray-200 gap-4">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">
+        <div className="flex flex-col bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 gap-4 min-w-0">
+          <div className="flex flex-col gap-4 min-w-0">
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-sans font-bold text-[#2d3a22]">
                 Dashboard
               </h1>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-600 mt-1 break-words">
                 Olá {nomeUsuario}, veja o desempenho do período comparado ao período anterior.
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-end gap-3">
-              <div className="flex flex-col">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 w-full min-w-0">
+              <div className="flex flex-col min-w-0">
                 <label className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Data Início</label>
                 <input 
                   type="date" 
@@ -215,10 +215,10 @@ export default function PainelPage() {
                     setFiltroAtivo('personalizado');
                     if (erroData) setErroData(null);
                   }}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d3a22] transition"
+                  className="w-full min-w-0 max-w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d3a22] transition"
                 />
               </div>
-              <div className="flex flex-col">
+              <div className="flex flex-col min-w-0">
                 <label className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Data Fim</label>
                 <input 
                   type="date" 
@@ -228,14 +228,14 @@ export default function PainelPage() {
                     setFiltroAtivo('personalizado');
                     if (erroData) setErroData(null);
                   }}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d3a22] transition"
+                  className="w-full min-w-0 max-w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d3a22] transition"
                 />
               </div>
               <button 
                 onClick={() => validarEBuscar(dataInicio, dataFim)}
-                className="px-4 py-2 bg-[#2d3a22] text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#1f2818] transition shadow-md"
+                className="px-4 py-2 bg-[#2d3a22] text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#1f2818] transition shadow-md w-full min-[420px]:col-span-2 lg:col-span-1 lg:self-end lg:w-auto lg:min-w-[7.5rem]"
               >
-                <Search className="w-4 h-4" />
+                <Search className="w-4 h-4 shrink-0" />
                 Filtrar
               </button>
             </div>
@@ -243,7 +243,7 @@ export default function PainelPage() {
 
           {/* Botões Pílula de Atalho de Períodos Rápidos */}
           <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100">
-            <span className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 mr-1">
+            <span className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 w-full sm:w-auto">
               <Calendar className="w-3.5 h-3.5 text-[#2d3a22]" /> Atalhos:
             </span>
 

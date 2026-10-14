@@ -102,6 +102,9 @@ const TelaCondicionais: React.FC = () => {
   // ─── Estados da Barra de Busca e Filtro ──────────────────────────────────
   const [termoBusca, setTermoBusca] = useState<string>('');
   const [statusFiltro, setStatusFiltro] = useState<string>('TODOS');
+  const [opcoesStatus, setOpcoesStatus] = useState<{ label: string; value: string }[]>([
+    { label: 'Todos os Status', value: 'TODOS' },
+  ]);
 
   // Referência para Auto-Scroll
   const tabelaRef = useRef<HTMLDivElement>(null);
@@ -192,10 +195,11 @@ const TelaCondicionais: React.FC = () => {
 
     const carregarDadosInicial = async () => {
       try {
-        const [resCond, resCli, resProd] = await Promise.allSettled([
+        const [resCond, resCli, resProd, resFiltro] = await Promise.allSettled([
           api.get<PageSpring<Condicional> | Condicional[]>(`/condicionais?page=0&size=${tamanhoPagina}`),
           api.get<PageSpring<Usuario> | Usuario[]>('/usuarios?size=1000'),
-          api.get<PageSpring<ProdutoCondicional> | ProdutoCondicional[]>('/produtos?size=1000')
+          api.get<PageSpring<ProdutoCondicional> | ProdutoCondicional[]>('/produtos?size=1000'),
+          api.get<string[]>('/condicionais/opcoes-filtro'),
         ]);
         
         if (montado) {
@@ -218,6 +222,19 @@ const TelaCondicionais: React.FC = () => {
             } else if (Array.isArray(dataCli)) {
               setClientes(dataCli);
             }
+          }
+
+          if (resFiltro.status === 'fulfilled' && Array.isArray(resFiltro.value.data)) {
+            const rotulos: Record<string, string> = {
+              ABERTA: 'Aberta',
+              ATRASADA: 'Atrasada (prazo vencido)',
+              FINALIZADA: 'Finalizada',
+              DEVOLVIDA: 'Devolvida',
+            };
+            setOpcoesStatus([
+              { label: 'Todos os Status', value: 'TODOS' },
+              ...resFiltro.value.data.map((value) => ({ label: rotulos[value] || value, value })),
+            ]);
           }
 
           if (resProd.status === 'fulfilled' && resProd.value.data) {
@@ -535,7 +552,7 @@ const TelaCondicionais: React.FC = () => {
         {/* CABEÇALHO */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">Painel de Condicionais</h1>
+            <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">Condicionais</h1>
           </div>
 
           <button 
@@ -565,32 +582,23 @@ const TelaCondicionais: React.FC = () => {
           </div>
         )}
 
-        {/* BARRA DE PESQUISA E FILTROS */}
-        <div className="mb-6">
-          <BarraBuscaFiltro
-            termoBusca={termoBusca}
-            onBuscaChange={setTermoBusca}
-            placeholder="Buscar sacola por código, cliente ou peça..."
-            filtroValor={statusFiltro}
-            onFiltroChange={setStatusFiltro}
-            opcoesFiltro={[
-              { label: 'Todos os Status', value: 'TODOS' },
-              { label: 'Aberta', value: 'ABERTA' },
-              { label: 'Atrasada (prazo vencido)', value: 'ATRASADA' },
-              { label: 'Finalizada', value: 'FINALIZADA' },
-              { label: 'Devolvida', value: 'DEVOLVIDA' }
-            ]}
-          />
-        </div>
+        <BarraBuscaFiltro
+          termoBusca={termoBusca}
+          onBuscaChange={setTermoBusca}
+          placeholder="Buscar sacola por código, cliente ou peça..."
+          filtroValor={statusFiltro}
+          onFiltroChange={setStatusFiltro}
+          opcoesFiltro={opcoesStatus}
+        />
 
         {/* TABELA DE REGISTROS */}
         <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col justify-between">
-          <div className="p-4 border-b bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div className="flex items-center gap-2">
+          <div className="p-4 border-b bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setAbaAtiva('ativas')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   abaAtiva === 'ativas'
                     ? 'bg-[#2d3a22] text-white shadow-sm'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -602,7 +610,7 @@ const TelaCondicionais: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAbaAtiva('finalizadas')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   abaAtiva === 'finalizadas'
                     ? 'bg-[#2d3a22] text-white shadow-sm'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -614,7 +622,7 @@ const TelaCondicionais: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAbaAtiva('excluidas')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
                   abaAtiva === 'excluidas'
                     ? 'bg-red-700 text-white shadow-sm'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'

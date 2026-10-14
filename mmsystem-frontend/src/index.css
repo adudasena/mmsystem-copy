@@ -12,6 +12,13 @@
   }
 }
 
+.vitrine-root,
+.vitrine-root h1,
+.vitrine-root h2,
+.vitrine-root h3 {
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
 /* Ajuste fino dos cards e fundos para bater com as fotos do protótipo */
 .bg-card-proto {
   background-color: #f2f3eb;

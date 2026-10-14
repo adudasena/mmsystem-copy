@@ -19,6 +19,11 @@ public class CondicionalController {
 
     private final CondicionalService service;
 
+    @GetMapping("/opcoes-filtro")
+    public ResponseEntity<java.util.List<String>> opcoesFiltro() {
+        return ResponseEntity.ok(service.opcoesFiltroStatus());
+    }
+
     @GetMapping
     public ResponseEntity<Page<CondicionalResponseDTO>> listarTodos(
             @RequestParam(defaultValue = "0") int page,

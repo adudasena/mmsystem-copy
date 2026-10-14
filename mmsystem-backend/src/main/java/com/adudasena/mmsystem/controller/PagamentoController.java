@@ -20,6 +20,11 @@ public class PagamentoController {
 
     private final PagamentoService service;
 
+    @GetMapping("/opcoes-filtro")
+    public ResponseEntity<java.util.List<String>> opcoesFiltro() {
+        return ResponseEntity.ok(service.opcoesFiltroStatus());
+    }
+
     @GetMapping
     public ResponseEntity<Page<PagamentoResponseDTO>> listarTodos(
             @RequestParam(defaultValue = "0") int page,

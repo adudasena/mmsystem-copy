@@ -2,11 +2,17 @@
 
 /* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect, useRef } from 'react';
+import { DM_Sans } from 'next/font/google';
 import { AxiosError } from 'axios';
 import { ShoppingBag, MessageSquare, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '@/services/api';
 import SystemModal, { ModalType } from '@/components/SystemModal';
 import { abrirWhatsAppLoja } from '@/utils/whatsapp';
+
+const fonteVitrine = DM_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+});
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface ProdutoVitrine {
@@ -55,7 +61,6 @@ interface CheckoutVitrine {
   pedido?: { id?: number };
 }
 
-const CATEGORIAS_VITRINE = ['Vestidos', 'Blusas', 'Calças', 'Saias', 'Conjuntos'] as const;
 
 export default function VitrineProdutos() {
   const [produtos, setProdutos] = useState<ProdutoVitrine[]>([]);
@@ -64,6 +69,7 @@ export default function VitrineProdutos() {
 
   // Filtros
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>('');
+  const [categoriasVitrine, setCategoriasVitrine] = useState<string[]>([]);
   const [filtroAberto, setFiltroAberto] = useState<boolean>(false);
   const filtroRef = useRef<HTMLDivElement>(null);
   const [indiceFoto, setIndiceFoto] = useState<Record<number, number>>({});
@@ -94,7 +100,10 @@ export default function VitrineProdutos() {
       try {
         setLoading(true);
         setErro(null);
-        const res = await api.get<PageSpring<ProdutoVitrine> | ProdutoVitrine[]>('/vitrine/produtos?size=50');
+        const [res, resCat] = await Promise.all([
+          api.get<PageSpring<ProdutoVitrine> | ProdutoVitrine[]>('/vitrine/produtos?size=50'),
+          api.get<string[]>('/vitrine/categorias'),
+        ]);
 
         if (montado) {
           if (res.data && Array.isArray((res.data as PageSpring<ProdutoVitrine>).content)) {
@@ -104,6 +113,7 @@ export default function VitrineProdutos() {
           } else {
             setProdutos([]);
           }
+          setCategoriasVitrine(Array.isArray(resCat.data) ? resCat.data.filter(Boolean) : []);
         }
       } catch (err) {
         console.error('Erro ao carregar catálogo da vitrine via Axios:', err);
@@ -457,23 +467,23 @@ export default function VitrineProdutos() {
   const rotuloCategoria = categoriaFiltro || 'Todas as categorias';
 
   return (
-    <div className="min-h-screen bg-[#dcded0] text-gray-800 font-sans pb-28 overflow-x-hidden">
+    <div className={`vitrine-root min-h-screen bg-[#dcded0] text-gray-800 pb-28 overflow-x-hidden ${fonteVitrine.className}`}>
       {/* HEADER / BARRA SUPERIOR */}
-      <header className="bg-[#2c3e1c] text-white py-3 px-3 sm:px-6 md:px-8 sticky top-0 z-40 shadow-md flex items-center justify-between gap-2 min-h-[56px] overflow-hidden">
-        <div className="w-10 shrink-0 hidden md:block" aria-hidden />
+      <header className="bg-[#2c3e1c] text-white py-3 px-3 sm:px-5 sticky top-0 z-40 shadow-md grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center min-h-[56px]">
+        <div aria-hidden />
 
-        <div className="flex-1 min-w-0 flex items-center justify-center overflow-hidden h-8 md:h-9">
+        <div className="min-w-0 flex items-center justify-center h-8 md:h-9 px-1">
           <img
             src="/escritocompleto1linha.svg"
             alt="Maria Morena"
-            className="h-8 md:h-9 w-auto max-w-full object-contain object-center"
+            className="h-7 sm:h-8 md:h-9 w-auto max-w-full object-contain object-center"
           />
         </div>
 
         <button
           type="button"
           onClick={() => setMostrarCarrinho(true)}
-          className="relative shrink-0 bg-white/10 hover:bg-white/15 text-white p-2.5 rounded-full font-bold transition flex items-center justify-center cursor-pointer min-h-11 min-w-11"
+          className="relative justify-self-end shrink-0 bg-white/10 hover:bg-white/15 text-white p-2 rounded-full font-bold transition flex items-center justify-center cursor-pointer min-h-11 min-w-11"
           aria-label="Abrir sacola"
         >
           <ShoppingBag className="w-5 h-5" />
@@ -486,10 +496,10 @@ export default function VitrineProdutos() {
       </header>
 
       {/* TITULO DA VITRINE + FILTROS */}
-      <section className="p-4 md:p-6 max-w-7xl mx-auto min-w-0">
+      <section className="p-4 md:p-6 max-w-7xl mx-auto min-w-0 w-full">
         <div className="mb-5">
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#2d3a22]">Vitrine Digital</h1>
-          <p className="text-sm text-gray-600 mt-1 leading-snug">
+          <p className="text-sm text-gray-600 mt-1 leading-snug max-w-xl">
             Escolha as peças para experimentar em casa ou comprar agora.
           </p>
         </div>
@@ -522,7 +532,7 @@ export default function VitrineProdutos() {
                   Todas as categorias
                 </button>
               </li>
-              {CATEGORIAS_VITRINE.map((cat) => (
+              {categoriasVitrine.map((cat) => (
                 <li key={cat}>
                   <button
                     type="button"
@@ -658,15 +668,15 @@ export default function VitrineProdutos() {
         return (
           <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-xs">
             <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl relative max-h-[92vh] overflow-y-auto">
-              <button
-                type="button"
-                onClick={() => setProdutoSelecionado(null)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-black font-bold cursor-pointer text-lg"
-              >
-                ✕
-              </button>
-
               <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden relative">
+                <button
+                  type="button"
+                  onClick={() => setProdutoSelecionado(null)}
+                  className="absolute top-2 right-2 z-20 w-9 h-9 rounded-full bg-white/95 text-[#2c3e1c] shadow-md hover:bg-white font-bold cursor-pointer text-lg leading-none flex items-center justify-center"
+                  aria-label="Fechar"
+                >
+                  ×
+                </button>
                 {(() => {
                   const fotosModal = obterImagens(produtoSelecionado);
                   const iM = Math.min(indiceFotoModal, Math.max(fotosModal.length - 1, 0));

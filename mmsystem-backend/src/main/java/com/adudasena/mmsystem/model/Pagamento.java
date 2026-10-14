@@ -8,7 +8,10 @@ import java.time.LocalDate;
 import com.adudasena.mmsystem.enums.StatusPagamento;
 
 @Entity
-@Table(name = "pagamentos")
+@Table(name = "pagamentos", indexes = {
+        @Index(name = "idx_pagamentos_deleted_status", columnList = "deleted_at, status"),
+        @Index(name = "idx_pagamentos_vencimento", columnList = "deleted_at, status, metodo_pagamento, data_vencimento")
+})
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Pagamento {
 

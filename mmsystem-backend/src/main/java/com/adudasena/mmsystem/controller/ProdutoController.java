@@ -22,6 +22,11 @@ public class ProdutoController {
 
     private final ProdutoService service;
 
+    @GetMapping("/opcoes-filtro")
+    public ResponseEntity<List<String>> opcoesFiltro() {
+        return ResponseEntity.ok(service.listarCategoriasEmUso());
+    }
+
     @GetMapping
     public ResponseEntity<Page<ProdutoResponseDTO>> listarTodos(
             @RequestParam(defaultValue = "0") int page,

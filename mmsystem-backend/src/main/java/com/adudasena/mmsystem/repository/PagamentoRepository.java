@@ -6,6 +6,7 @@ import com.adudasena.mmsystem.model.Pagamento;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,4 +29,7 @@ public interface PagamentoRepository extends JpaRepository<Pagamento, Long> {
             MetodoPagamento metodoPagamento,
             LocalDate dataLimite
     );
+
+    @Query("SELECT DISTINCT p.status FROM Pagamento p WHERE p.deletedAt IS NULL")
+    List<StatusPagamento> listarStatusAtivos();
 }

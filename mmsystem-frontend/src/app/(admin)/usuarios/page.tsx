@@ -390,13 +390,13 @@ const TelaUsuarios: React.FC = () => {
           {/* TABELA DE CLIENTES */}
           <div ref={tabelaRef} className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-4 border-b bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-3">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setAbaAtiva('ATIVOS')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                     abaAtiva === 'ATIVOS'
-                      ? 'bg-[#3b4a28] text-white shadow-sm'
+                      ? 'bg-[#2d3a22] text-white shadow-sm'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >

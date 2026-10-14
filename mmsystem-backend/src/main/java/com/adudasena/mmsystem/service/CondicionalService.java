@@ -41,6 +41,16 @@ public class CondicionalService {
 
     private final UsuarioService usuarioService;
 
+    @Transactional(readOnly = true)
+    public List<String> opcoesFiltroStatus() {
+        List<String> opcoes = new ArrayList<>(repository.listarStatusAtivos());
+        if (repository.existsByDeletedAtIsNullAndStatusIgnoreCaseAndDataRetornoLessThanEqual("ABERTA", LocalDate.now())
+                && !opcoes.contains("ATRASADA")) {
+            opcoes.add("ATRASADA");
+        }
+        return opcoes;
+    }
+
     public List<Condicional> listarTodos() {
         return repository.findByDeletedAtIsNull();
     }

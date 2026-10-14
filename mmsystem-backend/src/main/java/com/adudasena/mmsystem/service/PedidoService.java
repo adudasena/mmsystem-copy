@@ -26,7 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @lombok.RequiredArgsConstructor
@@ -46,6 +50,21 @@ public class PedidoService {
 
     @Lazy
     private final CondicionalService condicionalService;
+
+    @Transactional(readOnly = true)
+    public List<String> opcoesFiltroStatus() {
+        Set<String> opcoes = new LinkedHashSet<>();
+        for (StatusPedido status : pedidoRepository.listarStatusAtivos()) {
+            if (status == StatusPedido.PAGO || status == StatusPedido.CONCLUIDO) {
+                opcoes.add("CONCLUIDO");
+            } else if (status == StatusPedido.PENDENTE || status == StatusPedido.AGUARDANDO_PAGAMENTO) {
+                opcoes.add("AGUARDANDO_PAGAMENTO");
+            } else if (status == StatusPedido.CANCELADO) {
+                opcoes.add("CANCELADO");
+            }
+        }
+        return new ArrayList<>(opcoes);
+    }
 
     @Transactional(readOnly = true)
     public Page<Pedido> listarTodos(Pageable pageable) {

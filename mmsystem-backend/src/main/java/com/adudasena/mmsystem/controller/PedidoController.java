@@ -21,6 +21,11 @@ public class PedidoController {
 
     private final PedidoService service;
 
+    @GetMapping("/opcoes-filtro")
+    public ResponseEntity<java.util.List<String>> opcoesFiltro() {
+        return ResponseEntity.ok(service.opcoesFiltroStatus());
+    }
+
     @GetMapping
     public ResponseEntity<Page<PedidoResponseDTO>> listarTodos(
             @RequestParam(defaultValue = "0") int page,

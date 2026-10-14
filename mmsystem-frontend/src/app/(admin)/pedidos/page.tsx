@@ -90,6 +90,9 @@ const TelaPedidos: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [termoBusca, setTermoBusca] = useState<string>('');
   const [statusFiltro, setStatusFiltro] = useState<string>('TODOS');
+  const [opcoesStatus, setOpcoesStatus] = useState<{ label: string; value: string }[]>([
+    { label: 'Todos os Status', value: 'TODOS' },
+  ]);
 
   // Feedbacks e Modais
   const [mensagemSucesso, setMensagemSucesso] = useState<string>('');
@@ -171,10 +174,11 @@ const TelaPedidos: React.FC = () => {
       try {
         setLoading(true);
 
-        const [resPedidos, resCli, resProd] = await Promise.allSettled([
+        const [resPedidos, resCli, resProd, resFiltro] = await Promise.allSettled([
           api.get<PageSpring<Pedido> | Pedido[]>(`/pedidos?page=0&size=${tamanhoPagina}`),
           api.get<PageSpring<ClientePedido> | ClientePedido[]>('/usuarios?size=1000'),
-          api.get<PageSpring<ProdutoRef> | ProdutoRef[]>('/produtos?size=1000')
+          api.get<PageSpring<ProdutoRef> | ProdutoRef[]>('/produtos?size=1000'),
+          api.get<string[]>('/pedidos/opcoes-filtro'),
         ]);
 
         if (!montado) return;
@@ -201,6 +205,18 @@ const TelaPedidos: React.FC = () => {
           } else if (Array.isArray(dadosCli)) {
             setClientesOpcoes(dadosCli);
           }
+        }
+
+        if (resFiltro.status === 'fulfilled' && Array.isArray(resFiltro.value.data)) {
+          const rotulos: Record<string, string> = {
+            AGUARDANDO_PAGAMENTO: 'Aguardando Pagamento',
+            CANCELADO: 'Cancelado',
+            CONCLUIDO: 'Concluído',
+          };
+          setOpcoesStatus([
+            { label: 'Todos os Status', value: 'TODOS' },
+            ...resFiltro.value.data.map((value) => ({ label: rotulos[value] || value, value })),
+          ]);
         }
 
         // Trata a lista de Produtos
@@ -444,10 +460,10 @@ const TelaPedidos: React.FC = () => {
 
     const labels: Record<string, string> = {
       AGUARDANDO_PAGAMENTO: 'Aguardando Pagamento',
-      PENDENTE: 'Pendente',
+      PENDENTE: 'Aguardando Pagamento',
       CANCELADO: 'Cancelado',
       CONCLUIDO: 'Concluído',
-      PAGO: 'Pago',
+      PAGO: 'Concluído',
     };
 
     return (
@@ -458,7 +474,11 @@ const TelaPedidos: React.FC = () => {
   };
 
   const pedidosFiltrados = (Array.isArray(pedidos) ? pedidos : []).filter((p) => {
-    const atendeStatus = statusFiltro === 'TODOS' || p.status === statusFiltro;
+    const atendeStatus =
+      statusFiltro === 'TODOS'
+      || p.status === statusFiltro
+      || (statusFiltro === 'CONCLUIDO' && p.status === 'PAGO')
+      || (statusFiltro === 'AGUARDANDO_PAGAMENTO' && p.status === 'PENDENTE');
     const atendeBusca =
       (p.cliente?.nome || '').toLowerCase().includes(termoBusca.toLowerCase()) ||
       p.id.toString().includes(termoBusca);
@@ -499,27 +519,20 @@ const TelaPedidos: React.FC = () => {
           placeholder="Buscar por #ID do pedido ou nome do cliente..."
           filtroValor={statusFiltro}
           onFiltroChange={setStatusFiltro}
-          opcoesFiltro={[
-            { label: 'Todos os Status', value: 'TODOS' },
-            { label: 'Aguardando Pagamento', value: 'AGUARDANDO_PAGAMENTO' },
-            { label: 'Pendente', value: 'PENDENTE' },
-            { label: 'Cancelado', value: 'CANCELADO' },
-            { label: 'Concluído', value: 'CONCLUIDO' },
-            { label: 'Pago', value: 'PAGO' }
-          ]}
+          opcoesFiltro={opcoesStatus}
         />
 
         {/* Tabela Principal */}
         <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col justify-between">
           <div>
             <div className="p-4 border-b bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-3">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setAbaAtiva('ATIVOS')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                     abaAtiva === 'ATIVOS'
-                      ? 'bg-[#4a5d33] text-white shadow-sm'
+                      ? 'bg-[#2d3a22] text-white shadow-sm'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
@@ -690,9 +703,9 @@ const TelaPedidos: React.FC = () => {
                       onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormPedido({ ...formPedido, status: e.target.value as StatusPedido })}
                       className="w-full border border-gray-300 p-2 bg-gray-50 text-xs outline-none font-bold rounded-md"
                     >
-                      <option value="AGUARDANDO_PAGAMENTO">AGUARDANDO_PAGAMENTO</option>
-                      <option value="CANCELADO">CANCELADO</option>
-                      <option value="CONCLUIDO">CONCLUIDO</option>
+                      <option value="AGUARDANDO_PAGAMENTO">Aguardando pagamento</option>
+                      <option value="CANCELADO">Cancelado</option>
+                      <option value="CONCLUIDO">Concluído</option>
                     </select>
                   </div>
                 </div>

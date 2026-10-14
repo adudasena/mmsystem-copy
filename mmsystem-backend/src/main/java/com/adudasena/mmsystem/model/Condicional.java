@@ -11,7 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "condicionais")
+@Table(name = "condicionais", indexes = {
+        @Index(name = "idx_cond_deleted_status", columnList = "deleted_at, status"),
+        @Index(name = "idx_cond_retorno", columnList = "deleted_at, status, data_retorno")
+})
 @Data
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Condicional {

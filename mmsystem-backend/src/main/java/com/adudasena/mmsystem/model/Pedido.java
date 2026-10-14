@@ -10,7 +10,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "pedidos")
+@Table(name = "pedidos", indexes = {
+        @Index(name = "idx_pedidos_deleted_status", columnList = "deleted_at, status"),
+        @Index(name = "idx_pedidos_cliente", columnList = "fk_cliente_id")
+})
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Pedido {
 

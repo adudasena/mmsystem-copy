@@ -9,9 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "produtos")
+@Table(name = "produtos", indexes = {
+        @Index(name = "idx_produtos_deleted_status", columnList = "deleted_at, status"),
+        @Index(name = "idx_produtos_vitrine_cat", columnList = "deleted_at, status, categoria")
+})
 @Data
 public class Produto {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -57,12 +62,11 @@ public class Produto {
 
     @PostLoad
     public void desserializarListas() {
-        ObjectMapper mapper = new ObjectMapper();
         try {
             if (this.coresText != null && !this.coresText.isEmpty())
-                this.coresSelecionadas = mapper.readValue(this.coresText, new TypeReference<>(){});
+                this.coresSelecionadas = JSON.readValue(this.coresText, new TypeReference<>(){});
             if (this.tamanhosText != null && !this.tamanhosText.isEmpty())
-                this.tamanhosSelecionados = mapper.readValue(this.tamanhosText, new TypeReference<>(){});
+                this.tamanhosSelecionados = JSON.readValue(this.tamanhosText, new TypeReference<>(){});
         } catch (Exception e) {
             this.coresSelecionadas = new ArrayList<>();
             this.tamanhosSelecionados = new ArrayList<>();

@@ -7,7 +7,10 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "usuarios")
+@Table(name = "usuarios", indexes = {
+        @Index(name = "idx_usuarios_deleted", columnList = "deleted_at"),
+        @Index(name = "idx_usuarios_perfil_deleted", columnList = "perfil, deleted_at")
+})
 @Data
 public class Usuario {
 

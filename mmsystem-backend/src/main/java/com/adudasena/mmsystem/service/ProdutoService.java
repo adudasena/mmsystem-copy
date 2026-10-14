@@ -72,8 +72,20 @@ public class ProdutoService {
         return repository.findByDeletedAtIsNull(pageable);
     }
 
-    public Page<Produto> listarVitrine(Pageable pageable) {
-        return repository.findByDeletedAtIsNull(pageable);
+    public Page<Produto> listarVitrine(Pageable pageable, String categoria) {
+        if (categoria != null && !categoria.isBlank()) {
+            return repository.findByDeletedAtIsNullAndStatusIgnoreCaseAndCategoriaIgnoreCase(
+                    "DISPONIVEL", categoria.trim(), pageable);
+        }
+        return repository.findByDeletedAtIsNullAndStatusIgnoreCase("DISPONIVEL", pageable);
+    }
+
+    public List<String> listarCategoriasVitrine() {
+        return repository.listarCategoriasVitrine();
+    }
+
+    public List<String> listarCategoriasEmUso() {
+        return repository.listarCategoriasEmUso();
     }
 
     // Listar apenas o que está na lixeira

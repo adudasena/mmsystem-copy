@@ -14,6 +14,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 @Service
 @lombok.RequiredArgsConstructor
 public class PagamentoService {
@@ -21,6 +26,19 @@ public class PagamentoService {
     private final PagamentoRepository pagamentoRepository;
 
     private final PedidoRepository pedidoRepository;
+
+    @Transactional(readOnly = true)
+    public List<String> opcoesFiltroStatus() {
+        Set<String> opcoes = new LinkedHashSet<>();
+        for (StatusPagamento status : pagamentoRepository.listarStatusAtivos()) {
+            if (status == StatusPagamento.PAGO) {
+                opcoes.add("APROVADO");
+            } else {
+                opcoes.add(status.name());
+            }
+        }
+        return new ArrayList<>(opcoes);
+    }
 
     @Transactional(readOnly = true)
     public Page<Pagamento> listarTodos(Pageable pageable) {

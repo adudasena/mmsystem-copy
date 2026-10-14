@@ -73,6 +73,7 @@ const TelaProdutos: React.FC = () => {
   // ─── Estados da Barra de Busca e Filtro ──────────────────────────────────
   const [termoBusca, setTermoBusca] = useState<string>('');
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>('TODAS');
+  const [categoriasFiltro, setCategoriasFiltro] = useState<string[]>([]);
 
   // ─── Referência para Auto-Scroll da Tabela ───────────────────────────────
   const tabelaRef = useRef<HTMLDivElement>(null);
@@ -151,13 +152,17 @@ const TelaProdutos: React.FC = () => {
 
     const carregarAtributos = async () => {
       try {
-        const [resCat, resTam, resCor] = await Promise.all([
+        const [resCat, resTam, resCor, resFiltro] = await Promise.all([
           api.get<{ id: number; nome: string }[]>('/api/atributos/categorias'),
           api.get<{ id: number; nome: string }[]>('/api/atributos/tamanhos'),
           api.get<{ id: number; nome: string; hexCode?: string }[]>('/api/atributos/cores'),
+          api.get<string[]>('/produtos/opcoes-filtro'),
         ]);
         if (Array.isArray(resCat.data) && resCat.data.length > 0) {
           setCategorias(resCat.data.map((c) => c.nome));
+        }
+        if (Array.isArray(resFiltro.data)) {
+          setCategoriasFiltro(resFiltro.data.filter(Boolean));
         }
         if (Array.isArray(resTam.data) && resTam.data.length > 0) {
           setTamanhos(resTam.data.map((t) => t.nome));
@@ -723,7 +728,7 @@ const TelaProdutos: React.FC = () => {
           onFiltroChange={setCategoriaFiltro}
           opcoesFiltro={[
             { label: 'Todas as Categorias', value: 'TODAS' },
-            ...categorias.map(cat => ({ label: cat, value: cat }))
+            ...categoriasFiltro.map(cat => ({ label: cat, value: cat }))
           ]}
         />
       </div>
