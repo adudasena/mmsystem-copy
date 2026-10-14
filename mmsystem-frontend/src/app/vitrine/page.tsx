@@ -470,7 +470,10 @@ export default function VitrineProdutos() {
   const rotuloCategoria = categoriaFiltro || 'Todas as categorias';
 
   return (
-    <div className={`vitrine-root min-h-screen bg-[#dcded0] text-gray-800 pb-28 overflow-x-hidden ${fonteVitrine.className}`}>
+    <div
+      suppressHydrationWarning
+      className={`vitrine-root min-h-screen bg-[#dcded0] text-gray-800 pb-28 overflow-x-hidden ${fonteVitrine.className}`}
+    >
       {/* HEADER / BARRA SUPERIOR */}
       <header className="bg-[#2c3e1c] text-white py-3 px-3 sm:px-5 sticky top-0 z-40 shadow-md grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center min-h-[56px]">
         <div aria-hidden />

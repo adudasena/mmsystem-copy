@@ -1,0 +1,9 @@
+# Serviço da API. No Railway: Settings → Root Directory vazio (repo) ou mmsystem-backend.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "mmsystem-backend/Dockerfile"
+
+[deploy]
+healthcheckPath = "/vitrine/produtos"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
