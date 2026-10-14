@@ -26,6 +26,9 @@ public class Pagamento {
     @Column(name = "metodo_pagamento", nullable = false)
     private MetodoPagamento metodoPagamento;
 
+    @Column(name = "parcelas")
+    private Integer parcelas;
+
     @Column(name = "data_vencimento")
     private LocalDate dataVencimento;
 
@@ -57,6 +60,9 @@ public class Pagamento {
 
     public MetodoPagamento getMetodoPagamento() { return metodoPagamento; }
     public void setMetodoPagamento(MetodoPagamento metodoPagamento) { this.metodoPagamento = metodoPagamento; }
+
+    public Integer getParcelas() { return parcelas; }
+    public void setParcelas(Integer parcelas) { this.parcelas = parcelas; }
 
     public LocalDate getDataVencimento() { return dataVencimento; }
     public void setDataVencimento(LocalDate dataVencimento) { this.dataVencimento = dataVencimento; }

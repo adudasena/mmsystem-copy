@@ -23,7 +23,6 @@ export type StatusPedido = 'AGUARDANDO_PAGAMENTO' | 'PENDENTE' | 'CANCELADO' | '
 export interface ClientePedido {
   id: number;
   nome: string;
-  email?: string;
   telefone?: string;
 }
 
@@ -374,12 +373,17 @@ const TelaPedidos: React.FC = () => {
         dataPedido: formPedido.dataPedido,
         status: formPedido.status,
         valorTotal: calcularValorTotalPedido(),
-        itens: formPedido.itens
-          .filter(it => it.fkProdutoId !== '' && it.fkProdutoId !== null && Number(it.fkProdutoId) > 0)
-          .map(it => ({
-            fkProdutoId: Number(it.fkProdutoId),
-            quantidade: Number(it.quantidade) || 1
-          }))
+        itens: Object.entries(
+          formPedido.itens.reduce<Record<string, number>>((acc, it) => {
+            const id = Number(it.fkProdutoId);
+            if (!id) return acc;
+            acc[id] = (acc[id] || 0) + (Number(it.quantidade) || 1);
+            return acc;
+          }, {})
+        ).map(([fkProdutoId, quantidade]) => ({
+          fkProdutoId: Number(fkProdutoId),
+          quantidade
+        }))
       };
 
       if (editandoId) {
@@ -833,7 +837,6 @@ const TelaPedidos: React.FC = () => {
                     <User className="w-3.5 h-3.5 text-[#2d3a22]" /> Cliente
                   </p>
                   <p className="font-semibold text-gray-900">{pedidoSelecionado.cliente?.nome || '—'}</p>
-                  <p className="text-gray-500">{pedidoSelecionado.cliente?.email || 'Sem e-mail'}</p>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-lg border space-y-1">
                   <p className="font-bold text-gray-700 flex items-center gap-1 text-[11px]">

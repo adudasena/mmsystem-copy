@@ -61,13 +61,6 @@ public class AuthController {
 
     @PostMapping("/registrar")
     public ResponseEntity<?> registrarCliente(@Valid @RequestBody UsuarioDTO dto) {
-        if (dto.getEmail() != null && usuarioRepository.findByEmail(dto.getEmail()).isPresent()) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "erro", "Validação de dados",
-                    "mensagem", "E-mail já cadastrado."
-            ));
-        }
-
         dto.setPerfil(Perfil.ROLE_CLIENTE.name());
         return ResponseEntity.status(201).body(UsuarioResponseDTO.from(usuarioService.salvar(dto)));
     }

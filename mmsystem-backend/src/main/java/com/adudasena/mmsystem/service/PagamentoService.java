@@ -141,6 +141,16 @@ public class PagamentoService {
             }
         }
 
+        if (pagamento.getMetodoPagamento() == MetodoPagamento.CARTAO_CREDITO) {
+            int parcelas = dto.getParcelas() != null ? dto.getParcelas() : 1;
+            if (parcelas < 1 || parcelas > 12) {
+                throw new IllegalArgumentException("Informe de 1 a 12 parcelas no cartão de crédito.");
+            }
+            pagamento.setParcelas(parcelas);
+        } else {
+            pagamento.setParcelas(null);
+        }
+
         if (dto.getFkPedidoId() != null) {
             Pedido pedido = pedidoRepository.findById(dto.getFkPedidoId()).orElse(null);
             pagamento.setPedido(pedido);

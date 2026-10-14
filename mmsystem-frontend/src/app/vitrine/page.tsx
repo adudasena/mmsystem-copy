@@ -8,6 +8,7 @@ import { ShoppingBag, MessageSquare, ChevronDown, ChevronLeft, ChevronRight } fr
 import api from '@/services/api';
 import SystemModal, { ModalType } from '@/components/SystemModal';
 import { abrirWhatsAppLoja } from '@/utils/whatsapp';
+import { formatarNomePessoa, formatarTelefoneInput, validarNomePessoa, validarWhatsApp } from '@/utils/contato';
 
 const fonteVitrine = DM_Sans({
   subsets: ['latin'],
@@ -288,12 +289,13 @@ export default function VitrineProdutos() {
   const finalizarPedido = async (): Promise<void> => {
     if (carrinho.length === 0) return;
 
-    if (!telefoneCliente.trim()) {
+    const erroTel = validarWhatsApp(telefoneCliente);
+    if (erroTel) {
       setModalSistema({
         isOpen: true,
         type: 'warning',
-        title: 'Dados Obrigatórios',
-        message: 'Informe seu WhatsApp para identificarmos seu cadastro.',
+        title: 'WhatsApp inválido',
+        message: erroTel,
       });
       return;
     }
@@ -330,12 +332,13 @@ export default function VitrineProdutos() {
       return;
     }
 
-    if (!nomeCliente.trim()) {
+    const erroNome = validarNomePessoa(nomeCliente);
+    if (erroNome) {
       setModalSistema({
         isOpen: true,
         type: 'warning',
-        title: 'Dados Obrigatórios',
-        message: 'Por favor, informe seu nome.',
+        title: 'Nome inválido',
+        message: erroNome,
       });
       return;
     }
@@ -866,10 +869,13 @@ export default function VitrineProdutos() {
                   <div>
                     <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Seu WhatsApp *</label>
                     <input
-                      type="text"
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      maxLength={15}
                       value={telefoneCliente}
                       onChange={(e) => {
-                        setTelefoneCliente(e.target.value);
+                        setTelefoneCliente(formatarTelefoneInput(e.target.value));
                         setIdentidade('nova');
                         setNomeCadastrado('');
                         setEditarNome(false);
@@ -938,8 +944,10 @@ export default function VitrineProdutos() {
                     <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Seu Nome *</label>
                     <input
                       type="text"
+                      autoComplete="name"
+                      maxLength={80}
                       value={nomeCliente}
-                      onChange={(e) => setNomeCliente(e.target.value)}
+                      onChange={(e) => setNomeCliente(formatarNomePessoa(e.target.value))}
                       placeholder="Ex: Maria da Silva"
                       disabled={identidade === 'pendente' || (identidade === 'confirmada' && !editarNome)}
                       className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none focus:border-[#2c3e1c] disabled:bg-gray-100 disabled:text-gray-600"

@@ -25,11 +25,11 @@ public class UsuarioService {
     private final PasswordEncoder passwordEncoder;
 
     public Page<Usuario> listarTodos(Pageable pageable) {
-        return repository.findByDeletedAtIsNull(pageable);
+        return repository.findByDeletedAtIsNullAndPerfil(Perfil.ROLE_CLIENTE, pageable);
     }
 
     public List<Usuario> listarTodos() {
-        return repository.findByDeletedAtIsNull();
+        return repository.findByDeletedAtIsNullAndPerfil(Perfil.ROLE_CLIENTE);
     }
 
     public Usuario buscarPorId(Long id) {
@@ -63,6 +63,9 @@ public class UsuarioService {
 
     @org.springframework.transaction.annotation.Transactional
     public Usuario buscarOuCriarClienteVitrine(Long usuarioId, String nomeCliente, String telefoneCliente, boolean atualizarNome) {
+        ContatoCliente.validarNome(nomeCliente);
+        String telefone = ContatoCliente.validarENormalizarWhatsApp(telefoneCliente);
+
         if (usuarioId != null) {
             Usuario existente = repository.findById(usuarioId).orElse(null);
             if (existente != null && existente.getDeletedAt() == null && existente.getPerfil() == Perfil.ROLE_CLIENTE) {
@@ -70,35 +73,25 @@ public class UsuarioService {
             }
         }
 
-        if (telefoneCliente != null && !telefoneCliente.trim().isEmpty()) {
-            Usuario existente = localizarPorTelefone(telefoneCliente);
-            if (existente != null) {
-                if (!ehCliente(existente)) {
-                    throw new IllegalArgumentException(
-                            "Este WhatsApp já está cadastrado na loja. Use outro número ou fale com a atendente.");
-                }
-                existente.setDeletedAt(null);
-                if (existente.getPerfil() == null) {
-                    existente.setPerfil(Perfil.ROLE_CLIENTE);
-                }
-                String digits = somenteDigitos(telefoneCliente);
-                if (!digits.isEmpty()) {
-                    existente.setTelefone(digits);
-                }
-                return aplicarNomeSeSolicitado(existente, nomeCliente, atualizarNome);
+        Usuario existente = localizarPorTelefone(telefone);
+        if (existente != null) {
+            if (!ehCliente(existente)) {
+                throw new IllegalArgumentException(
+                        "Este WhatsApp já está cadastrado na loja. Use outro número ou fale com a atendente.");
             }
-
-            Usuario novoCliente = new Usuario();
-            novoCliente.setNome(nomeCliente != null && !nomeCliente.trim().isEmpty()
-                    ? nomeCliente.trim()
-                    : "Cliente Vitrine");
-            String soDigitos = somenteDigitos(telefoneCliente);
-            novoCliente.setTelefone(soDigitos.isEmpty() ? telefoneCliente.trim() : soDigitos);
-            novoCliente.setPerfil(Perfil.ROLE_CLIENTE);
-            return repository.save(novoCliente);
+            existente.setDeletedAt(null);
+            if (existente.getPerfil() == null) {
+                existente.setPerfil(Perfil.ROLE_CLIENTE);
+            }
+            existente.setTelefone(telefone);
+            return aplicarNomeSeSolicitado(existente, ContatoCliente.nomeLimpo(nomeCliente), atualizarNome);
         }
 
-        throw new IllegalArgumentException("Informe o WhatsApp para identificar a cliente.");
+        Usuario novoCliente = new Usuario();
+        novoCliente.setNome(ContatoCliente.nomeLimpo(nomeCliente));
+        novoCliente.setTelefone(telefone);
+        novoCliente.setPerfil(Perfil.ROLE_CLIENTE);
+        return repository.save(novoCliente);
     }
 
     private Usuario localizarPorTelefone(String telefoneCliente) {
@@ -156,7 +149,8 @@ public class UsuarioService {
 
     private Usuario aplicarNomeSeSolicitado(Usuario usuario, String nomeCliente, boolean atualizarNome) {
         if (atualizarNome && nomeCliente != null && !nomeCliente.trim().isEmpty()) {
-            usuario.setNome(nomeCliente.trim());
+            ContatoCliente.validarNome(nomeCliente);
+            usuario.setNome(ContatoCliente.nomeLimpo(nomeCliente));
             return repository.save(usuario);
         }
         return usuario;
@@ -165,30 +159,44 @@ public class UsuarioService {
     public Usuario salvar(UsuarioDTO dto) {
         Usuario usuario = new Usuario();
         copiarDtoParaEntidade(dto, usuario);
+        usuario.setPerfil(Perfil.ROLE_CLIENTE);
+        usuario.setEmail(null);
         return repository.save(usuario);
     }
 
     public Usuario atualizar(Long id, UsuarioDTO dto) {
         Usuario usuario = buscarPorId(id);
+        garantirCliente(usuario);
         copiarDtoParaEntidade(dto, usuario);
+        usuario.setPerfil(Perfil.ROLE_CLIENTE);
+        usuario.setEmail(null);
         return repository.save(usuario);
     }
 
     public void excluir(Long id) {
         Usuario usuario = buscarPorId(id);
-        usuario.setDeletedAt(LocalDateTime.now()); // Soft Delete
+        garantirCliente(usuario);
+        usuario.setDeletedAt(LocalDateTime.now());
         repository.save(usuario);
     }
 
     public Page<Usuario> listarExcluidos(Pageable pageable) {
-        return repository.findByDeletedAtIsNotNull(pageable);
+        return repository.findByDeletedAtIsNotNullAndPerfil(Perfil.ROLE_CLIENTE, pageable);
     }
 
     public void restaurar(Long id) {
         Usuario usuario = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Cliente/Usuário não encontrado com o ID: " + id));
+        garantirCliente(usuario);
         usuario.setDeletedAt(null);
         repository.save(usuario);
+    }
+
+    private void garantirCliente(Usuario usuario) {
+        if (!ehCliente(usuario)) {
+            throw new IllegalArgumentException(
+                    "A proprietária e as funcionárias não fazem parte da lista de clientes.");
+        }
     }
 
     public Usuario usuarioLogadoOuErro() {
@@ -207,9 +215,9 @@ public class UsuarioService {
     }
 
     private void copiarDtoParaEntidade(UsuarioDTO dto, Usuario usuario) {
-        usuario.setNome(dto.getNome());
-        usuario.setTelefone(dto.getTelefone());
-        usuario.setEmail(dto.getEmail());
+        ContatoCliente.validarNome(dto.getNome());
+        usuario.setNome(ContatoCliente.nomeLimpo(dto.getNome()));
+        usuario.setTelefone(ContatoCliente.validarENormalizarWhatsApp(dto.getTelefone()));
 
         // Converte a String do DTO para o Enum Perfil ou define o valor padrão ROLE_CLIENTE
         if (dto.getPerfil() != null && !dto.getPerfil().isBlank()) {

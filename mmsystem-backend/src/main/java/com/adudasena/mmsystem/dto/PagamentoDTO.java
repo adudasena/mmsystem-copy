@@ -17,6 +17,7 @@ public class PagamentoDTO {
     @NotBlank(message = "O método de pagamento é obrigatório.")
     private String metodoPagamento;
 
+    private Integer parcelas;
     private LocalDate dataVencimento;
     private String status;
     private Long fkPedidoId;
@@ -29,6 +30,8 @@ public class PagamentoDTO {
     public void setValor(BigDecimal valor) { this.valor = valor; }
     public String getMetodoPagamento() { return metodoPagamento; }
     public void setMetodoPagamento(String metodoPagamento) { this.metodoPagamento = metodoPagamento; }
+    public Integer getParcelas() { return parcelas; }
+    public void setParcelas(Integer parcelas) { this.parcelas = parcelas; }
     public LocalDate getDataVencimento() { return dataVencimento; }
     public void setDataVencimento(LocalDate dataVencimento) { this.dataVencimento = dataVencimento; }
     public String getStatus() { return status; }

@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -266,17 +267,22 @@ public class PedidoService {
         }
 
         if (dto.getItens() != null) {
+            Map<Long, Integer> quantidadesPorProduto = new LinkedHashMap<>();
             for (ItemPedidoDTO itemDto : dto.getItens()) {
-                if (itemDto.getFkProdutoId() != null && itemDto.getFkProdutoId() > 0) {
-                    Produto produto = produtoRepository.findById(itemDto.getFkProdutoId()).orElse(null);
-                    if (produto != null) {
-                        ItemPedido item = new ItemPedido();
-                        item.setPedido(pedido);
-                        item.setProduto(produto);
-                        int qtd = (itemDto.getQuantidade() != null && itemDto.getQuantidade() > 0) ? itemDto.getQuantidade() : 1;
-                        item.setQuantidade(qtd);
-                        pedido.getItens().add(item);
-                    }
+                if (itemDto.getFkProdutoId() == null || itemDto.getFkProdutoId() <= 0) {
+                    continue;
+                }
+                int qtd = (itemDto.getQuantidade() != null && itemDto.getQuantidade() > 0) ? itemDto.getQuantidade() : 1;
+                quantidadesPorProduto.merge(itemDto.getFkProdutoId(), qtd, Integer::sum);
+            }
+            for (Map.Entry<Long, Integer> entrada : quantidadesPorProduto.entrySet()) {
+                Produto produto = produtoRepository.findById(entrada.getKey()).orElse(null);
+                if (produto != null) {
+                    ItemPedido item = new ItemPedido();
+                    item.setPedido(pedido);
+                    item.setProduto(produto);
+                    item.setQuantidade(entrada.getValue());
+                    pedido.getItens().add(item);
                 }
             }
         }

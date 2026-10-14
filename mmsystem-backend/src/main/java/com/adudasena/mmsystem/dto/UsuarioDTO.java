@@ -11,7 +11,6 @@ public class UsuarioDTO {
     @NotBlank(message = "O telefone é obrigatório.")
     private String telefone;
 
-    private String email;
     private String senha;
     private String perfil;
 }

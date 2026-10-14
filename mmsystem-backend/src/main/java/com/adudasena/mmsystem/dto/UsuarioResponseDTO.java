@@ -8,7 +8,6 @@ public record UsuarioResponseDTO(
         Long id,
         String nome,
         String telefone,
-        String email,
         String perfil,
         LocalDateTime deletedAt
 ) {
@@ -20,7 +19,6 @@ public record UsuarioResponseDTO(
                 usuario.getId(),
                 usuario.getNome(),
                 usuario.getTelefone(),
-                usuario.getEmail(),
                 usuario.getPerfil() != null ? usuario.getPerfil().name() : null,
                 usuario.getDeletedAt()
         );

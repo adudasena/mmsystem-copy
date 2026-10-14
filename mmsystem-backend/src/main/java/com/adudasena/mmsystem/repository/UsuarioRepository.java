@@ -13,8 +13,11 @@ import java.util.Optional;
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     List<Usuario> findByDeletedAtIsNull();
     Page<Usuario> findByDeletedAtIsNull(Pageable pageable);
+    List<Usuario> findByDeletedAtIsNullAndPerfil(Perfil perfil);
+    Page<Usuario> findByDeletedAtIsNullAndPerfil(Perfil perfil, Pageable pageable);
     List<Usuario> findByDeletedAtIsNotNull();
     Page<Usuario> findByDeletedAtIsNotNull(Pageable pageable);
+    Page<Usuario> findByDeletedAtIsNotNullAndPerfil(Perfil perfil, Pageable pageable);
     Optional<Usuario> findByIdAndDeletedAtIsNull(Long id);
     Optional<Usuario> findByEmail(String email);
     Optional<Usuario> findByTelefone(String telefone);

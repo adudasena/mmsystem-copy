@@ -17,6 +17,7 @@ export interface Pagamento {
   id: number;
   pedido?: PedidoRef;
   metodoPagamento: string;
+  parcelas?: number | null;
   dataVencimento?: string | null;
   valor: number | string;
   status: 'PENDENTE' | 'APROVADO' | 'CANCELADO' | 'ESTORNADO' | string;
@@ -26,6 +27,7 @@ export interface FormPagamentoData {
   fkPedidoId: string | number;
   valor: string | number;
   metodoPagamento: string;
+  parcelas: number;
   dataVencimento: string;
   status: string;
 }
@@ -43,7 +45,7 @@ interface ModalExcluirState {
   id: number | null;
 }
 
-function rotuloMetodoPagamento(metodo?: string): string {
+function rotuloMetodoPagamento(metodo?: string, parcelas?: number | null): string {
   const mapa: Record<string, string> = {
     PIX: 'PIX',
     CARTAO_CREDITO: 'Cartão de crédito',
@@ -53,7 +55,14 @@ function rotuloMetodoPagamento(metodo?: string): string {
     PAGAMENTO_FUTURO: 'Pagamento futuro',
   };
   if (!metodo) return '—';
-  return mapa[metodo] || metodo.replace(/_/g, ' ');
+  const base = mapa[metodo] || metodo.replace(/_/g, ' ');
+  if (metodo === 'CARTAO_CREDITO' && parcelas && parcelas > 1) {
+    return `${base} (${parcelas}x)`;
+  }
+  if (metodo === 'CARTAO_CREDITO') {
+    return `${base} (1x)`;
+  }
+  return base;
 }
 
 const TelaPagamentos: React.FC = () => {
@@ -85,6 +94,7 @@ const TelaPagamentos: React.FC = () => {
     fkPedidoId: '',
     valor: '',
     metodoPagamento: 'PIX',
+    parcelas: 1,
     dataVencimento: new Date().toISOString().split('T')[0],
     status: 'PENDENTE'
   });
@@ -228,6 +238,7 @@ const TelaPagamentos: React.FC = () => {
       fkPedidoId: '',
       valor: '',
       metodoPagamento: 'PIX',
+      parcelas: 1,
       dataVencimento: new Date().toISOString().split('T')[0],
       status: 'PENDENTE'
     });
@@ -241,6 +252,7 @@ const TelaPagamentos: React.FC = () => {
       fkPedidoId: pag.pedido?.id || '',
       valor: pag.valor || '',
       metodoPagamento: pag.metodoPagamento || 'PIX',
+      parcelas: pag.parcelas && pag.parcelas > 0 ? pag.parcelas : 1,
       dataVencimento: pag.dataVencimento || new Date().toISOString().split('T')[0],
       status: pag.status || 'PENDENTE'
     });
@@ -255,6 +267,12 @@ const TelaPagamentos: React.FC = () => {
     if (!formPagamento.metodoPagamento) {
       erros.push('Selecione o método de pagamento.');
     }
+    if (formPagamento.metodoPagamento === 'CARTAO_CREDITO') {
+      const n = Number(formPagamento.parcelas);
+      if (!n || n < 1 || n > 12) {
+        erros.push('Informe de 1 a 12 parcelas no cartão de crédito.');
+      }
+    }
 
     if (erros.length > 0) {
       setErrosValidacao(erros);
@@ -266,6 +284,7 @@ const TelaPagamentos: React.FC = () => {
         fkPedidoId: formPagamento.fkPedidoId ? Number(formPagamento.fkPedidoId) : null,
         valor: Number(formPagamento.valor),
         metodoPagamento: formPagamento.metodoPagamento,
+        parcelas: formPagamento.metodoPagamento === 'CARTAO_CREDITO' ? Number(formPagamento.parcelas || 1) : null,
         dataVencimento: formPagamento.dataVencimento || null,
         status: formPagamento.status
       };
@@ -441,7 +460,7 @@ const TelaPagamentos: React.FC = () => {
                           {pag.pedido?.id ? `Pedido #${pag.pedido.id}` : '—'}
                         </td>
                         <td className="p-3 text-xs font-sans text-gray-700">
-                          {rotuloMetodoPagamento(pag.metodoPagamento)}
+                          {rotuloMetodoPagamento(pag.metodoPagamento, pag.parcelas)}
                         </td>
                         <td className="p-3 text-gray-600">
                           {pag.dataVencimento || '—'}
@@ -589,7 +608,11 @@ const TelaPagamentos: React.FC = () => {
                     <select
                       value={formPagamento.metodoPagamento}
                       onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                        setFormPagamento({ ...formPagamento, metodoPagamento: e.target.value })
+                        setFormPagamento({
+                          ...formPagamento,
+                          metodoPagamento: e.target.value,
+                          parcelas: e.target.value === 'CARTAO_CREDITO' ? (formPagamento.parcelas || 1) : 1,
+                        })
                       }
                       className="w-full border p-2 bg-gray-50 text-xs outline-none font-sans rounded-md"
                     >
@@ -602,6 +625,27 @@ const TelaPagamentos: React.FC = () => {
                     </select>
                   </div>
                 </div>
+
+                {formPagamento.metodoPagamento === 'CARTAO_CREDITO' && (
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">
+                      Parcelas *
+                    </label>
+                    <select
+                      value={formPagamento.parcelas}
+                      onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                        setFormPagamento({ ...formPagamento, parcelas: Number(e.target.value) })
+                      }
+                      className="w-full border p-2 bg-gray-50 text-xs outline-none font-sans rounded-md"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>
+                          {n}x {n === 1 ? '(à vista)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>

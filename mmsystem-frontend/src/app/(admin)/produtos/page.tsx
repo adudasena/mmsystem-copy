@@ -193,62 +193,105 @@ const TelaProdutos: React.FC = () => {
     }
   };
 
+  const chaveAtributo = (valor: string): string =>
+    valor
+      .normalize('NFD')
+      .replace(/\p{M}/gu, '')
+      .toLowerCase()
+      .replace(/[\s\-_./]+/g, '');
+
+  const formatarCategoriaOuCor = (valor: string): string => {
+    const t = valor.trim().replace(/\s+/g, ' ');
+    if (!t) return '';
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  };
+
+  const jaExisteAtributo = (lista: string[], candidato: string): string | undefined => {
+    const chave = chaveAtributo(candidato);
+    return lista.find((item) => chaveAtributo(item) === chave);
+  };
+
   // ─── Adicionar opções customizadas ────────────────────────────────────────
   const adicionarCategoriaCustomizada = async (): Promise<void> => {
-    const cat = novaCategoriaTexto.trim();
-    if (!cat) return;
-    const catFormatada = cat.charAt(0).toUpperCase() + cat.slice(1);
-    if (categorias.some(c => c.toLowerCase() === catFormatada.toLowerCase())) {
-      setErrosValidacao(['Esta categoria já está cadastrada.']);
+    const catFormatada = formatarCategoriaOuCor(novaCategoriaTexto);
+    if (!catFormatada) return;
+    if (catFormatada.length > 40) {
+      setErrosValidacao(['A categoria deve ter no máximo 40 caracteres.']);
       return;
     }
-    const novas = [...categorias, catFormatada];
-    setCategorias(novas);
-    try {
-      await api.post('/api/atributos/categorias', { nome: catFormatada });
-    } catch (err) {
-      console.error('Erro ao persistir categoria:', err);
+    const existente = jaExisteAtributo(categorias, catFormatada);
+    if (existente) {
+      setProduto({ ...produto, categoria: existente });
+      setNovaCategoriaTexto('');
+      setErrosValidacao([`Esta categoria já existe: ${existente}.`]);
+      return;
     }
-    setProduto({ ...produto, categoria: catFormatada });
-    setNovaCategoriaTexto('');
-    setErrosValidacao([]);
+    try {
+      const res = await api.post<{ nome?: string }>('/api/atributos/categorias', { nome: catFormatada });
+      const nomeSalvo = res.data?.nome || catFormatada;
+      setCategorias((prev) => (jaExisteAtributo(prev, nomeSalvo) ? prev : [...prev, nomeSalvo]));
+      setProduto({ ...produto, categoria: nomeSalvo });
+      setNovaCategoriaTexto('');
+      setErrosValidacao([]);
+    } catch (err) {
+      setErrosValidacao([formatErrorMessage(err, 'Não foi possível cadastrar a categoria.')]);
+    }
   };
 
   const adicionarTamanhoCustomizado = async (): Promise<void> => {
-    const tam = novoTamanhoTexto.trim().toUpperCase();
+    const tam = novoTamanhoTexto.trim().replace(/\s+/g, '').toUpperCase();
     if (!tam) return;
-    if (tamanhos.includes(tam)) {
-      setErrosValidacao(['Este tamanho já está cadastrado.']);
+    if (tam.length > 12) {
+      setErrosValidacao(['O tamanho deve ter no máximo 12 caracteres.']);
       return;
     }
-    const novos = [...tamanhos, tam];
-    setTamanhos(novos);
-    try {
-      await api.post('/api/atributos/tamanhos', { nome: tam });
-    } catch (err) {
-      console.error('Erro ao persistir tamanho:', err);
+    if (!/^[\p{L}\p{N}]+$/u.test(tam)) {
+      setErrosValidacao(['Use só letras e números no tamanho (P, M, GG, 42).']);
+      return;
     }
-    setNovoTamanhoTexto('');
-    setErrosValidacao([]);
+    const existente = jaExisteAtributo(tamanhos, tam);
+    if (existente) {
+      setNovoTamanhoTexto('');
+      setErrosValidacao([`Este tamanho já existe: ${existente}.`]);
+      return;
+    }
+    try {
+      const res = await api.post<{ nome?: string }>('/api/atributos/tamanhos', { nome: tam });
+      const nomeSalvo = res.data?.nome || tam;
+      setTamanhos((prev) => (jaExisteAtributo(prev, nomeSalvo) ? prev : [...prev, nomeSalvo]));
+      setNovoTamanhoTexto('');
+      setErrosValidacao([]);
+    } catch (err) {
+      setErrosValidacao([formatErrorMessage(err, 'Não foi possível cadastrar o tamanho.')]);
+    }
   };
 
   const adicionarCorCustomizada = async (): Promise<void> => {
-    const nome = novaCorNome.trim();
+    const nome = formatarCategoriaOuCor(novaCorNome);
     if (!nome) return;
-    if (listaCores.some(c => c.nome.toLowerCase() === nome.toLowerCase())) {
-      setErrosValidacao(['Esta cor já está cadastrada.']);
+    if (nome.length > 40) {
+      setErrosValidacao(['O nome da cor deve ter no máximo 40 caracteres.']);
       return;
     }
-    const novas = [...listaCores, { nome, hex: novaCorHex }];
-    setListaCores(novas);
-    try {
-      await api.post('/api/atributos/cores', { nome, hexCode: novaCorHex });
-    } catch (err) {
-      console.error('Erro ao persistir cor:', err);
+    const existente = jaExisteAtributo(listaCores.map((c) => c.nome), nome);
+    if (existente) {
+      setNovaCorNome('');
+      setErrosValidacao([`Esta cor já existe: ${existente}.`]);
+      return;
     }
-    setNovaCorNome('');
-    setNovaCorHex('#000000');
-    setErrosValidacao([]);
+    try {
+      const res = await api.post<{ nome?: string; hexCode?: string }>('/api/atributos/cores', { nome, hexCode: novaCorHex });
+      const nomeSalvo = res.data?.nome || nome;
+      const hexSalvo = res.data?.hexCode || novaCorHex;
+      setListaCores((prev) =>
+        jaExisteAtributo(prev.map((c) => c.nome), nomeSalvo) ? prev : [...prev, { nome: nomeSalvo, hex: hexSalvo }]
+      );
+      setNovaCorNome('');
+      setNovaCorHex('#000000');
+      setErrosValidacao([]);
+    } catch (err) {
+      setErrosValidacao([formatErrorMessage(err, 'Não foi possível cadastrar a cor.')]);
+    }
   };
 
   // ─── Fotos ────────────────────────────────────────────────────────────────
@@ -545,6 +588,7 @@ const TelaProdutos: React.FC = () => {
                   <input
                     type="text"
                     placeholder="Adicionar..."
+                    maxLength={40}
                     value={novaCategoriaTexto}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setNovaCategoriaTexto(e.target.value)}
                     onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && adicionarCategoriaCustomizada()}
@@ -655,6 +699,7 @@ const TelaProdutos: React.FC = () => {
               <input
                 type="text"
                 placeholder="Adicionar..."
+                maxLength={12}
                 value={novoTamanhoTexto}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNovoTamanhoTexto(e.target.value)}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && adicionarTamanhoCustomizado()}
@@ -693,6 +738,7 @@ const TelaProdutos: React.FC = () => {
               <input
                 type="text"
                 placeholder="Nome da cor"
+                maxLength={40}
                 value={novaCorNome}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNovaCorNome(e.target.value)}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && adicionarCorCustomizada()}

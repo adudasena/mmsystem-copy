@@ -32,8 +32,22 @@ public class AtributoProdutoService {
 
     @Transactional
     public AtributoResponseDTO criarCategoria(AtributoRequestDTO dto) {
+        String nome = AtributoNome.exibirCategoria(dto.nome());
+        String chave = AtributoNome.chave(nome);
+        for (Categoria existente : categoriaRepository.findAll()) {
+            if (!chave.equals(AtributoNome.chave(existente.getNome()))) {
+                continue;
+            }
+            if (existente.getDeletedAt() != null) {
+                existente.setDeletedAt(null);
+                existente.setNome(nome);
+                Categoria salvo = categoriaRepository.save(existente);
+                return new AtributoResponseDTO(salvo.getId(), salvo.getNome(), null);
+            }
+            throw new IllegalArgumentException("Esta categoria já existe: " + existente.getNome() + ".");
+        }
         Categoria categoria = new Categoria();
-        categoria.setNome(dto.nome());
+        categoria.setNome(nome);
         Categoria salvo = categoriaRepository.save(categoria);
         return new AtributoResponseDTO(salvo.getId(), salvo.getNome(), null);
     }
@@ -55,8 +69,22 @@ public class AtributoProdutoService {
 
     @Transactional
     public AtributoResponseDTO criarTamanho(AtributoRequestDTO dto) {
+        String nome = AtributoNome.exibirTamanho(dto.nome());
+        String chave = AtributoNome.chave(nome);
+        for (Tamanho existente : tamanhoRepository.findAll()) {
+            if (!chave.equals(AtributoNome.chave(existente.getNome()))) {
+                continue;
+            }
+            if (existente.getDeletedAt() != null) {
+                existente.setDeletedAt(null);
+                existente.setNome(nome);
+                Tamanho salvo = tamanhoRepository.save(existente);
+                return new AtributoResponseDTO(salvo.getId(), salvo.getNome(), null);
+            }
+            throw new IllegalArgumentException("Este tamanho já existe: " + existente.getNome() + ".");
+        }
         Tamanho tamanho = new Tamanho();
-        tamanho.setNome(dto.nome());
+        tamanho.setNome(nome);
         Tamanho salvo = tamanhoRepository.save(tamanho);
         return new AtributoResponseDTO(salvo.getId(), salvo.getNome(), null);
     }
@@ -78,8 +106,25 @@ public class AtributoProdutoService {
 
     @Transactional
     public AtributoResponseDTO criarCor(AtributoRequestDTO dto) {
+        String nome = AtributoNome.exibirCor(dto.nome());
+        String chave = AtributoNome.chave(nome);
+        for (Cor existente : corRepository.findAll()) {
+            if (!chave.equals(AtributoNome.chave(existente.getNome()))) {
+                continue;
+            }
+            if (existente.getDeletedAt() != null) {
+                existente.setDeletedAt(null);
+                existente.setNome(nome);
+                if (dto.hexCode() != null && !dto.hexCode().isBlank()) {
+                    existente.setHexCode(dto.hexCode());
+                }
+                Cor salvo = corRepository.save(existente);
+                return new AtributoResponseDTO(salvo.getId(), salvo.getNome(), salvo.getHexCode());
+            }
+            throw new IllegalArgumentException("Esta cor já existe: " + existente.getNome() + ".");
+        }
         Cor cor = new Cor();
-        cor.setNome(dto.nome());
+        cor.setNome(nome);
         cor.setHexCode(dto.hexCode());
         Cor salvo = corRepository.save(cor);
         return new AtributoResponseDTO(salvo.getId(), salvo.getNome(), salvo.getHexCode());

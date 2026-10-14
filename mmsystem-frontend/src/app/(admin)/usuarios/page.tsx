@@ -2,20 +2,20 @@
 
 import React, { useState, useEffect, ChangeEvent, FormEvent, useRef } from 'react';
 import { AxiosError } from 'axios';
-import { Users, MessageSquare, Mail, Pencil, Trash2, Plus, Search, CheckCircle2, RotateCcw, UserX } from 'lucide-react';
+import { Users, MessageSquare, Pencil, Trash2, CheckCircle2, RotateCcw, UserX } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import SystemModal from '@/components/SystemModal';
 import { formatErrorMessage } from '@/utils/errorUtils';
 import { enviarWhatsApp } from '@/utils/whatsapp';
+import { formatarNomePessoa, formatarTelefoneInput, validarNomePessoa, validarWhatsApp } from '@/utils/contato';
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface Usuario {
   id: number;
   nome: string;
   telefone?: string;
-  email?: string;
   perfil?: 'CLIENTE' | 'ADMIN' | 'VENDEDOR' | string;
   ativo?: boolean;
 }
@@ -23,7 +23,6 @@ export interface Usuario {
 export interface FormDataUsuario {
   nome: string;
   telefone: string;
-  email: string;
   perfil: string;
 }
 
@@ -66,7 +65,6 @@ const TelaUsuarios: React.FC = () => {
   const [formData, setFormData] = useState<FormDataUsuario>({
     nome: '',
     telefone: '',
-    email: '',
     perfil: 'CLIENTE',
   });
 
@@ -123,20 +121,12 @@ const TelaUsuarios: React.FC = () => {
     }
   };
 
-  // Máscara dinâmica de WhatsApp / Telefone
-  const formatarTelefoneInput = (valor: string): string => {
-    if (!valor) return '';
-    const nums = valor.replace(/\D/g, '');
-    if (nums.length <= 10) {
-      return nums.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').trim();
-    }
-    return nums.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim();
-  };
-
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
     const { name, value } = e.target;
     if (name === 'telefone') {
       setFormData((prev) => ({ ...prev, telefone: formatarTelefoneInput(value) }));
+    } else if (name === 'nome') {
+      setFormData((prev) => ({ ...prev, nome: formatarNomePessoa(value) }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -148,7 +138,6 @@ const TelaUsuarios: React.FC = () => {
     setFormData({
       nome: cliente.nome || '',
       telefone: cliente.telefone ? formatarTelefoneInput(cliente.telefone) : '',
-      email: cliente.email || '',
       perfil: cliente.perfil || 'CLIENTE',
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -156,7 +145,7 @@ const TelaUsuarios: React.FC = () => {
 
   const handleCancelarEdicao = (): void => {
     setClienteEmEdicao(null);
-    setFormData({ nome: '', telefone: '', email: '', perfil: 'CLIENTE' });
+    setFormData({ nome: '', telefone: '', perfil: 'CLIENTE' });
   };
 
   // Submissão (Cadastrar ou Atualizar)
@@ -164,6 +153,17 @@ const TelaUsuarios: React.FC = () => {
     e.preventDefault();
     setMensagemSucesso('');
     setErro('');
+
+    const erroNome = validarNomePessoa(formData.nome);
+    if (erroNome) {
+      setErro(erroNome);
+      return;
+    }
+    const erroTel = validarWhatsApp(formData.telefone);
+    if (erroTel) {
+      setErro(erroTel);
+      return;
+    }
 
     const dadosParaEnvio = {
       ...formData,
@@ -184,7 +184,7 @@ const TelaUsuarios: React.FC = () => {
       setTimeout(() => setMensagemSucesso(''), 4000);
     } catch (err) {
       console.error('Erro ao salvar cliente:', err);
-      const msg = formatErrorMessage(err, 'Falha ao salvar. Verifique se o telefone ou e-mail já existem na base.');
+      const msg = formatErrorMessage(err, 'Falha ao salvar. Verifique se o WhatsApp já existe na base.');
       setErro(msg);
     }
   };
@@ -232,8 +232,7 @@ const TelaUsuarios: React.FC = () => {
   const clientesFiltrados = (Array.isArray(clientes) ? clientes : []).filter(
     (c) =>
       c.nome?.toLowerCase().includes(busca.toLowerCase()) ||
-      c.telefone?.includes(busca) ||
-      c.email?.toLowerCase().includes(busca.toLowerCase())
+      c.telefone?.includes(busca)
   );
 
   return (
@@ -247,7 +246,7 @@ const TelaUsuarios: React.FC = () => {
         </div>
 
         {/* MÉTRICAS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200/80 flex items-center gap-4">
             <div className="p-3 bg-[#e8eae0] text-[#2d3a22] rounded-lg">
               <Users className="w-6 h-6" />
@@ -275,27 +274,13 @@ const TelaUsuarios: React.FC = () => {
               </h3>
             </div>
           </div>
-
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200/80 flex items-center gap-4">
-            <div className="p-3 bg-[#e8eae0] text-[#2d3a22] rounded-lg">
-              <Mail className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
-                Com E-mail Vinculado
-              </p>
-              <h3 className="text-2xl font-extrabold text-gray-800">
-                {clientes.filter((c) => c.email).length}
-              </h3>
-            </div>
-          </div>
         </div>
 
         {/* BARRA DE BUSCA PADRONIZADA */}
         <BarraBuscaFiltro
           termoBusca={busca}
           onBuscaChange={setBusca}
-          placeholder="Buscar por nome, WhatsApp ou e-mail..."
+          placeholder="Buscar por nome ou WhatsApp..."
         />
 
         {/* MENSAGENS */}
@@ -344,6 +329,7 @@ const TelaUsuarios: React.FC = () => {
                   value={formData.nome}
                   onChange={handleChange}
                   placeholder="Ex: Maria Silva"
+                  maxLength={80}
                   className="w-full border border-gray-300 p-2.5 text-xs rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3b4a28]/50"
                 />
               </div>
@@ -360,20 +346,6 @@ const TelaUsuarios: React.FC = () => {
                   value={formData.telefone}
                   onChange={handleChange}
                   placeholder="(43) 99999-8888"
-                  className="w-full border border-gray-300 p-2.5 text-xs rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3b4a28]/50"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-gray-600 mb-1">
-                  E-mail
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="maria@email.com"
                   className="w-full border border-gray-300 p-2.5 text-xs rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3b4a28]/50"
                 />
               </div>
@@ -433,14 +405,13 @@ const TelaUsuarios: React.FC = () => {
                       <th className="p-3 border-r border-gray-300/50">ID</th>
                       <th className="p-3 border-r border-gray-300/50">Nome</th>
                       <th className="p-3 border-r border-gray-300/50">WhatsApp</th>
-                      <th className="p-3 border-r border-gray-300/50">E-mail</th>
                       <th className="p-3 text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {clientesFiltrados.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="p-8 text-center italic text-gray-500">
+                        <td colSpan={4} className="p-8 text-center italic text-gray-500">
                           {abaAtiva === 'EXCLUIDOS' ? 'Nenhum cliente inativo na lixeira.' : 'Nenhum cliente ativo encontrado.'}
                         </td>
                       </tr>
@@ -452,7 +423,6 @@ const TelaUsuarios: React.FC = () => {
                           <td className="p-3 border-r text-gray-600 font-mono">
                             {cli.telefone ? formatarTelefoneInput(cli.telefone) : '—'}
                           </td>
-                          <td className="p-3 border-r text-gray-600">{cli.email || '—'}</td>
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-2">
                               {cli.telefone ? (

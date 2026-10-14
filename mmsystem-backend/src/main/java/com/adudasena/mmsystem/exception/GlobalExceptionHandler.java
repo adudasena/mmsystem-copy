@@ -23,8 +23,13 @@ public class GlobalExceptionHandler {
         Map<String, String> erro = new HashMap<>();
         String detalhe = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : "";
         String mensagem = "Não foi possível concluir a ação. Verifique se os dados inseridos possuem registros ou relacionamentos pendentes.";
-        if (detalhe != null && detalhe.toLowerCase().contains("telefone")) {
-            mensagem = "Este WhatsApp já está cadastrado. Confirme o número na sacola e tente de novo.";
+        if (detalhe != null) {
+            String d = detalhe.toLowerCase();
+            if (d.contains("telefone")) {
+                mensagem = "Este WhatsApp já está cadastrado em outra cliente.";
+            } else if (d.contains("itens_pedido") || d.contains("fk_produto")) {
+                mensagem = "Este produto já está neste pedido. Aumente a quantidade na linha existente em vez de duplicar a peça.";
+            }
         }
         erro.put("mensagem", mensagem);
         erro.put("message", mensagem);
