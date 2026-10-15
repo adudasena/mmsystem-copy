@@ -52,21 +52,23 @@ public class PagamentoService {
 
     @Transactional(readOnly = true)
     public Page<Pagamento> listarFiadosVencidos(Pageable pageable) {
-        return pagamentoRepository.findByDeletedAtIsNullAndStatusAndMetodoPagamentoAndDataVencimentoLessThanEqual(
+        return pagamentoRepository.findByDeletedAtIsNullAndStatusAndDataVencimentoLessThanEqual(
                 StatusPagamento.PENDENTE,
-                MetodoPagamento.PAGAMENTO_FUTURO,
-                java.time.LocalDate.now(),
+                hojeBrasil(),
                 pageable
         );
     }
 
     @Transactional(readOnly = true)
     public long contarFiadosVencidos() {
-        return pagamentoRepository.countByDeletedAtIsNullAndStatusAndMetodoPagamentoAndDataVencimentoLessThanEqual(
+        return pagamentoRepository.countByDeletedAtIsNullAndStatusAndDataVencimentoLessThanEqual(
                 StatusPagamento.PENDENTE,
-                MetodoPagamento.PAGAMENTO_FUTURO,
-                java.time.LocalDate.now()
+                hojeBrasil()
         );
+    }
+
+    private static java.time.LocalDate hojeBrasil() {
+        return java.time.LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"));
     }
 
     @Transactional(readOnly = true)

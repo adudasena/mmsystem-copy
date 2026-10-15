@@ -45,7 +45,7 @@ public class AvisosVencimentoService {
 
     @Transactional
     public AvisosVencimentoResultadoDTO processarAvisosDoDia() {
-        LocalDate hoje = LocalDate.now();
+        LocalDate hoje = LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"));
         LocalDate limiteVencendo = hoje.plusDays(diasAntecedencia);
         LocalDateTime agora = LocalDateTime.now();
         boolean whatsappLigado = whatsAppService.isEnabled();

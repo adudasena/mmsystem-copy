@@ -8,7 +8,7 @@ import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import SystemModal from '@/components/SystemModal';
 import { formatErrorMessage } from '@/utils/errorUtils';
-import { enviarWhatsApp } from '@/utils/whatsapp';
+import { enviarWhatsApp, textoConfirmacaoWhatsApp } from '@/utils/whatsapp';
 import CampoAjuda from '@/components/CampoAjuda';
 
 // ─── Interfaces e Tipagens ─────────────────────────────────────────────────
@@ -127,6 +127,7 @@ const TelaCondicionais: React.FC = () => {
 
   const [errosValidacao, setErrosValidacao] = useState<string[]>([]);
   const [mensagemSucesso, setMensagemSucesso] = useState<string>('');
+  const [mensagemAviso, setMensagemAviso] = useState<string>('');
   const [editandoId, setEditandoId] = useState<number | null>(null);
 
   // FORMULÁRIO
@@ -514,7 +515,7 @@ const TelaCondicionais: React.FC = () => {
     return { status: 'NO_PRAZO', texto: `${diffDias} ${diffDias === 1 ? 'dia restante' : 'dias restantes'}`, dias: diffDias };
   };
 
-  const enviarCobrancaWhatsApp = (c: Condicional) => {
+  const enviarCobrancaWhatsApp = async (c: Condicional) => {
     const nome = c.usuario?.nome || c.cliente?.nome || 'Cliente';
     const tel = (c.usuario?.telefone || c.cliente?.telefone || '').replace(/\D/g, '');
     const prazo = calcularPrazo(c.dataRetorno);
@@ -524,7 +525,19 @@ const TelaCondicionais: React.FC = () => {
       `*Data limite para retorno:* ${c.dataRetorno} (${prazo.texto}).\n\n` +
       `Já decidiu quais peças vai levar para arrasar? Se precisar de mais tempo, nos avise!`;
 
-    void enviarWhatsApp(tel, msg);
+    const resultado = await enviarWhatsApp(tel, msg);
+    const textoAviso = textoConfirmacaoWhatsApp(resultado);
+    if (resultado === 'enviado') {
+      setMensagemAviso('');
+      setMensagemSucesso(textoAviso);
+    } else {
+      setMensagemSucesso('');
+      setMensagemAviso(textoAviso);
+    }
+    setTimeout(() => {
+      setMensagemSucesso('');
+      setMensagemAviso('');
+    }, 5000);
   };
 
   // ─── Filtro Local dos Condicionais ───────────────────────────────────────
@@ -568,6 +581,12 @@ const TelaCondicionais: React.FC = () => {
           <div className="bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2 mb-4">
             <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
             <span>{mensagemSucesso}</span>
+          </div>
+        )}
+        {mensagemAviso && (
+          <div className="bg-amber-50 border-l-4 border-amber-600 p-3 text-amber-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2 mb-4">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{mensagemAviso}</span>
           </div>
         )}
 

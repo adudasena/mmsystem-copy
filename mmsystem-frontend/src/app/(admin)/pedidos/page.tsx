@@ -7,7 +7,7 @@ import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import SelectProdutoFilter from '@/components/SelectProdutoFilter';
 import { formatErrorMessage } from '@/utils/errorUtils';
-import { enviarWhatsApp } from '@/utils/whatsapp';
+import { enviarWhatsApp, textoConfirmacaoWhatsApp } from '@/utils/whatsapp';
 
 // ─── Auxiliar de UUID ────────────────────────────────────────────────────────
 const gerarUuid = (): string => {
@@ -19,6 +19,14 @@ const gerarUuid = (): string => {
 
 // ─── Tipagens e Interfaces ──────────────────────────────────────────────────
 export type StatusPedido = 'AGUARDANDO_PAGAMENTO' | 'PENDENTE' | 'CANCELADO' | 'CONCLUIDO' | 'PAGO';
+
+const ROTULO_STATUS_PEDIDO: Record<string, string> = {
+  AGUARDANDO_PAGAMENTO: 'Aguardando pagamento',
+  PENDENTE: 'Aguardando pagamento',
+  CANCELADO: 'Cancelado',
+  CONCLUIDO: 'Concluído',
+  PAGO: 'Concluído',
+};
 
 export interface ClientePedido {
   id: number;
@@ -95,6 +103,7 @@ const TelaPedidos: React.FC = () => {
 
   // Feedbacks e Modais
   const [mensagemSucesso, setMensagemSucesso] = useState<string>('');
+  const [mensagemAviso, setMensagemAviso] = useState<string>('');
   const [errosValidacao, setErrosValidacao] = useState<string[]>([]);
 
   const [modalFormAberto, setModalFormAberto] = useState<boolean>(false);
@@ -207,14 +216,12 @@ const TelaPedidos: React.FC = () => {
         }
 
         if (resFiltro.status === 'fulfilled' && Array.isArray(resFiltro.value.data)) {
-          const rotulos: Record<string, string> = {
-            AGUARDANDO_PAGAMENTO: 'Aguardando Pagamento',
-            CANCELADO: 'Cancelado',
-            CONCLUIDO: 'Concluído',
-          };
           setOpcoesStatus([
             { label: 'Todos os Status', value: 'TODOS' },
-            ...resFiltro.value.data.map((value) => ({ label: rotulos[value] || value, value })),
+            ...resFiltro.value.data.map((value) => ({
+              label: ROTULO_STATUS_PEDIDO[value] || value,
+              value,
+            })),
           ]);
         }
 
@@ -433,7 +440,7 @@ const TelaPedidos: React.FC = () => {
     }
   };
 
-  const dispararWhatsAppComprovante = (pedido: Pedido): void => {
+  const dispararWhatsAppComprovante = async (pedido: Pedido): Promise<void> => {
     const nomeCliente = pedido.cliente?.nome || 'Cliente';
     const telefone = pedido.cliente?.telefone?.replace(/\D/g, '') || '';
 
@@ -442,10 +449,22 @@ const TelaPedidos: React.FC = () => {
       `Seu pedido *#${pedido.id}* na *Maria Morena* foi registrado!\n` +
       `*Data:* ${pedido.dataPedido}\n` +
       `*Total:* R$ ${Number(pedido.valorTotal).toFixed(2).replace('.', ',')}\n` +
-      `*Status:* ${pedido.status}\n\n` +
+      `*Status:* ${ROTULO_STATUS_PEDIDO[pedido.status] || pedido.status}\n\n` +
       `Obrigada pela preferência!`;
 
-    void enviarWhatsApp(telefone, texto);
+    const resultado = await enviarWhatsApp(telefone, texto);
+    const textoAviso = textoConfirmacaoWhatsApp(resultado);
+    if (resultado === 'enviado') {
+      setMensagemAviso('');
+      setMensagemSucesso(textoAviso);
+    } else {
+      setMensagemSucesso('');
+      setMensagemAviso(textoAviso);
+    }
+    setTimeout(() => {
+      setMensagemSucesso('');
+      setMensagemAviso('');
+    }, 5000);
   };
 
   const abrirDetalhes = (pedido: Pedido): void => {
@@ -462,17 +481,9 @@ const TelaPedidos: React.FC = () => {
       PAGO: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     };
 
-    const labels: Record<string, string> = {
-      AGUARDANDO_PAGAMENTO: 'Aguardando Pagamento',
-      PENDENTE: 'Aguardando Pagamento',
-      CANCELADO: 'Cancelado',
-      CONCLUIDO: 'Concluído',
-      PAGO: 'Concluído',
-    };
-
     return (
       <span className={`px-2.5 py-0.5 rounded border text-[10px] font-bold uppercase ${estilos[status] || 'bg-gray-100 text-gray-800'}`}>
-        {labels[status] || status}
+        {ROTULO_STATUS_PEDIDO[status] || status}
       </span>
     );
   };
@@ -513,6 +524,12 @@ const TelaPedidos: React.FC = () => {
           <div className="bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
             <span>{mensagemSucesso}</span>
+          </div>
+        )}
+        {mensagemAviso && (
+          <div className="bg-amber-50 border-l-4 border-amber-600 p-3 text-amber-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{mensagemAviso}</span>
           </div>
         )}
 

@@ -8,7 +8,6 @@ import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import SystemModal from '@/components/SystemModal';
 import { formatErrorMessage } from '@/utils/errorUtils';
-import { enviarWhatsApp } from '@/utils/whatsapp';
 import { formatarNomePessoa, formatarTelefoneInput, validarNomePessoa, validarWhatsApp } from '@/utils/contato';
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
@@ -223,11 +222,6 @@ const TelaUsuarios: React.FC = () => {
     }
   };
 
-  const saudarClienteWhatsApp = (telefone?: string, nome?: string): void => {
-    const msg = `Olá, ${nome || 'cliente'}! Aqui é a Maria Morena.`;
-    void enviarWhatsApp(telefone, msg);
-  };
-
   // Filtro local resiliente
   const clientesFiltrados = (Array.isArray(clientes) ? clientes : []).filter(
     (c) =>
@@ -425,17 +419,6 @@ const TelaUsuarios: React.FC = () => {
                           </td>
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-2">
-                              {cli.telefone ? (
-                                <button
-                                  type="button"
-                                  onClick={() => saudarClienteWhatsApp(cli.telefone, cli.nome)}
-                                  className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer"
-                                  title="Enviar WhatsApp"
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5 text-white" /> Whats
-                                </button>
-                              ) : null}
-
                               {abaAtiva === 'EXCLUIDOS' ? (
                                 <button
                                   type="button"
