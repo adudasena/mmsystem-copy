@@ -70,6 +70,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/login", "/auth/registrar").permitAll()
                         .requestMatchers("/vitrine/**").permitAll()
+                        .requestMatchers("/whatsapp/webhook").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().hasAnyRole("PROPRIETARIA", "FUNCIONARIO")
                 )

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Map;
 
@@ -20,17 +21,20 @@ public class WhatsAppService {
     private final String instance;
     private final String apiKey;
     private final RestClient restClient;
+    private final WhatsAppAntiSpamService antiSpamService;
 
     public WhatsAppService(
             @Value("${app.whatsapp.enabled:false}") boolean enabled,
             @Value("${app.whatsapp.evolution-url:}") String evolutionUrl,
             @Value("${app.whatsapp.instance:}") String instance,
-            @Value("${app.whatsapp.api-key:}") String apiKey
+            @Value("${app.whatsapp.api-key:}") String apiKey,
+            WhatsAppAntiSpamService antiSpamService
     ) {
         this.enabled = enabled;
         this.evolutionUrl = evolutionUrl;
         this.instance = instance;
         this.apiKey = apiKey;
+        this.antiSpamService = antiSpamService;
         this.restClient = RestClient.create();
     }
 
@@ -44,7 +48,14 @@ public class WhatsAppService {
         if (!isEnabled()) {
             return false;
         }
-        String numero = dto.telefone().replaceAll("\\D", "");
+        String numero = dto.telefone() == null ? "" : dto.telefone().replaceAll("\\D", "");
+        if (numero.isBlank()) {
+            logger.warn("WhatsApp não enviado: telefone em branco.");
+            return false;
+        }
+        if (!antiSpamService.podeEnviar(numero)) {
+            return false;
+        }
         if (numero.length() <= 11 && !numero.startsWith("55")) {
             numero = "55" + numero;
         }
@@ -57,7 +68,17 @@ public class WhatsAppService {
                     .body(Map.of("number", numero, "text", dto.mensagem()))
                     .retrieve()
                     .toBodilessEntity();
+            antiSpamService.registrarEnvioAutomatico(dto.telefone());
             return true;
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().is4xxClientError()) {
+                logger.warn("WhatsApp recusado (número inválido ou Evolution recusou): status={} body={}",
+                        e.getStatusCode().value(), e.getResponseBodyAsString());
+            } else {
+                logger.warn("Evolution API indisponível: status={} body={}",
+                        e.getStatusCode().value(), e.getResponseBodyAsString());
+            }
+            return false;
         } catch (Exception e) {
             logger.warn("Falha ao enviar WhatsApp via Evolution API: {}", e.getMessage());
             return false;

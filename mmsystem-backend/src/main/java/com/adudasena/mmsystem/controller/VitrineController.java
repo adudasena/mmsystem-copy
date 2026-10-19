@@ -8,11 +8,14 @@ import com.adudasena.mmsystem.dto.VitrineClienteLookupDTO;
 import com.adudasena.mmsystem.dto.VitrineLojaDTO;
 import com.adudasena.mmsystem.dto.VitrinePedidoDTO;
 import com.adudasena.mmsystem.dto.WhatsAppMensagemDTO;
+import com.adudasena.mmsystem.service.CaptchaService;
 import com.adudasena.mmsystem.service.CondicionalService;
 import com.adudasena.mmsystem.service.PedidoService;
 import com.adudasena.mmsystem.service.ProdutoService;
 import com.adudasena.mmsystem.service.UsuarioService;
+import com.adudasena.mmsystem.service.VitrineProtecaoService;
 import com.adudasena.mmsystem.service.WhatsAppService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -34,6 +37,8 @@ public class VitrineController {
     private final ProdutoService produtoService;
     private final WhatsAppService whatsAppService;
     private final UsuarioService usuarioService;
+    private final CaptchaService captchaService;
+    private final VitrineProtecaoService vitrineProtecaoService;
 
     @GetMapping("/produtos")
     public ResponseEntity<Page<ProdutoResponseDTO>> listarCatalogo(
@@ -62,7 +67,12 @@ public class VitrineController {
     }
 
     @PostMapping("/pedido")
-    public ResponseEntity<VitrineCheckoutResponseDTO> criarPedidoVitrine(@Valid @RequestBody VitrinePedidoDTO dto) {
+    public ResponseEntity<VitrineCheckoutResponseDTO> criarPedidoVitrine(
+            @Valid @RequestBody VitrinePedidoDTO dto,
+            HttpServletRequest request
+    ) {
+        captchaService.validar(dto.getCaptchaToken());
+        vitrineProtecaoService.protegerCheckout(ipCliente(request), dto);
         String tipo = dto.getTipoFluxo() != null ? dto.getTipoFluxo().toUpperCase() : "CONDICIONAL";
         VitrineCheckoutResponseDTO resposta;
         if ("VENDA_DIRETA".equals(tipo)) {
@@ -78,6 +88,7 @@ public class VitrineController {
                     null
             );
         }
+        vitrineProtecaoService.marcarPedidoRegistrado(dto);
         notificarCliente(dto, tipo);
         return ResponseEntity.status(201).body(resposta);
     }
@@ -89,6 +100,18 @@ public class VitrineController {
         String texto = "VENDA_DIRETA".equals(tipo)
                 ? "Olá, " + dto.getNomeCliente() + "! Seu pedido na Maria Morena foi registrado. Em breve confirmamos o pagamento."
                 : "Olá, " + dto.getNomeCliente() + "! Sua sacola condicional na Maria Morena foi registrada. Prazo de retorno: 3 dias.";
-        whatsAppService.enviar(new WhatsAppMensagemDTO(dto.getTelefoneCliente(), texto));
+        boolean enviado = whatsAppService.enviar(new WhatsAppMensagemDTO(dto.getTelefoneCliente(), texto));
+        if (!enviado) {
+            org.slf4j.LoggerFactory.getLogger(VitrineController.class)
+                    .info("Pedido da vitrine gravado, mas a notificação Evolution não foi enviada.");
+        }
+    }
+
+    private static String ipCliente(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

@@ -51,9 +51,9 @@ public class UsuarioService {
     public VitrineClienteLookupDTO consultarClienteVitrine(String telefoneCliente) {
         Usuario existente = localizarPorTelefone(telefoneCliente);
         if (existente == null || !ehCliente(existente)) {
-            return new VitrineClienteLookupDTO(false, null);
+            return new VitrineClienteLookupDTO(false);
         }
-        return new VitrineClienteLookupDTO(true, existente.getNome());
+        return new VitrineClienteLookupDTO(true);
     }
 
     @org.springframework.transaction.annotation.Transactional

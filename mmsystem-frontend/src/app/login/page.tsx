@@ -27,7 +27,7 @@ export default function LoginPage() {
         }
 
         // Redireciona limpando a rota interna (admin) da URL
-        window.location.href = '/';
+        window.location.href = '/inicio';
       }
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {

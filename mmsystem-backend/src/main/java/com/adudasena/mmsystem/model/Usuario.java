@@ -40,4 +40,10 @@ public class Usuario {
     // Soft delete
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    @Column(name = "whatsapp_envios_sem_resposta", nullable = false, columnDefinition = "integer default 0")
+    private int whatsappEnviosSemResposta = 0;
+
+    @Column(name = "whatsapp_bloqueado_ate")
+    private LocalDateTime whatsappBloqueadoAte;
 }

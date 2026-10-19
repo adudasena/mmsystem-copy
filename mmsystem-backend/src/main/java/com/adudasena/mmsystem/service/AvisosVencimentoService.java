@@ -58,7 +58,8 @@ public class AvisosVencimentoService {
 
         List<Condicional> condicionais = condicionalRepository.findByDeletedAtIsNull();
         for (Condicional c : condicionais) {
-            if (c == null || !"ABERTA".equalsIgnoreCase(c.getStatus()) || c.getDataRetorno() == null) {
+            if (c == null || !"ABERTA".equalsIgnoreCase(c.getStatus()) || c.getDataRetorno() == null
+                    || condicionalJaFinalizada(c)) {
                 continue;
             }
             Usuario cliente = c.getUsuario();
@@ -81,7 +82,7 @@ public class AvisosVencimentoService {
 
         List<Pagamento> pagamentos = pagamentoRepository.findByDeletedAtIsNull();
         for (Pagamento p : pagamentos) {
-            if (p == null || p.getStatus() != StatusPagamento.PENDENTE || p.getDataVencimento() == null) {
+            if (p == null || !pagamentoPendenteAviso(p) || p.getDataVencimento() == null) {
                 continue;
             }
             Usuario cliente = clienteDoPagamento(p);
@@ -117,6 +118,34 @@ public class AvisosVencimentoService {
             return false;
         }
         return whatsAppService.enviar(new WhatsAppMensagemDTO(cliente.getTelefone(), texto));
+    }
+
+    private static boolean pagamentoPendenteAviso(Pagamento p) {
+        if (p.getStatus() == StatusPagamento.APROVADO || p.getStatus() == StatusPagamento.PAGO
+                || p.getStatus() == StatusPagamento.CANCELADO || p.getStatus() == StatusPagamento.ESTORNADO) {
+            return false;
+        }
+        if (p.getStatus() != StatusPagamento.PENDENTE) {
+            return false;
+        }
+        Pedido pedido = p.getPedido();
+        if (pedido != null && pedido.getStatus() != null) {
+            String statusPedido = pedido.getStatus().name();
+            if ("CONCLUIDO".equalsIgnoreCase(statusPedido) || "PAGO".equalsIgnoreCase(statusPedido)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean condicionalJaFinalizada(Condicional c) {
+        if (c.getItens() == null || c.getItens().isEmpty()) {
+            return false;
+        }
+        return c.getItens().stream().allMatch(item -> {
+            String st = item.getStatusItem() == null ? "" : item.getStatusItem().toUpperCase();
+            return st.contains("VEND") || st.contains("DEVOLV") || "FINALIZADO".equals(st);
+        });
     }
 
     private static Usuario clienteDoPagamento(Pagamento p) {

@@ -1,10 +1,17 @@
 package com.adudasena.mmsystem.service;
 
 import com.adudasena.mmsystem.dto.AvisosVencimentoResultadoDTO;
+import com.adudasena.mmsystem.enums.MetodoPagamento;
 import com.adudasena.mmsystem.enums.Perfil;
+import com.adudasena.mmsystem.enums.StatusPagamento;
+import com.adudasena.mmsystem.enums.StatusPedido;
 import com.adudasena.mmsystem.model.Condicional;
+import com.adudasena.mmsystem.model.Pagamento;
+import com.adudasena.mmsystem.model.Pedido;
 import com.adudasena.mmsystem.model.Usuario;
 import com.adudasena.mmsystem.repository.CondicionalRepository;
+import com.adudasena.mmsystem.repository.PagamentoRepository;
+import com.adudasena.mmsystem.repository.PedidoRepository;
 import com.adudasena.mmsystem.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,8 +41,16 @@ class AvisosVencimentoServiceTest {
     @Autowired
     private CondicionalRepository condicionalRepository;
 
+    @Autowired
+    private PedidoRepository pedidoRepository;
+
+    @Autowired
+    private PagamentoRepository pagamentoRepository;
+
     @BeforeEach
     void limpar() {
+        pagamentoRepository.deleteAll();
+        pedidoRepository.deleteAll();
         condicionalRepository.deleteAll();
         usuarioRepository.deleteAll();
     }
@@ -74,5 +89,52 @@ class AvisosVencimentoServiceTest {
         assertEquals(
                 "Oi, Ana! Sua sacola #12 na Maria Morena vence em 09/10/2026. Qualquer dúvida, fale com a gente.",
                 texto);
+    }
+
+    @Test
+    void naoAvisaPagamentoAprovadoOuPagoMesmoVencido() {
+        Usuario cliente = usuarioRepository.save(clienteTeste("pago.aviso@teste.com"));
+
+        Pedido pedidoAprovado = pedido(cliente, StatusPedido.AGUARDANDO_PAGAMENTO);
+        pagamento(pedidoAprovado, StatusPagamento.APROVADO);
+
+        Pedido pedidoPago = pedido(cliente, StatusPedido.AGUARDANDO_PAGAMENTO);
+        pagamento(pedidoPago, StatusPagamento.PAGO);
+
+        Pedido pedidoConcluido = pedido(cliente, StatusPedido.CONCLUIDO);
+        pagamento(pedidoConcluido, StatusPagamento.PENDENTE);
+
+        AvisosVencimentoResultadoDTO r = avisosVencimentoService.processarAvisosDoDia();
+
+        assertEquals(0, r.pagamentosAtrasados());
+        assertEquals(0, r.enviados());
+    }
+
+    private Usuario clienteTeste(String email) {
+        Usuario cliente = new Usuario();
+        cliente.setNome("Ana Cliente");
+        cliente.setTelefone("43988886666");
+        cliente.setEmail(email);
+        cliente.setPerfil(Perfil.ROLE_CLIENTE);
+        return cliente;
+    }
+
+    private Pedido pedido(Usuario cliente, StatusPedido status) {
+        Pedido pedido = new Pedido();
+        pedido.setCliente(cliente);
+        pedido.setDataPedido(LocalDate.now().minusDays(10));
+        pedido.setStatus(status);
+        pedido.setValorTotal(BigDecimal.TEN);
+        return pedidoRepository.save(pedido);
+    }
+
+    private void pagamento(Pedido pedido, StatusPagamento status) {
+        Pagamento pagamento = new Pagamento();
+        pagamento.setPedido(pedido);
+        pagamento.setValor(BigDecimal.TEN);
+        pagamento.setMetodoPagamento(MetodoPagamento.PIX);
+        pagamento.setDataVencimento(LocalDate.now().minusDays(2));
+        pagamento.setStatus(status);
+        pagamentoRepository.save(pagamento);
     }
 }

@@ -25,6 +25,9 @@ public class VitrinePedidoDTO {
     /** Se true e o WhatsApp já existe, atualiza o nome do cadastro. */
     private boolean atualizarNome;
 
+    /** Token Cloudflare Turnstile (ou reCAPTCHA) enviado no checkout. */
+    private String captchaToken;
+
     public Long getUsuarioId() { return usuarioId; }
     public void setUsuarioId(Long usuarioId) { this.usuarioId = usuarioId; }
 
@@ -42,4 +45,7 @@ public class VitrinePedidoDTO {
 
     public boolean isAtualizarNome() { return atualizarNome; }
     public void setAtualizarNome(boolean atualizarNome) { this.atualizarNome = atualizarNome; }
+
+    public String getCaptchaToken() { return captchaToken; }
+    public void setCaptchaToken(String captchaToken) { this.captchaToken = captchaToken; }
 }

@@ -19,13 +19,16 @@ export function formatarNomePessoa(valor: string): string {
   return valor
     .replace(/[^\p{L}\s'.-]/gu, '')
     .replace(/\s+/g, ' ')
-    .slice(0, 80);
+    .slice(0, 40);
 }
 
 export function validarNomePessoa(valor: string): string | null {
   const nome = valor.trim();
   if (nome.length < 2) {
     return 'Informe o nome completo (mínimo 2 letras).';
+  }
+  if (nome.length > 40) {
+    return 'O nome deve ter no máximo 40 caracteres.';
   }
   if (!/^[\p{L}]+(?:[ '.\\-][\p{L}]+)*$/u.test(nome)) {
     return 'O nome deve ter só letras (sem números).';

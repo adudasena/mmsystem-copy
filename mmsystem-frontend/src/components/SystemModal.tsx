@@ -24,7 +24,7 @@ export default function SystemModal({
   message,
   children,
   type = 'info',
-  confirmText = 'Confirmar',
+  confirmText,
   cancelText = 'Cancelar',
   confirmVariant = 'primary',
   onConfirm,
@@ -32,7 +32,7 @@ export default function SystemModal({
 }: SystemModalProps) {
   if (!isOpen) return null;
 
-  const isConfirm = type === 'confirm' || type === 'danger' || !!onConfirm;
+  const isConfirm = type === 'confirm' || !!onConfirm;
   const isDanger = type === 'danger' || confirmVariant === 'danger';
 
   const renderIcon = () => {
@@ -119,7 +119,7 @@ export default function SystemModal({
                   isDanger ? 'bg-red-700 hover:bg-red-800' : 'bg-[#2d3a22] hover:bg-[#1f2817]'
                 }`}
               >
-                {confirmText}
+                {confirmText || 'Confirmar'}
               </button>
             </>
           ) : (
@@ -128,7 +128,7 @@ export default function SystemModal({
               onClick={onClose}
               className="px-5 py-2 text-xs font-bold text-white bg-[#2d3a22] hover:bg-[#1f2817] rounded-lg transition shadow-xs cursor-pointer uppercase tracking-wider"
             >
-              Entendido
+              {confirmText || 'Entendido'}
             </button>
           )}
         </div>

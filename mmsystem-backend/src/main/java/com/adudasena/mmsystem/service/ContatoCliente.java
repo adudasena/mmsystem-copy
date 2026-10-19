@@ -23,8 +23,8 @@ final class ContatoCliente {
         if (!nome.matches("[\\p{L}]+([ '.\\-][\\p{L}]+)*")) {
             throw new IllegalArgumentException("O nome deve ter só letras (sem números).");
         }
-        if (nome.length() > 80) {
-            throw new IllegalArgumentException("O nome deve ter no máximo 80 caracteres.");
+        if (nome.length() > 40) {
+            throw new IllegalArgumentException("O nome deve ter no máximo 40 caracteres.");
         }
     }
 

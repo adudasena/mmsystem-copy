@@ -25,13 +25,13 @@ const MenuLateral = ({ aberto = false, onFechar }: MenuLateralProps) => {
   const pathname = usePathname();
 
   const menus = [
-    { nome: 'Painel', rota: '/', icone: Home },
+    { nome: 'Painel', rota: '/inicio', icone: Home },
     { nome: 'Produtos', rota: '/produtos', icone: Package },
     { nome: 'Condicionais', rota: '/condicionais', icone: RefreshCw },
     { nome: 'Pagamentos', rota: '/pagamentos', icone: CreditCard },
     { nome: 'Pedidos', rota: '/pedidos', icone: ShoppingBag },
     { nome: 'Clientes', rota: '/usuarios', icone: Users },
-    { nome: 'Vitrine', rota: '/vitrine', icone: Store },
+    { nome: 'Vitrine', rota: '/', icone: Store },
   ];
 
   const handleLogout = () => {
@@ -86,8 +86,10 @@ const MenuLateral = ({ aberto = false, onFechar }: MenuLateralProps) => {
                 <Link
                   key={item.nome}
                   href={item.rota}
+                  target={item.rota === '/' ? '_blank' : undefined}
+                  rel={item.rota === '/' ? 'noopener noreferrer' : undefined}
                   onClick={onFechar}
-                  className={`flex items-center gap-3 p-3 rounded-lg transition-all min-h-11 ${isActive
+                  className={`flex items-center gap-3 p-3 rounded-lg transition-all min-h-11 ${isActive}
                       ? 'bg-white/15 border-l-4 border-[#dcded0] shadow-inner font-bold'
                       : 'hover:bg-white/5 opacity-80 hover:opacity-100'
                     }`}

@@ -323,7 +323,7 @@ const TelaUsuarios: React.FC = () => {
                   value={formData.nome}
                   onChange={handleChange}
                   placeholder="Ex: Maria Silva"
-                  maxLength={80}
+                  maxLength={40}
                   className="w-full border border-gray-300 p-2.5 text-xs rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3b4a28]/50"
                 />
               </div>
