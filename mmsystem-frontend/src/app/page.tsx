@@ -66,6 +66,7 @@ type TurnstileApi = {
   render: (el: HTMLElement, opts: Record<string, unknown>) => string;
   remove: (id: string) => void;
   reset: (id: string) => void;
+  execute: (id: string) => void;
 };
 
 
@@ -182,9 +183,28 @@ export default function VitrineProdutos() {
       }
     }, 8000);
 
+    const opcoesTurnstile = {
+      sitekey: siteKey,
+      execution: 'execute',
+      appearance: 'always',
+      retry: 'auto',
+      'refresh-expired': 'auto',
+      callback: (token: string) => {
+        setCaptchaToken(token);
+        setCaptchaCarregando(false);
+        setCaptchaErro('');
+      },
+      'expired-callback': () => setCaptchaToken(''),
+      'error-callback': () => {
+        setCaptchaToken('');
+        setCaptchaCarregando(false);
+        setCaptchaErro('Não foi possível validar agora. Verifique a conexão e toque em tentar de novo.');
+      },
+    };
+
     const render = () => {
       if (cancelado || !turnstileRef.current || !w.turnstile) return;
-      setCaptchaCarregando(true);
+      setCaptchaCarregando(false);
       setCaptchaErro('');
       try {
         if (turnstileWidgetId.current) {
@@ -193,22 +213,7 @@ export default function VitrineProdutos() {
       } catch {
         /* ignore */
       }
-      turnstileWidgetId.current = w.turnstile.render(turnstileRef.current, {
-        sitekey: siteKey,
-        retry: 'auto',
-        'refresh-expired': 'auto',
-        callback: (token: string) => {
-          setCaptchaToken(token);
-          setCaptchaCarregando(false);
-          setCaptchaErro('');
-        },
-        'expired-callback': () => setCaptchaToken(''),
-        'error-callback': () => {
-          setCaptchaToken('');
-          setCaptchaCarregando(false);
-          setCaptchaErro('Não foi possível validar agora. Verifique a conexão e toque em tentar de novo.');
-        },
-      });
+      turnstileWidgetId.current = w.turnstile.render(turnstileRef.current, opcoesTurnstile);
     };
 
     if (w.turnstile) {
@@ -428,10 +433,27 @@ export default function VitrineProdutos() {
     return `Olá, Maria Morena! Sou ${nomeCliente.trim()}.\nWhatsApp: ${telCliente}\nAcabei de finalizar na vitrine.\n${linhasItens}`;
   };
 
+  const executarCaptcha = (): void => {
+    const w = window as Window & { turnstile?: TurnstileApi };
+    if (!turnstileWidgetId.current || !w.turnstile) {
+      setCaptchaErro('A verificação ainda não carregou. Tente de novo em instantes.');
+      return;
+    }
+    setCaptchaErro('');
+    setCaptchaCarregando(true);
+    setCaptchaToken('');
+    try {
+      w.turnstile.execute(turnstileWidgetId.current);
+    } catch {
+      setCaptchaCarregando(false);
+      setCaptchaErro('Não foi possível iniciar a verificação. Tente de novo.');
+    }
+  };
+
   const reiniciarCaptcha = (): void => {
     setCaptchaToken('');
     setCaptchaErro('');
-    setCaptchaCarregando(true);
+    setCaptchaCarregando(false);
     const w = window as Window & { turnstile?: TurnstileApi };
     if (turnstileWidgetId.current && w.turnstile) {
       try {
@@ -445,6 +467,8 @@ export default function VitrineProdutos() {
       try {
         turnstileWidgetId.current = w.turnstile.render(turnstileRef.current, {
           sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+          execution: 'execute',
+          appearance: 'always',
           retry: 'auto',
           callback: (token: string) => {
             setCaptchaToken(token);
@@ -1072,7 +1096,7 @@ export default function VitrineProdutos() {
                 {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? (
                   <div className="mb-3">
                     {captchaCarregando && !captchaErro && (
-                      <p className="text-[10px] text-gray-500 text-center mb-2">Preparando verificação…</p>
+                      <p className="text-[10px] text-gray-500 text-center mb-2">Validando…</p>
                     )}
                     {captchaErro && (
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-2 text-center">
@@ -1087,6 +1111,18 @@ export default function VitrineProdutos() {
                       </div>
                     )}
                     <div ref={turnstileRef} className={`flex justify-center ${captchaErro ? 'hidden' : ''}`} />
+                    {!captchaToken ? (
+                      <button
+                        type="button"
+                        onClick={executarCaptcha}
+                        disabled={captchaCarregando}
+                        className="mt-2 w-full border border-[#2c3e1c] text-[#2c3e1c] py-2 rounded-lg text-[10px] font-bold uppercase cursor-pointer disabled:opacity-50"
+                      >
+                        Confirmar que não sou um robô
+                      </button>
+                    ) : (
+                      <p className="mt-2 text-[10px] text-emerald-800 text-center font-semibold">Verificação ok. Pode finalizar.</p>
+                    )}
                   </div>
                 ) : null}
                 <button
