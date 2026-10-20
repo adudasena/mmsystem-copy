@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DM_Sans } from 'next/font/google';
 import { AxiosError } from 'axios';
-import { ShoppingBag, MessageSquare, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingBag, MessageSquare, ChevronDown, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
 import api from '@/services/api';
 import SystemModal, { ModalType } from '@/components/SystemModal';
 import { abrirWhatsAppLoja } from '@/utils/whatsapp';
@@ -62,6 +62,12 @@ interface CheckoutVitrine {
   pedido?: { id?: number };
 }
 
+type TurnstileApi = {
+  render: (el: HTMLElement, opts: Record<string, unknown>) => string;
+  remove: (id: string) => void;
+  reset: (id: string) => void;
+};
+
 
 export default function VitrineProdutos() {
   const [produtos, setProdutos] = useState<ProdutoVitrine[]>([]);
@@ -90,8 +96,11 @@ export default function VitrineProdutos() {
   const [compraDireta, setCompraDireta] = useState<boolean>(false);
   const [finalizando, setFinalizando] = useState<boolean>(false);
   const [telefoneLoja, setTelefoneLoja] = useState<string>('');
+  const [telefoneLojaDaApi, setTelefoneLojaDaApi] = useState<boolean>(false);
   const [erroContatoLoja, setErroContatoLoja] = useState<string>('');
   const [captchaToken, setCaptchaToken] = useState<string>('');
+  const [captchaCarregando, setCaptchaCarregando] = useState<boolean>(false);
+  const [captchaErro, setCaptchaErro] = useState<string>('');
   const turnstileRef = useRef<HTMLDivElement>(null);
   const turnstileWidgetId = useRef<string>('');
 
@@ -103,9 +112,10 @@ export default function VitrineProdutos() {
       try {
         setLoading(true);
         setErro(null);
-        const [res, resCat] = await Promise.all([
+        const [res, resCat, resLoja] = await Promise.all([
           api.get<PageSpring<ProdutoVitrine> | ProdutoVitrine[]>('/vitrine/produtos?size=50'),
           api.get<string[]>('/vitrine/categorias'),
+          api.get<{ telefone?: string }>('/vitrine/loja').catch(() => null),
         ]);
 
         if (montado) {
@@ -117,6 +127,17 @@ export default function VitrineProdutos() {
             setProdutos([]);
           }
           setCategoriasVitrine(Array.isArray(resCat.data) ? resCat.data.filter(Boolean) : []);
+          const telApi = resLoja?.data?.telefone || '';
+          const tel = telApi || process.env.NEXT_PUBLIC_WHATSAPP_LOJA || '';
+          setTelefoneLoja(tel);
+          setTelefoneLojaDaApi(Boolean(telApi.replace(/\D/g, '')));
+          if (!telApi) {
+            setErroContatoLoja(resLoja
+              ? 'WhatsApp da loja ainda não está cadastrado.'
+              : 'Não foi possível obter o WhatsApp da loja.');
+          } else {
+            setErroContatoLoja('');
+          }
         }
       } catch (err) {
         console.error('Erro ao carregar catálogo da vitrine via Axios:', err);
@@ -133,28 +154,15 @@ export default function VitrineProdutos() {
 
     carregarProdutosInicial();
 
-    return () => {
-      montado = false;
-    };
-  }, []);
+    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    if (siteKey && !document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
 
-  useEffect(() => {
-    let montado = true;
-    api.get<{ telefone?: string }>('/vitrine/loja')
-      .then((loja) => {
-        if (montado) {
-          const tel = loja.data?.telefone || process.env.NEXT_PUBLIC_WHATSAPP_LOJA || '';
-          setTelefoneLoja(tel);
-          setErroContatoLoja(tel ? '' : 'WhatsApp da loja ainda não está cadastrado.');
-        }
-      })
-      .catch(() => {
-        if (montado) {
-          const tel = process.env.NEXT_PUBLIC_WHATSAPP_LOJA || '';
-          setTelefoneLoja(tel);
-          setErroContatoLoja(tel ? '' : 'Não foi possível obter o WhatsApp da loja.');
-        }
-      });
     return () => {
       montado = false;
     };
@@ -165,36 +173,55 @@ export default function VitrineProdutos() {
     if (!siteKey || !mostrarCarrinho) {
       return;
     }
-    type TurnstileApi = {
-      render: (el: HTMLElement, opts: Record<string, unknown>) => string;
-      remove: (id: string) => void;
-      reset: (id: string) => void;
-    };
     const w = window as Window & { turnstile?: TurnstileApi };
+    let cancelado = false;
+    const timeoutId = window.setTimeout(() => {
+      if (!cancelado && !turnstileWidgetId.current) {
+        setCaptchaCarregando(false);
+        setCaptchaErro('A verificação demorou para abrir. Tente de novo.');
+      }
+    }, 8000);
+
     const render = () => {
-      if (!turnstileRef.current || !w.turnstile) return;
+      if (cancelado || !turnstileRef.current || !w.turnstile) return;
+      setCaptchaCarregando(true);
+      setCaptchaErro('');
+      try {
+        if (turnstileWidgetId.current) {
+          w.turnstile.remove(turnstileWidgetId.current);
+        }
+      } catch {
+        /* ignore */
+      }
       turnstileWidgetId.current = w.turnstile.render(turnstileRef.current, {
         sitekey: siteKey,
-        callback: (token: string) => setCaptchaToken(token),
+        retry: 'auto',
+        'refresh-expired': 'auto',
+        callback: (token: string) => {
+          setCaptchaToken(token);
+          setCaptchaCarregando(false);
+          setCaptchaErro('');
+        },
         'expired-callback': () => setCaptchaToken(''),
-        'error-callback': () => setCaptchaToken(''),
+        'error-callback': () => {
+          setCaptchaToken('');
+          setCaptchaCarregando(false);
+          setCaptchaErro('Não foi possível validar agora. Verifique a conexão e toque em tentar de novo.');
+        },
       });
     };
+
     if (w.turnstile) {
       render();
     } else {
       const existente = document.querySelector('script[src*="turnstile"]');
-      if (!existente) {
-        const script = document.createElement('script');
-        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-        script.async = true;
-        script.onload = render;
-        document.head.appendChild(script);
-      } else {
+      if (existente) {
         existente.addEventListener('load', render);
       }
     }
     return () => {
+      cancelado = true;
+      window.clearTimeout(timeoutId);
       if (turnstileWidgetId.current && w.turnstile) {
         try {
           w.turnstile.remove(turnstileWidgetId.current);
@@ -387,7 +414,59 @@ export default function VitrineProdutos() {
     type: 'info',
   });
 
-  // Finalizar e Enviar via WhatsApp e Backend Spring Boot
+  const montarMensagemLoja = (idPedido?: number, idCondicional?: number): string => {
+    const linhasItens = carrinho
+      .map((item) => `- ${item.nome} (${item.corEscolhida}/${item.tamanhoEscolhido}) x${item.quantidade}`)
+      .join('\n');
+    const telCliente = telefoneCliente.replace(/\D/g, '');
+    if (compraDireta && idPedido) {
+      return `Olá, Maria Morena! Sou ${nomeCliente.trim()}.\nWhatsApp: ${telCliente}\nCompra direta — Pedido #${idPedido} já está no sistema.\n${linhasItens}`;
+    }
+    if (idCondicional) {
+      return `Olá, Maria Morena! Sou ${nomeCliente.trim()}.\nWhatsApp: ${telCliente}\nSacola condicional #${idCondicional} já está no sistema.\n${linhasItens}`;
+    }
+    return `Olá, Maria Morena! Sou ${nomeCliente.trim()}.\nWhatsApp: ${telCliente}\nAcabei de finalizar na vitrine.\n${linhasItens}`;
+  };
+
+  const reiniciarCaptcha = (): void => {
+    setCaptchaToken('');
+    setCaptchaErro('');
+    setCaptchaCarregando(true);
+    const w = window as Window & { turnstile?: TurnstileApi };
+    if (turnstileWidgetId.current && w.turnstile) {
+      try {
+        w.turnstile.reset(turnstileWidgetId.current);
+        return;
+      } catch {
+        /* re-render abaixo */
+      }
+    }
+    if (turnstileRef.current && w.turnstile) {
+      try {
+        turnstileWidgetId.current = w.turnstile.render(turnstileRef.current, {
+          sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+          retry: 'auto',
+          callback: (token: string) => {
+            setCaptchaToken(token);
+            setCaptchaCarregando(false);
+            setCaptchaErro('');
+          },
+          'error-callback': () => {
+            setCaptchaToken('');
+            setCaptchaCarregando(false);
+            setCaptchaErro('Não foi possível validar agora. Toque em tentar de novo.');
+          },
+        });
+      } catch {
+        setCaptchaCarregando(false);
+        setCaptchaErro('Não foi possível recarregar a verificação.');
+      }
+    } else {
+      setCaptchaCarregando(false);
+      setCaptchaErro('Não foi possível recarregar a verificação.');
+    }
+  };
+
   const finalizarPedido = async (): Promise<void> => {
     if (finalizando || carrinho.length === 0) return;
 
@@ -416,12 +495,12 @@ export default function VitrineProdutos() {
     }
 
     const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-    if (siteKey && !captchaToken) {
+    if (siteKey && (captchaErro || !captchaToken)) {
       setModalSistema({
         isOpen: true,
         type: 'warning',
         title: 'Confirmação',
-        message: 'Marque a verificação “não sou um robô” antes de finalizar.',
+        message: captchaErro || 'Aguarde a verificação “não sou um robô” antes de finalizar.',
         confirmText: 'Ok',
       });
       return;
@@ -446,51 +525,39 @@ export default function VitrineProdutos() {
       const res = await api.post<CheckoutVitrine>('/vitrine/pedido', payload);
       const idPedido = res.data?.pedido?.id;
       const idCondicional = res.data?.condicional?.id;
-      const linhasItens = carrinho
-        .map((item) => `- ${item.nome} (${item.corEscolhida}/${item.tamanhoEscolhido}) x${item.quantidade}`)
-        .join('\n');
-      const telCliente = telefoneCliente.replace(/\D/g, '');
-
-      let mensagemLoja: string;
-      if (compraDireta && idPedido) {
-        mensagemLoja =
-          `Olá, Maria Morena! Sou ${nomeCliente.trim()}.\n` +
-          `WhatsApp: ${telCliente}\n` +
-          `Compra direta — Pedido #${idPedido} já está no sistema.\n` +
-          `${linhasItens}`;
-      } else if (idCondicional) {
-        mensagemLoja =
-          `Olá, Maria Morena! Sou ${nomeCliente.trim()}.\n` +
-          `WhatsApp: ${telCliente}\n` +
-          `Sacola condicional #${idCondicional} já está no sistema.\n` +
-          `${linhasItens}`;
-      } else {
-        mensagemLoja =
-          `Olá, Maria Morena! Sou ${nomeCliente.trim()}.\n` +
-          `WhatsApp: ${telCliente}\n` +
-          `Acabei de finalizar na vitrine.\n${linhasItens}`;
-      }
-
-      const whatsAberto = abrirWhatsAppLoja(mensagemLoja, telefoneLoja);
+      const idTxt = compraDireta
+        ? (idPedido ? ` Pedido #${idPedido} já aparece em Pedidos.` : '')
+        : (idCondicional ? ` Sacola #${idCondicional} já aparece em Condicionais.` : '');
 
       setCarrinho([]);
       setNomeCliente('');
       setTelefoneCliente('');
       setMostrarCarrinho(false);
       setCaptchaToken('');
+      setFinalizando(false);
 
-      const idTxt = compraDireta
-        ? (idPedido ? ` Pedido #${idPedido} já aparece em Pedidos.` : '')
-        : (idCondicional ? ` Sacola #${idCondicional} já aparece em Condicionais.` : '');
+      if (!telefoneLojaDaApi) {
+        const fallbackTel = telefoneLoja || process.env.NEXT_PUBLIC_WHATSAPP_LOJA || '';
+        const podeAbrirWhats = Boolean(fallbackTel.replace(/\D/g, ''));
+        setModalSistema({
+          isOpen: true,
+          type: 'warning',
+          title: compraDireta ? 'Pedido salvo' : 'Sacola salva',
+          confirmText: podeAbrirWhats ? 'Abrir WhatsApp' : 'Ok',
+          message: `Registro feito no sistema.${idTxt} Não achamos o WhatsApp da loja na API.`,
+          onConfirm: podeAbrirWhats
+            ? () => abrirWhatsAppLoja(montarMensagemLoja(idPedido, idCondicional), fallbackTel)
+            : undefined,
+        });
+        return;
+      }
 
       setModalSistema({
         isOpen: true,
-        type: whatsAberto ? 'success' : 'warning',
+        type: 'success',
         title: compraDireta ? 'Pedido registrado!' : 'Sacola solicitada!',
         confirmText: 'Ok',
-        message: whatsAberto
-          ? `Envie a mensagem no WhatsApp para a loja combinarmos os detalhes.${idTxt}`
-          : `O pedido foi salvo, mas não foi possível abrir o WhatsApp da loja. Tente de novo ou fale com a atendente.${idTxt}`,
+        message: `Pronto. A loja já vê o pedido no painel.${idTxt}`,
       });
     } catch (err) {
       const erroAxios = err as AxiosError<ApiErrorResponse>;
@@ -651,6 +718,9 @@ export default function VitrineProdutos() {
                         src={src}
                         alt={prod.nome}
                         className="w-full h-full object-cover"
+                        loading={iFoto === 0 && produtosFiltrados[0]?.id === prod.id ? 'eager' : 'lazy'}
+                        fetchPriority={iFoto === 0 && produtosFiltrados[0]?.id === prod.id ? 'high' : 'low'}
+                        decoding="async"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-medium">
@@ -853,19 +923,27 @@ export default function VitrineProdutos() {
 
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Quantidade:</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max={Math.max(1, saldoRestante)}
-                    value={quantidade}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value, 10) || 1;
-                      const limitada = Math.min(Math.max(1, val), Math.max(1, saldoRestante));
-                      setQuantidade(limitada);
-                    }}
-                    disabled={saldoRestante <= 0}
-                    className="w-24 border border-gray-200 rounded-lg p-2 text-xs text-center font-bold outline-none focus:border-[#2c3e1c] disabled:bg-gray-100 disabled:text-gray-400"
-                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      aria-label="Diminuir quantidade"
+                      disabled={saldoRestante <= 0 || quantidade <= 1}
+                      onClick={() => setQuantidade((q) => Math.max(1, q - 1))}
+                      className="w-10 h-10 rounded-lg border border-gray-200 bg-white text-[#2c3e1c] font-bold flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-gray-50"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="w-12 text-center text-sm font-bold tabular-nums">{quantidade}</span>
+                    <button
+                      type="button"
+                      aria-label="Aumentar quantidade"
+                      disabled={saldoRestante <= 0 || quantidade >= saldoRestante}
+                      onClick={() => setQuantidade((q) => Math.min(saldoRestante, q + 1))}
+                      className="w-10 h-10 rounded-lg border border-gray-200 bg-white text-[#2c3e1c] font-bold flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-gray-50"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -992,7 +1070,24 @@ export default function VitrineProdutos() {
                   <span className="text-[#2c3e1c]">R$ {totalCarrinho.toFixed(2).replace('.', ',')}</span>
                 </div>
                 {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? (
-                  <div ref={turnstileRef} className="mb-3 flex justify-center" />
+                  <div className="mb-3">
+                    {captchaCarregando && !captchaErro && (
+                      <p className="text-[10px] text-gray-500 text-center mb-2">Preparando verificação…</p>
+                    )}
+                    {captchaErro && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-2 text-center">
+                        <p className="text-[11px] text-amber-900">{captchaErro}</p>
+                        <button
+                          type="button"
+                          onClick={reiniciarCaptcha}
+                          className="mt-1 text-[10px] font-bold uppercase text-[#2c3e1c] underline cursor-pointer"
+                        >
+                          Tentar de novo
+                        </button>
+                      </div>
+                    )}
+                    <div ref={turnstileRef} className={`flex justify-center ${captchaErro ? 'hidden' : ''}`} />
+                  </div>
                 ) : null}
                 <button
                   type="button"

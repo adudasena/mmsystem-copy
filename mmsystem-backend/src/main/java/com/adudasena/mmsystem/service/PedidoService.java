@@ -2,6 +2,7 @@ package com.adudasena.mmsystem.service;
 
 import com.adudasena.mmsystem.dto.ItemPedidoDTO;
 import com.adudasena.mmsystem.dto.PedidoDTO;
+import com.adudasena.mmsystem.dto.PedidoResumoDTO;
 import com.adudasena.mmsystem.dto.VitrineItemDTO;
 import com.adudasena.mmsystem.dto.VitrinePedidoDTO;
 import com.adudasena.mmsystem.enums.MetodoPagamento;
@@ -65,6 +66,11 @@ public class PedidoService {
             }
         }
         return new ArrayList<>(opcoes);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PedidoResumoDTO> listarResumo() {
+        return pedidoRepository.listarResumo();
     }
 
     @Transactional(readOnly = true)

@@ -199,7 +199,7 @@ const TelaCondicionais: React.FC = () => {
         const [resCond, resCli, resProd, resFiltro] = await Promise.allSettled([
           api.get<PageSpring<Condicional> | Condicional[]>(`/condicionais?page=0&size=${tamanhoPagina}`),
           api.get<PageSpring<Usuario> | Usuario[]>('/usuarios?size=1000'),
-          api.get<PageSpring<ProdutoCondicional> | ProdutoCondicional[]>('/produtos?size=1000'),
+          api.get<ProdutoCondicional[]>('/produtos/opcoes'),
           api.get<string[]>('/condicionais/opcoes-filtro'),
         ]);
         
@@ -238,13 +238,8 @@ const TelaCondicionais: React.FC = () => {
             ]);
           }
 
-          if (resProd.status === 'fulfilled' && resProd.value.data) {
-            const dataProd = resProd.value.data;
-            if (Array.isArray((dataProd as PageSpring<ProdutoCondicional>).content)) {
-              setProdutos((dataProd as PageSpring<ProdutoCondicional>).content);
-            } else if (Array.isArray(dataProd)) {
-              setProdutos(dataProd);
-            }
+          if (resProd.status === 'fulfilled' && Array.isArray(resProd.value.data)) {
+            setProdutos(resProd.value.data);
           }
         }
       } catch (err) {

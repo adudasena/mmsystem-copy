@@ -1,5 +1,6 @@
 package com.adudasena.mmsystem.repository;
 
+import com.adudasena.mmsystem.dto.PedidoResumoDTO;
 import com.adudasena.mmsystem.enums.StatusPedido;
 import com.adudasena.mmsystem.model.Pedido;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,4 +18,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     @Query("SELECT DISTINCT p.status FROM Pedido p WHERE p.deletedAt IS NULL")
     List<StatusPedido> listarStatusAtivos();
+
+    @Query("SELECT new com.adudasena.mmsystem.dto.PedidoResumoDTO(p.id, p.valorTotal) FROM Pedido p WHERE p.deletedAt IS NULL ORDER BY p.id DESC")
+    List<PedidoResumoDTO> listarResumo();
 }

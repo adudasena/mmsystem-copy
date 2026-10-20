@@ -178,34 +178,16 @@ const TelaPedidos: React.FC = () => {
   useEffect(() => {
     let montado = true;
 
-    const carregarTudo = async () => {
+    const carregarOpcoes = async () => {
       try {
-        setLoading(true);
-
-        const [resPedidos, resCli, resProd, resFiltro] = await Promise.allSettled([
-          api.get<PageSpring<Pedido> | Pedido[]>(`/pedidos?page=0&size=${tamanhoPagina}`),
+        const [resCli, resProd, resFiltro] = await Promise.allSettled([
           api.get<PageSpring<ClientePedido> | ClientePedido[]>('/usuarios?size=1000'),
-          api.get<PageSpring<ProdutoRef> | ProdutoRef[]>('/produtos?size=1000'),
+          api.get<ProdutoRef[]>('/produtos/opcoes'),
           api.get<string[]>('/pedidos/opcoes-filtro'),
         ]);
 
         if (!montado) return;
 
-        // Trata os pedidos
-        if (resPedidos.status === 'fulfilled' && resPedidos.value.data) {
-          const dados = resPedidos.value.data;
-          if (Array.isArray((dados as PageSpring<Pedido>).content)) {
-            const pageData = dados as PageSpring<Pedido>;
-            setPedidos(pageData.content);
-            setTotalPaginas(pageData.totalPages);
-            setTotalElementos(pageData.totalElements);
-            setPaginaAtual(pageData.number);
-          } else if (Array.isArray(dados)) {
-            setPedidos(dados);
-          }
-        }
-
-        // Trata a lista de Clientes
         if (resCli.status === 'fulfilled' && resCli.value.data) {
           const dadosCli = resCli.value.data;
           if (Array.isArray((dadosCli as PageSpring<ClientePedido>).content)) {
@@ -225,26 +207,15 @@ const TelaPedidos: React.FC = () => {
           ]);
         }
 
-        // Trata a lista de Produtos
-        if (resProd.status === 'fulfilled' && resProd.value.data) {
-          const dadosProd = resProd.value.data;
-          if (Array.isArray((dadosProd as PageSpring<ProdutoRef>).content)) {
-            setProdutosOpcoes((dadosProd as PageSpring<ProdutoRef>).content);
-          } else if (Array.isArray(dadosProd)) {
-            setProdutosOpcoes(dadosProd);
-          }
+        if (resProd.status === 'fulfilled' && Array.isArray(resProd.value.data)) {
+          setProdutosOpcoes(resProd.value.data);
         }
-
       } catch (err) {
-        console.error('Erro ao carregar dados dos pedidos:', err);
-      } finally {
-        if (montado) {
-          setLoading(false);
-        }
+        console.error('Erro ao carregar opções dos pedidos:', err);
       }
     };
 
-    carregarTudo();
+    carregarOpcoes();
 
     return () => {
       montado = false;

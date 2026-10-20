@@ -29,6 +29,13 @@ public class ProdutoService {
         return repository.findByDeletedAtIsNull();
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public java.util.List<com.adudasena.mmsystem.dto.ProdutoOpcaoDTO> listarOpcoes() {
+        return repository.findByDeletedAtIsNull().stream()
+                .map(com.adudasena.mmsystem.dto.ProdutoOpcaoDTO::from)
+                .toList();
+    }
+
     public Produto buscarPorId(Long id) {
         return repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado com o ID: " + id));

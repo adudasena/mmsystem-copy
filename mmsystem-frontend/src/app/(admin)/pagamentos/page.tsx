@@ -155,30 +155,14 @@ const TelaPagamentos: React.FC = () => {
   useEffect(() => {
     let montado = true;
 
-    const carregarTudo = async () => {
+    const carregarOpcoes = async () => {
       try {
-        setLoading(true);
-
-        const [resPagamentos, resPedidos, resFiltro] = await Promise.allSettled([
-          api.get<PageSpring<Pagamento> | Pagamento[]>(`/pagamentos?page=0&size=${tamanhoPagina}`),
-          api.get<PageSpring<PedidoRef> | PedidoRef[]>('/pedidos?size=1000'),
+        const [resPedidos, resFiltro] = await Promise.allSettled([
+          api.get<PedidoRef[]>('/pedidos/resumo'),
           api.get<string[]>('/pagamentos/opcoes-filtro'),
         ]);
 
         if (!montado) return;
-
-        if (resPagamentos.status === 'fulfilled' && resPagamentos.value.data) {
-          const dados = resPagamentos.value.data;
-          if (Array.isArray((dados as PageSpring<Pagamento>).content)) {
-            const pageData = dados as PageSpring<Pagamento>;
-            setPagamentos(pageData.content);
-            setTotalPaginas(pageData.totalPages);
-            setTotalElementos(pageData.totalElements);
-            setPaginaAtual(pageData.number);
-          } else if (Array.isArray(dados)) {
-            setPagamentos(dados);
-          }
-        }
 
         if (resFiltro.status === 'fulfilled' && Array.isArray(resFiltro.value.data)) {
           const rotulos: Record<string, string> = {
@@ -193,25 +177,15 @@ const TelaPagamentos: React.FC = () => {
           ]);
         }
 
-        if (resPedidos.status === 'fulfilled' && resPedidos.value.data) {
-          const dadosPed = resPedidos.value.data;
-          if (Array.isArray((dadosPed as PageSpring<PedidoRef>).content)) {
-            setPedidosOpcoes((dadosPed as PageSpring<PedidoRef>).content);
-          } else if (Array.isArray(dadosPed)) {
-            setPedidosOpcoes(dadosPed);
-          }
+        if (resPedidos.status === 'fulfilled' && Array.isArray(resPedidos.value.data)) {
+          setPedidosOpcoes(resPedidos.value.data);
         }
-
       } catch (err) {
-        console.error('Erro ao carregar dados iniciais de pagamentos:', err);
-      } finally {
-        if (montado) {
-          setLoading(false);
-        }
+        console.error('Erro ao carregar opções de pagamentos:', err);
       }
     };
 
-    carregarTudo();
+    carregarOpcoes();
 
     return () => {
       montado = false;

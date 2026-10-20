@@ -1,6 +1,7 @@
 package com.adudasena.mmsystem.controller;
 
 import com.adudasena.mmsystem.dto.ProdutoDTO;
+import com.adudasena.mmsystem.dto.ProdutoOpcaoDTO;
 import com.adudasena.mmsystem.dto.ProdutoResponseDTO;
 import com.adudasena.mmsystem.service.ProdutoService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -25,6 +26,11 @@ public class ProdutoController {
     @GetMapping("/opcoes-filtro")
     public ResponseEntity<List<String>> opcoesFiltro() {
         return ResponseEntity.ok(service.listarCategoriasEmUso());
+    }
+
+    @GetMapping("/opcoes")
+    public ResponseEntity<List<ProdutoOpcaoDTO>> listarOpcoes() {
+        return ResponseEntity.ok(service.listarOpcoes());
     }
 
     @GetMapping

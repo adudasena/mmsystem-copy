@@ -2,6 +2,7 @@ package com.adudasena.mmsystem.controller;
 
 import com.adudasena.mmsystem.dto.PedidoDTO;
 import com.adudasena.mmsystem.dto.PedidoResponseDTO;
+import com.adudasena.mmsystem.dto.PedidoResumoDTO;
 import com.adudasena.mmsystem.dto.StatusPatchDTO;
 import com.adudasena.mmsystem.model.Pedido;
 import com.adudasena.mmsystem.service.PedidoService;
@@ -24,6 +25,11 @@ public class PedidoController {
     @GetMapping("/opcoes-filtro")
     public ResponseEntity<java.util.List<String>> opcoesFiltro() {
         return ResponseEntity.ok(service.opcoesFiltroStatus());
+    }
+
+    @GetMapping("/resumo")
+    public ResponseEntity<java.util.List<PedidoResumoDTO>> listarResumo() {
+        return ResponseEntity.ok(service.listarResumo());
     }
 
     @GetMapping
