@@ -7,6 +7,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @Service
@@ -14,7 +16,6 @@ public class CaptchaService {
 
     private static final Logger logger = LoggerFactory.getLogger(CaptchaService.class);
 
-    private final boolean enabled;
     private final String secret;
     private final String provider;
     private final RestClient restClient;
@@ -24,29 +25,28 @@ public class CaptchaService {
             @Value("${app.captcha.secret:}") String secret,
             @Value("${app.captcha.provider:turnstile}") String provider
     ) {
-        this.enabled = enabled;
+        // enabled permanece no construtor por compatibilidade; a secret é o que liga a verificação.
         this.secret = secret;
         this.provider = provider == null ? "turnstile" : provider.toLowerCase();
         this.restClient = RestClient.create();
     }
 
-    public void validar(String token) {
-        if (!enabled) {
+    public void validar(String token, String remoteIp) {
+        if (secret == null || secret.isBlank()) {
             return;
         }
         if (token == null || token.isBlank()) {
             throw new IllegalArgumentException("Confirme que você não é um robô antes de finalizar.");
         }
-        if (secret == null || secret.isBlank()) {
-            logger.warn("Captcha habilitado, mas o secret não está configurado.");
-            throw new IllegalArgumentException("Checkout temporariamente indisponível. Tente de novo em instantes.");
-        }
         try {
             String url = "google".equals(provider) || "recaptcha".equals(provider)
                     ? "https://www.google.com/recaptcha/api/siteverify"
                     : "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-            String form = "secret=" + java.net.URLEncoder.encode(secret, java.nio.charset.StandardCharsets.UTF_8)
-                    + "&response=" + java.net.URLEncoder.encode(token, java.nio.charset.StandardCharsets.UTF_8);
+            String form = "secret=" + URLEncoder.encode(secret, StandardCharsets.UTF_8)
+                    + "&response=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+            if (remoteIp != null && !remoteIp.isBlank()) {
+                form += "&remoteip=" + URLEncoder.encode(remoteIp, StandardCharsets.UTF_8);
+            }
             Map<?, ?> body = restClient.post()
                     .uri(url)
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
@@ -55,6 +55,8 @@ public class CaptchaService {
                     .body(Map.class);
             Object success = body == null ? null : body.get("success");
             if (!Boolean.TRUE.equals(success)) {
+                Object erros = body == null ? null : body.get("error-codes");
+                logger.warn("Captcha recusado. error-codes={}", erros);
                 throw new IllegalArgumentException("Validação anti-robô falhou. Tente de novo.");
             }
         } catch (IllegalArgumentException e) {

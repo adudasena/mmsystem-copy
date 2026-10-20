@@ -93,6 +93,7 @@ export default function VitrineProdutos() {
   const [erroContatoLoja, setErroContatoLoja] = useState<string>('');
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const turnstileRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetId = useRef<string>('');
 
   // ─── Efeito de Inicialização Compatível com Paginação ───
   useEffect(() => {
@@ -164,14 +165,19 @@ export default function VitrineProdutos() {
     if (!siteKey || !mostrarCarrinho) {
       return;
     }
-    const w = window as Window & { turnstile?: { render: (el: HTMLElement, opts: Record<string, unknown>) => string; remove: (id: string) => void } };
-    let widgetId = '';
+    type TurnstileApi = {
+      render: (el: HTMLElement, opts: Record<string, unknown>) => string;
+      remove: (id: string) => void;
+      reset: (id: string) => void;
+    };
+    const w = window as Window & { turnstile?: TurnstileApi };
     const render = () => {
       if (!turnstileRef.current || !w.turnstile) return;
-      widgetId = w.turnstile.render(turnstileRef.current, {
+      turnstileWidgetId.current = w.turnstile.render(turnstileRef.current, {
         sitekey: siteKey,
         callback: (token: string) => setCaptchaToken(token),
         'expired-callback': () => setCaptchaToken(''),
+        'error-callback': () => setCaptchaToken(''),
       });
     };
     if (w.turnstile) {
@@ -189,13 +195,14 @@ export default function VitrineProdutos() {
       }
     }
     return () => {
-      if (widgetId && w.turnstile) {
+      if (turnstileWidgetId.current && w.turnstile) {
         try {
-          w.turnstile.remove(widgetId);
+          w.turnstile.remove(turnstileWidgetId.current);
         } catch {
           /* ignore */
         }
       }
+      turnstileWidgetId.current = '';
     };
   }, [mostrarCarrinho]);
 
@@ -503,6 +510,15 @@ export default function VitrineProdutos() {
         message: estoque,
         confirmText: 'Ok',
       });
+      setCaptchaToken('');
+      const w = window as Window & { turnstile?: { reset: (id: string) => void } };
+      if (turnstileWidgetId.current && w.turnstile) {
+        try {
+          w.turnstile.reset(turnstileWidgetId.current);
+        } catch {
+          /* ignore */
+        }
+      }
       setFinalizando(false);
     }
   };

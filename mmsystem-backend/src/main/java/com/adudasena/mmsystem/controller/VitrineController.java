@@ -71,7 +71,7 @@ public class VitrineController {
             @Valid @RequestBody VitrinePedidoDTO dto,
             HttpServletRequest request
     ) {
-        captchaService.validar(dto.getCaptchaToken());
+        captchaService.validar(dto.getCaptchaToken(), ipCliente(request));
         vitrineProtecaoService.protegerCheckout(ipCliente(request), dto);
         String tipo = dto.getTipoFluxo() != null ? dto.getTipoFluxo().toUpperCase() : "CONDICIONAL";
         VitrineCheckoutResponseDTO resposta;
