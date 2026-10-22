@@ -64,6 +64,15 @@ type TurnstileApi = {
 };
 
 
+/** Traduz o código do Turnstile e registra no console para diagnóstico. */
+function mensagemErroTurnstile(codigo?: string): string {
+  console.error('Turnstile error-callback, código:', codigo, 'host:', window.location.hostname);
+  const c = String(codigo || '');
+  if (c.startsWith('110200')) return `Este endereço do site não está autorizado no Turnstile (código ${c}). Avise a loja.`;
+  if (c.startsWith('110100') || c.startsWith('110110') || c.startsWith('400020')) return `Chave do Turnstile inválida (código ${c}). Avise a loja.`;
+  return `Não foi possível validar agora${c ? ` (código ${c})` : ''}. Verifique a conexão e toque em tentar de novo.`;
+}
+
 export default function VitrineProdutos() {
   const [produtos, setProdutos] = useState<ProdutoVitrine[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -191,10 +200,11 @@ export default function VitrineProdutos() {
         setCaptchaErro('');
       },
       'expired-callback': () => setCaptchaToken(''),
-      'error-callback': () => {
+      'error-callback': (codigo?: string) => {
         setCaptchaToken('');
         setCaptchaCarregando(false);
-        setCaptchaErro('Não foi possível validar agora. Verifique a conexão e toque em tentar de novo.');
+        setCaptchaErro(mensagemErroTurnstile(codigo));
+        return true;
       },
     };
 
@@ -536,10 +546,11 @@ export default function VitrineProdutos() {
             setCaptchaCarregando(false);
             setCaptchaErro('');
           },
-          'error-callback': () => {
+          'error-callback': (codigo?: string) => {
             setCaptchaToken('');
             setCaptchaCarregando(false);
-            setCaptchaErro('Não foi possível validar agora. Toque em tentar de novo.');
+            setCaptchaErro(mensagemErroTurnstile(codigo));
+            return true;
           },
         });
       } catch {
