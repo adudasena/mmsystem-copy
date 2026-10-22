@@ -230,40 +230,35 @@ const TelaUsuarios: React.FC = () => {
   );
 
   return (
-    <div className="p-4 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="mm-page">
+      <div className="mm-page-inner">
         {/* CABEÇALHO */}
         <div>
-          <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">
-            Clientes
-          </h1>
+          <h1 className="mm-title">Clientes</h1>
+          <p className="mm-subtitle">Cadastro e contato das clientes da loja.</p>
         </div>
 
         {/* MÉTRICAS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200/80 flex items-center gap-4">
-            <div className="p-3 bg-[#e8eae0] text-[#2d3a22] rounded-lg">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
+          <div className="mm-card mm-card-hover p-5 flex items-center gap-4">
+            <div className="w-12 h-12 bg-brand-100 text-brand-800 rounded-2xl flex items-center justify-center shrink-0">
               <Users className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
-                Base Total de Clientes
-              </p>
-              <h3 className="text-2xl font-extrabold text-gray-800">
+              <p className="text-sm text-gray-600">Base total de clientes</p>
+              <h3 className="text-2xl font-semibold text-brand-900 tabular-nums">
                 {totalElementos > 0 ? totalElementos : clientes.length}
               </h3>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200/80 flex items-center gap-4">
-            <div className="p-3 bg-[#e8eae0] text-[#2d3a22] rounded-lg">
+          <div className="mm-card mm-card-hover p-5 flex items-center gap-4">
+            <div className="w-12 h-12 bg-clay-100 text-clay-600 rounded-2xl flex items-center justify-center shrink-0">
               <MessageSquare className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
-                Com WhatsApp Cadastrado
-              </p>
-              <h3 className="text-2xl font-extrabold text-gray-800">
+              <p className="text-sm text-gray-600">Com WhatsApp cadastrado</p>
+              <h3 className="text-2xl font-semibold text-brand-900 tabular-nums">
                 {clientes.filter((c) => c.telefone).length}
               </h3>
             </div>
@@ -279,13 +274,13 @@ const TelaUsuarios: React.FC = () => {
 
         {/* MENSAGENS */}
         {mensagemSucesso && (
-          <div className="bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2">
+          <div className="mm-alert-ok">
             <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
             <span>{mensagemSucesso}</span>
           </div>
         )}
         {erro && (
-          <div className="bg-red-100 border border-red-400 text-red-800 px-4 py-3 rounded-lg text-xs font-bold shadow-sm">
+          <div className="bg-red-100 border border-red-400 text-red-800 px-4 py-3 rounded-xl text-xs font-semibold shadow-sm">
             {erro}
           </div>
         )}
@@ -293,9 +288,9 @@ const TelaUsuarios: React.FC = () => {
         {/* CONTEÚDO PRINCIPAL */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* FORMULÁRIO */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <div className="flex justify-between items-center mb-4 border-b pb-2">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-[#3b4a28]">
+          <div className="mm-card p-6">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="font-display text-xl font-semibold text-brand-900">
                 {clienteEmEdicao
                   ? `Editar Cliente (#${clienteEmEdicao.id})`
                   : 'Cadastrar Novo Cliente'}
@@ -304,7 +299,7 @@ const TelaUsuarios: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleCancelarEdicao}
-                  className="text-[10px] text-red-600 font-bold uppercase hover:underline cursor-pointer"
+                  className="text-[11px] text-red-600 font-semibold hover:underline cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -313,7 +308,7 @@ const TelaUsuarios: React.FC = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-gray-600 mb-1">
+                <label className="mm-label">
                   Nome Completo *
                 </label>
                 <input
@@ -324,12 +319,12 @@ const TelaUsuarios: React.FC = () => {
                   onChange={handleChange}
                   placeholder="Ex: Maria Silva"
                   maxLength={40}
-                  className="w-full border border-gray-300 p-2.5 text-xs rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3b4a28]/50"
+                  className="mm-input"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase text-gray-600 mb-1">
+                <label className="mm-label">
                   WhatsApp / Telefone *
                 </label>
                 <input
@@ -340,13 +335,13 @@ const TelaUsuarios: React.FC = () => {
                   value={formData.telefone}
                   onChange={handleChange}
                   placeholder="(43) 99999-8888"
-                  className="w-full border border-gray-300 p-2.5 text-xs rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3b4a28]/50"
+                  className="mm-input"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-[#3b4a28] hover:bg-[#2d3a22] text-white font-bold text-xs py-3 px-4 rounded-lg uppercase tracking-wider transition-all shadow-sm cursor-pointer"
+                className="mm-btn-primary w-full"
               >
                 {clienteEmEdicao ? 'Atualizar Cliente' : 'Salvar Cliente'}
               </button>
@@ -354,16 +349,16 @@ const TelaUsuarios: React.FC = () => {
           </div>
 
           {/* TABELA DE CLIENTES */}
-          <div ref={tabelaRef} className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-4 border-b bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-3">
+          <div ref={tabelaRef} className="lg:col-span-2 mm-card overflow-hidden">
+            <div className="px-4 py-3.5 border-b border-gray-200 bg-white flex flex-col sm:flex-row justify-between items-center gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setAbaAtiva('ATIVOS')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  className={`px-4 h-9 rounded-full text-sm font-semibold transition cursor-pointer ${
                     abaAtiva === 'ATIVOS'
-                      ? 'bg-[#2d3a22] text-white shadow-sm'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      ? 'bg-brand-900 text-white shadow-sm'
+                      : 'bg-white text-gray-700 border border-gray-200 hover:bg-brand-50'
                   }`}
                 >
                   Clientes Ativos
@@ -372,17 +367,17 @@ const TelaUsuarios: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setAbaAtiva('EXCLUIDOS')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-4 h-9 rounded-full text-sm font-semibold transition cursor-pointer flex items-center gap-1.5 ${
                     abaAtiva === 'EXCLUIDOS'
                       ? 'bg-red-700 text-white shadow-sm'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : 'bg-white text-gray-700 border border-gray-200 hover:bg-brand-50'
                   }`}
                 >
                   <UserX className="w-3.5 h-3.5" /> Clientes Inativos (Lixeira)
                 </button>
               </div>
 
-              <span className="text-[11px] font-bold text-gray-500 uppercase">
+              <span className="text-[11px] font-semibold text-gray-500">
                 Total: {totalElementos > 0 ? totalElementos : clientesFiltrados.length}
               </span>
             </div>
@@ -395,7 +390,7 @@ const TelaUsuarios: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-[#cbd0c0] font-bold uppercase text-gray-700 border-b border-gray-300">
+                    <tr className="bg-gray-300 font-semibold text-gray-700 border-b border-gray-300">
                       <th className="p-3 border-r border-gray-300/50">ID</th>
                       <th className="p-3 border-r border-gray-300/50">Nome</th>
                       <th className="p-3 border-r border-gray-300/50">WhatsApp</th>
@@ -412,9 +407,9 @@ const TelaUsuarios: React.FC = () => {
                     ) : (
                       clientesFiltrados.map((cli) => (
                         <tr key={cli.id} className="hover:bg-gray-50/80 transition-colors">
-                          <td className="p-3 border-r font-bold text-gray-500">#{cli.id}</td>
-                          <td className="p-3 border-r font-bold text-gray-800">{cli.nome}</td>
-                          <td className="p-3 border-r text-gray-600 font-mono">
+                          <td className="p-3 border-r font-semibold text-gray-500">#{cli.id}</td>
+                          <td className="p-3 border-r font-semibold text-gray-800">{cli.nome}</td>
+                          <td className="text-gray-600 tabular-nums">
                             {cli.telefone ? formatarTelefoneInput(cli.telefone) : '—'}
                           </td>
                           <td className="p-3 text-center">
@@ -423,29 +418,29 @@ const TelaUsuarios: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => restaurarCliente(cli.id)}
-                                  className="bg-green-700 hover:bg-green-800 text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 cursor-pointer"
+                                  className="bg-brand-700 hover:bg-brand-800 text-white px-2.5 h-8 rounded-lg text-xs font-semibold shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer"
                                   title="Reativar cliente na base"
                                 >
-                                  <RotateCcw className="w-3.5 h-3.5" /> Reativar
+                                  <RotateCcw className="w-4 h-4" /> Reativar
                                 </button>
                               ) : (
                                 <>
                                   <button
                                     type="button"
                                     onClick={() => handleEditar(cli)}
-                                    className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
+                                    className="p-2 rounded-lg text-gray-500 hover:text-brand-900 hover:bg-brand-100/70 transition cursor-pointer"
                                     title="Editar dados da cliente"
                                   >
-                                    <Pencil className="w-3.5 h-3.5" />
+                                    <Pencil className="w-4 h-4" />
                                   </button>
 
                                   <button
                                     type="button"
                                     onClick={() => handleExcluir(cli.id, cli.nome)}
-                                    className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
+                                    className="p-2 rounded-lg text-gray-500 hover:text-red-700 hover:bg-red-50 transition cursor-pointer"
                                     title="Desativar cliente (Mover para Inativos)"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </>
                               )}

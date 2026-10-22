@@ -35,78 +35,72 @@ export default function SystemModal({
   const isConfirm = type === 'confirm' || !!onConfirm;
   const isDanger = type === 'danger' || confirmVariant === 'danger';
 
-  const renderIcon = () => {
+  const visual = (() => {
     switch (type) {
       case 'success':
-        return <CheckCircle2 className="w-6 h-6 text-emerald-300" />;
+        return { Icone: CheckCircle2, chip: 'bg-emerald-100 text-emerald-700' };
       case 'warning':
-        return <AlertTriangle className="w-6 h-6 text-amber-300" />;
-      case 'danger':
-        return <XCircle className="w-6 h-6 text-rose-300" />;
       case 'confirm':
-        return <AlertTriangle className="w-6 h-6 text-amber-300" />;
+        return { Icone: AlertTriangle, chip: 'bg-amber-100 text-amber-700' };
+      case 'danger':
+        return { Icone: XCircle, chip: 'bg-red-100 text-red-700' };
       default:
-        return <Info className="w-6 h-6 text-emerald-300" />;
+        return { Icone: Info, chip: 'bg-brand-100 text-brand-700' };
     }
-  };
+  })();
+  const Icone = visual.Icone;
 
   const getDefaultTitle = () => {
     if (title) return title;
     switch (type) {
       case 'success':
-        return 'Sucesso';
+        return 'Tudo certo';
       case 'warning':
-        return 'Aviso do Sistema';
+        return 'Aviso do sistema';
       case 'danger':
         return 'Atenção';
       case 'confirm':
-        return 'Confirmar Ação';
+        return 'Confirmar ação';
       default:
         return 'Informação';
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
-      <div 
-        className="bg-[#f7f8f4] border border-[#2d3a22]/20 w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col transform transition-all scale-100"
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-brand-950/50 backdrop-blur-sm animate-fadeIn"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-subir"
         role="dialog"
         aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* Top Header Bar */}
-        <div className={`${isDanger ? 'bg-red-800' : 'bg-[#2d3a22]'} text-[#f7f8f4] px-5 py-3.5 flex items-center justify-between`}>
-          <div className="flex items-center gap-2.5">
-            <span className="p-1 bg-white/10 rounded-lg flex items-center justify-center">
-              {renderIcon()}
-            </span>
-            <h3 className="font-serif font-bold text-base tracking-wide text-white">
-              {getDefaultTitle()}
-            </h3>
+        <div className="px-6 pt-6 pb-2 flex items-start gap-4">
+          <span className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${visual.chip}`}>
+            <Icone className="w-5 h-5" />
+          </span>
+          <div className="flex-1 min-w-0 pt-0.5">
+            <h3 className="font-display text-lg font-semibold text-brand-900 leading-snug">{getDefaultTitle()}</h3>
+            <div className="mt-1.5 text-sm text-gray-600 leading-relaxed">
+              {message && <div className="whitespace-pre-line">{message}</div>}
+              {children}
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="text-[#dcded0] hover:text-white transition p-1 rounded-md hover:bg-white/10 cursor-pointer"
+            className="text-gray-400 hover:text-gray-700 transition p-1.5 -mr-2 -mt-1 rounded-lg hover:bg-gray-100"
             aria-label="Fechar modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-6 text-gray-800 text-sm leading-relaxed font-sans">
-          {message && <div className="whitespace-pre-line mb-2">{message}</div>}
-          {children}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="bg-[#e8ebe0] px-5 py-3.5 flex items-center justify-end gap-3 border-t border-gray-300/40">
+        <div className="px-6 py-5 flex items-center justify-end gap-2.5">
           {isConfirm ? (
             <>
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-xs font-bold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition shadow-xs cursor-pointer uppercase tracking-wider"
-              >
+              <button type="button" onClick={onClose} className="mm-btn-secondary">
                 {cancelText}
               </button>
               <button
@@ -115,19 +109,13 @@ export default function SystemModal({
                   if (onConfirm) onConfirm();
                   onClose();
                 }}
-                className={`px-4 py-2 text-xs font-bold text-white rounded-lg transition shadow-xs cursor-pointer uppercase tracking-wider ${
-                  isDanger ? 'bg-red-700 hover:bg-red-800' : 'bg-[#2d3a22] hover:bg-[#1f2817]'
-                }`}
+                className={isDanger ? 'mm-btn-danger' : 'mm-btn-primary'}
               >
                 {confirmText || 'Confirmar'}
               </button>
             </>
           ) : (
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2 text-xs font-bold text-white bg-[#2d3a22] hover:bg-[#1f2817] rounded-lg transition shadow-xs cursor-pointer uppercase tracking-wider"
-            >
+            <button type="button" onClick={onClose} className="mm-btn-primary">
               {confirmText || 'Entendido'}
             </button>
           )}

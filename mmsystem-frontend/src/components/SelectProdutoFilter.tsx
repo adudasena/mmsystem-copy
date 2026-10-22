@@ -87,22 +87,22 @@ const SelectProdutoFilter: React.FC<SelectProdutoFilterProps> = ({
   };
 
   return (
-    <div ref={containerRef} className="relative w-full text-xs">
+    <div ref={containerRef} className="relative w-full text-sm">
       {/* Botão Gatilho (Dropdown Trigger) */}
       <button
         type="button"
         disabled={disabled}
         onClick={() => setAberto(!aberto)}
-        className={`w-full flex items-center justify-between p-2 border bg-white rounded-md text-left transition-all shadow-2xs cursor-pointer ${
-          aberto ? 'border-[#4a5d33] ring-1 ring-[#4a5d33]' : 'border-gray-300 hover:border-gray-400'
+        className={`w-full flex items-center justify-between min-h-11 px-3.5 py-2 border bg-white rounded-xl text-left transition-all cursor-pointer ${
+          aberto ? 'border-brand-600 ring-4 ring-brand-600/15' : 'border-gray-300 hover:border-gray-400'
         } ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
       >
         <span className={`truncate ${produtoAtual ? 'font-semibold text-gray-800' : 'text-gray-400'}`}>
           {produtoAtual ? (
             <span className="flex items-center gap-1.5 flex-wrap">
               <span>{produtoAtual.nome}</span>
-              <span className="text-[#4a5d33] font-bold">— R$ {Number(produtoAtual.preco || 0).toFixed(2)}</span>
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded font-bold">
+              <span className="text-brand-700 font-semibold">— R$ {Number(produtoAtual.preco || 0).toFixed(2)}</span>
+              <span className="bg-emerald-100 text-emerald-800 text-[11px] px-1.5 py-0.5 rounded-lg font-semibold">
                 ({obterEstoqueTotal(produtoAtual)} un. disp.)
               </span>
             </span>
@@ -115,19 +115,19 @@ const SelectProdutoFilter: React.FC<SelectProdutoFilterProps> = ({
           {produtoAtual && (
             <span
               onClick={handleLimparSelecao}
-              className="p-0.5 hover:text-red-500 rounded transition-colors cursor-pointer"
+              className="p-0.5 hover:text-red-500 rounded-lg transition-colors cursor-pointer"
               title="Limpar Seleção"
             >
               <X className="w-3.5 h-3.5" />
             </span>
           )}
-          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${aberto ? 'rotate-180 text-[#4a5d33]' : ''}`} />
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${aberto ? 'rotate-180 text-brand-700' : ''}`} />
         </div>
       </button>
 
       {/* Painel Flutuante do Dropdown (Filtro + Lista) */}
       {aberto && (
-        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden animate-subir">
           {/* Cabeçalho do Filtro / Busca */}
           <div className="p-2 border-b bg-gray-50 flex items-center gap-2">
             <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
@@ -137,7 +137,7 @@ const SelectProdutoFilter: React.FC<SelectProdutoFilterProps> = ({
               value={termoBusca}
               onChange={(e) => setTermoBusca(e.target.value)}
               placeholder="Digitar para buscar produto..."
-              className="w-full text-xs bg-transparent outline-none text-gray-700 placeholder:text-gray-400"
+              className="w-full text-sm bg-transparent outline-none text-gray-700 placeholder:text-gray-400"
             />
             {termoBusca && (
               <button
@@ -166,17 +166,17 @@ const SelectProdutoFilter: React.FC<SelectProdutoFilterProps> = ({
                     onClick={() => handleSelecionar(p.id)}
                     className={`p-2.5 flex items-center justify-between cursor-pointer transition-colors ${
                       selecionado
-                        ? 'bg-[#4a5d33]/10 text-[#2d3a22] font-bold'
+                        ? 'bg-brand-700/10 text-brand-900 font-semibold'
                         : 'hover:bg-gray-50 text-gray-700'
                     }`}
                   >
                     <div className="flex flex-col">
                       <span className="font-medium text-gray-800">{p.nome}</span>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[11px] text-[#4a5d33] font-semibold">
+                        <span className="text-[11px] text-brand-700 font-semibold">
                           R$ {Number(p.preco || 0).toFixed(2)}
                         </span>
-                        <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                        <span className={`text-[11px] px-1.5 py-0.2 rounded-lg font-semibold ${
                           estTotal > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
                         }`}>
                           Estoque: {estTotal} un.
@@ -184,7 +184,7 @@ const SelectProdutoFilter: React.FC<SelectProdutoFilterProps> = ({
                       </div>
                     </div>
 
-                    {selecionado && <Check className="w-4 h-4 text-[#4a5d33] shrink-0" />}
+                    {selecionado && <Check className="w-4 h-4 text-brand-700 shrink-0" />}
                   </li>
                 );
               })

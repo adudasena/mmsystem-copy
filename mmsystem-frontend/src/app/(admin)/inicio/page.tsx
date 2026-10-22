@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, ShoppingBag, Package, DollarSign, TrendingUp, TrendingDown, Search, AlertCircle, BarChart3, Calendar } from 'lucide-react';
+import { Users, ShoppingBag, Package, DollarSign, TrendingUp, TrendingDown, Search, AlertCircle, BarChart3, Calendar, RefreshCw } from 'lucide-react';
 import api from '@/services/api';
 
 interface DashboardMetricas {
@@ -187,27 +187,47 @@ export default function PainelPage() {
     return val > maxVal ? p : max;
   }, dadosGrafico[0] || { label: '-', faturamento: 0, quantidadeVendas: 0 });
 
+  const atalhos: { chave: string; rotulo: string }[] = [
+    { chave: 'hoje', rotulo: 'Hoje' },
+    { chave: '7dias', rotulo: '7 dias' },
+    { chave: '15dias', rotulo: '15 dias' },
+    { chave: 'este_mes', rotulo: 'Este mês' },
+    { chave: 'mes_anterior', rotulo: 'Mês anterior' },
+    { chave: 'este_ano', rotulo: 'Este ano' },
+  ];
+
+  const variacao = (valor: number) => {
+    const sobe = valor > 0;
+    const desce = valor < 0;
+    const cor = sobe ? 'text-emerald-700 bg-emerald-50' : desce ? 'text-red-600 bg-red-50' : 'text-gray-600 bg-gray-100';
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${cor}`}>
+        {sobe ? <TrendingUp className="w-3.5 h-3.5" /> : desce ? <TrendingDown className="w-3.5 h-3.5" /> : null}
+        {formatarPorcentagem(valor)}
+      </span>
+    );
+  };
+
+  const rotuloValor = (v: number) => (tipoGrafico === 'faturamento' ? formatarMoeda(v) : `${v} ${v === 1 ? 'pedido' : 'pedidos'}`);
+
   return (
-    <div className="p-4 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800" suppressHydrationWarning>
-      <div className="max-w-7xl mx-auto space-y-6">
-        
-        {/* Cabeçalho e Filtros */}
-        <div className="flex flex-col bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 gap-4 min-w-0">
-          <div className="flex flex-col gap-4 min-w-0">
+    <div className="mm-page" suppressHydrationWarning>
+      <div className="mm-page-inner">
+
+        {/* Cabeçalho e filtros */}
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
             <div className="min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-sans font-bold text-[#2d3a22]">
-                Dashboard
-              </h1>
-              <p className="text-sm text-gray-600 mt-1 break-words">
-                Olá {nomeUsuario}, veja o desempenho do período comparado ao período anterior.
-              </p>
+              <p className="text-sm font-semibold text-clay-600 mb-1">Olá, {nomeUsuario}</p>
+              <h1 className="mm-title">Visão geral</h1>
+              <p className="mm-subtitle break-words">Veja o desempenho do período comparado ao período anterior.</p>
             </div>
 
-            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 w-full min-w-0">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:flex lg:items-end gap-3 w-full lg:w-auto min-w-0">
               <div className="flex flex-col min-w-0">
-                <label className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Data Início</label>
-                <input 
-                  type="date" 
+                <label className="mm-label">Início</label>
+                <input
+                  type="date"
                   max={hoje}
                   value={dataInicio}
                   onChange={(e) => {
@@ -215,25 +235,25 @@ export default function PainelPage() {
                     setFiltroAtivo('personalizado');
                     if (erroData) setErroData(null);
                   }}
-                  className="w-full min-w-0 max-w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d3a22] transition"
+                  className="mm-input lg:w-44"
                 />
               </div>
               <div className="flex flex-col min-w-0">
-                <label className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Data Fim</label>
-                <input 
-                  type="date" 
+                <label className="mm-label">Fim</label>
+                <input
+                  type="date"
                   value={dataFim}
                   onChange={(e) => {
                     setDataFim(e.target.value);
                     setFiltroAtivo('personalizado');
                     if (erroData) setErroData(null);
                   }}
-                  className="w-full min-w-0 max-w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d3a22] transition"
+                  className="mm-input lg:w-44"
                 />
               </div>
-              <button 
+              <button
                 onClick={() => validarEBuscar(dataInicio, dataFim)}
-                className="px-4 py-2 bg-[#2d3a22] text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#1f2818] transition shadow-md w-full min-[420px]:col-span-2 lg:col-span-1 lg:self-end lg:w-auto lg:min-w-[7.5rem]"
+                className="mm-btn-primary w-full min-[420px]:col-span-2 lg:col-span-1 lg:w-auto"
               >
                 <Search className="w-4 h-4 shrink-0" />
                 Filtrar
@@ -241,304 +261,188 @@ export default function PainelPage() {
             </div>
           </div>
 
-          {/* Botões Pílula de Atalho de Períodos Rápidos */}
-          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100">
-            <span className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 w-full sm:w-auto">
-              <Calendar className="w-3.5 h-3.5 text-[#2d3a22]" /> Atalhos:
-            </span>
-
-            <button
-              onClick={() => aplicarAtalhoPeriodo('hoje')}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition ${filtroAtivo === 'hoje' ? 'bg-[#2d3a22] text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              Hoje
-            </button>
-            <button
-              onClick={() => aplicarAtalhoPeriodo('7dias')}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition ${filtroAtivo === '7dias' ? 'bg-[#2d3a22] text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              Últimos 7 dias
-            </button>
-            <button
-              onClick={() => aplicarAtalhoPeriodo('15dias')}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition ${filtroAtivo === '15dias' ? 'bg-[#2d3a22] text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              Últimos 15 dias
-            </button>
-            <button
-              onClick={() => aplicarAtalhoPeriodo('este_mes')}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition ${filtroAtivo === 'este_mes' ? 'bg-[#2d3a22] text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              Este Mês
-            </button>
-            <button
-              onClick={() => aplicarAtalhoPeriodo('mes_anterior')}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition ${filtroAtivo === 'mes_anterior' ? 'bg-[#2d3a22] text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              Mês Anterior
-            </button>
-            <button
-              onClick={() => aplicarAtalhoPeriodo('este_ano')}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition ${filtroAtivo === 'este_ano' ? 'bg-[#2d3a22] text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              Este Ano
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Calendar className="w-4 h-4 text-gray-400 mr-1" />
+            {atalhos.map((a) => (
+              <button
+                key={a.chave}
+                onClick={() => aplicarAtalhoPeriodo(a.chave)}
+                className={`px-3.5 h-8 rounded-full text-xs font-semibold transition border ${
+                  filtroAtivo === a.chave
+                    ? 'bg-brand-900 text-white border-brand-900 shadow-sm'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-brand-300 hover:bg-brand-50'
+                }`}
+              >
+                {a.rotulo}
+              </button>
+            ))}
           </div>
 
           {erroData && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-bold animate-fadeIn">
-              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm font-medium animate-fadeIn">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
               <span>{erroData}</span>
             </div>
           )}
-
         </div>
 
-        {/* SEÇÃO FLUXO DE VENDAS */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-          <div className="flex items-center gap-2 border-b pb-4 mb-4">
-            <TrendingUp className="w-5 h-5 text-[#2d3a22]" />
-            <h2 className="text-lg font-sans font-bold text-gray-900">
-              Fluxo de Vendas no Período
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {/* Card Faturamento Selecionado */}
-            <div className="p-5 rounded-2xl border bg-emerald-50/60 border-emerald-200 transition">
-              <div className="flex justify-between items-start mb-4">
-                <span className="text-[12px] font-extrabold uppercase tracking-wider text-emerald-800">
-                  Faturamento
-                </span>
-                <DollarSign className="w-5 h-5 text-emerald-700" />
-              </div>
-              <h3 className="text-3xl font-black text-emerald-950 mb-2">
-                {carregando ? '...' : formatarMoeda(metricas.totalVendasPeriodo)}
-              </h3>
-              
-              <div className="flex items-center mt-3 pt-3 border-t border-emerald-200/60">
-                {metricas.percentualCrescimentoValor > 0 ? (
-                  <TrendingUp className="w-4 h-4 text-emerald-600 mr-1" />
-                ) : metricas.percentualCrescimentoValor < 0 ? (
-                   <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
-                ) : null}
-                <span className={`text-xs font-bold ${metricas.percentualCrescimentoValor >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                  {formatarPorcentagem(metricas.percentualCrescimentoValor)} 
-                </span>
-                <span className="text-[10px] text-emerald-600/80 ml-2 font-medium">vs período anterior</span>
-              </div>
+        {/* Destaques do período */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+          <article className="relative overflow-hidden rounded-2xl p-6 bg-linear-to-br from-brand-800 to-brand-950 text-white shadow-lg">
+            <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/5" />
+            <div className="relative flex items-start justify-between">
+              <span className="text-sm font-medium text-brand-100/90">Faturamento</span>
+              <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-clay-200" />
+              </span>
             </div>
-
-            {/* Total Pedidos */}
-            <div className="p-5 rounded-2xl border bg-purple-50/60 border-purple-200">
-              <div className="flex justify-between items-start mb-4">
-                <span className="text-[12px] font-extrabold uppercase tracking-wider text-purple-800">
-                  Total de Pedidos
-                </span>
-                <ShoppingBag className="w-5 h-5 text-purple-700" />
-              </div>
-              <h3 className="text-3xl font-black text-purple-950 mb-2">
-                {carregando ? '...' : metricas.qtdVendasPeriodo}
-              </h3>
-
-              <div className="flex items-center mt-3 pt-3 border-t border-purple-200/60">
-                {metricas.percentualCrescimentoQtd > 0 ? (
-                  <TrendingUp className="w-4 h-4 text-purple-600 mr-1" />
-                ) : metricas.percentualCrescimentoQtd < 0 ? (
-                   <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
-                ) : null}
-                <span className={`text-xs font-bold ${metricas.percentualCrescimentoQtd >= 0 ? 'text-purple-700' : 'text-red-600'}`}>
-                  {formatarPorcentagem(metricas.percentualCrescimentoQtd)} 
-                </span>
-                <span className="text-[10px] text-purple-600/80 ml-2 font-medium">vs período anterior</span>
-              </div>
+            <p className="relative text-3xl lg:text-4xl font-display font-medium mt-4 tracking-tight">
+              {carregando ? '...' : formatarMoeda(metricas.totalVendasPeriodo)}
+            </p>
+            <div className="relative mt-4 flex items-center gap-2 text-xs text-brand-100/80">
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ${metricas.percentualCrescimentoValor >= 0 ? 'bg-emerald-400/20 text-emerald-100' : 'bg-red-400/20 text-red-100'}`}>
+                {metricas.percentualCrescimentoValor > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : metricas.percentualCrescimentoValor < 0 ? <TrendingDown className="w-3.5 h-3.5" /> : null}
+                {formatarPorcentagem(metricas.percentualCrescimentoValor)}
+              </span>
+              vs período anterior
             </div>
+          </article>
 
-            {/* Ticket Médio */}
-            <div className="p-5 rounded-2xl border bg-amber-50/60 border-amber-200">
-              <div className="flex justify-between items-start mb-4">
-                <span className="text-[12px] font-extrabold uppercase tracking-wider text-amber-800">
-                  Ticket Médio
-                </span>
-                <TrendingUp className="w-5 h-5 text-amber-700" />
-              </div>
-              <h3 className="text-3xl font-black text-amber-950 mb-2">
-                {carregando ? '...' : formatarMoeda(getTicketMedio())}
-              </h3>
-              <div className="mt-3 pt-3 border-t border-amber-200/60">
-                <p className="text-[10px] text-amber-700 font-medium">
-                  Média de gasto por pedido no período
-                </p>
-              </div>
+          <article className="mm-card p-6">
+            <div className="flex items-start justify-between">
+              <span className="text-sm font-medium text-gray-600">Total de pedidos</span>
+              <span className="w-10 h-10 rounded-xl bg-brand-100 text-brand-800 flex items-center justify-center">
+                <ShoppingBag className="w-5 h-5" />
+              </span>
             </div>
-          </div>
-        </div>
+            <p className="text-3xl lg:text-4xl font-display font-medium text-brand-900 mt-4 tracking-tight">
+              {carregando ? '...' : metricas.qtdVendasPeriodo}
+            </p>
+            <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
+              {variacao(metricas.percentualCrescimentoQtd)}
+              vs período anterior
+            </div>
+          </article>
 
-        {/* CARTÕES DE MÉTRICAS GERAIS */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          
-          {/* Card Clientes */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex items-center justify-between hover:shadow-md transition">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
-                Clientes Cadastrados
-              </p>
-              <h2 className="text-3xl font-black text-[#2d3a22]">
-                {carregando ? '...' : metricas.totalClientes}
-              </h2>
+          <article className="mm-card p-6">
+            <div className="flex items-start justify-between">
+              <span className="text-sm font-medium text-gray-600">Ticket médio</span>
+              <span className="w-10 h-10 rounded-xl bg-clay-100 text-clay-600 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5" />
+              </span>
             </div>
-            <div className="p-3 bg-[#e8ebe0] rounded-xl text-[#2d3a22]">
-              <Users className="w-7 h-7" />
-            </div>
-          </div>
+            <p className="text-3xl lg:text-4xl font-display font-medium text-brand-900 mt-4 tracking-tight">
+              {carregando ? '...' : formatarMoeda(getTicketMedio())}
+            </p>
+            <p className="mt-4 text-xs text-gray-500">Média de gasto por pedido no período</p>
+          </article>
+        </section>
 
-          {/* Card Condicionais Ativos */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex items-center justify-between hover:shadow-md transition">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
-                Condicionais Ativos
-              </p>
-              <h2 className="text-3xl font-black text-[#2d3a22]">
-                {carregando ? '...' : metricas.condicionaisAtivos}
-              </h2>
-            </div>
-            <div className="p-3 bg-[#e8ebe0] rounded-xl text-[#2d3a22]">
-              <ShoppingBag className="w-7 h-7" />
-            </div>
-          </div>
-
-          {/* Card Produtos Cadastrados */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex items-center justify-between hover:shadow-md transition">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
-                Produtos no Catálogo
-              </p>
-              <h2 className="text-3xl font-black text-[#2d3a22]">
-                {carregando ? '...' : metricas.totalProdutos}
-              </h2>
-            </div>
-            <div className="p-3 bg-[#e8ebe0] rounded-xl text-[#2d3a22]">
-              <Package className="w-7 h-7" />
-            </div>
-          </div>
-
-        </div>
-
-        {/* SEÇÃO GRÁFICO DE EVOLUÇÃO ALINHADO À IDENTIDADE VISUAL DA LOJA */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-[#2d3a22]" />
+        {/* Números gerais */}
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5">
+          {[
+            { titulo: 'Clientes cadastrados', valor: metricas.totalClientes, Icone: Users },
+            { titulo: 'Condicionais ativos', valor: metricas.condicionaisAtivos, Icone: RefreshCw },
+            { titulo: 'Produtos no catálogo', valor: metricas.totalProdutos, Icone: Package },
+          ].map(({ titulo, valor, Icone }) => (
+            <article key={titulo} className="mm-card mm-card-hover p-5 flex items-center gap-4">
+              <span className="w-12 h-12 rounded-2xl bg-brand-100 text-brand-800 flex items-center justify-center shrink-0">
+                <Icone className="w-6 h-6" />
+              </span>
               <div>
-                <h2 className="text-lg font-sans font-bold text-gray-900">
-                  Evolução do Período Selecionado
-                </h2>
-                <p className="text-xs text-gray-500">
-                  Acompanhe a curva de faturamento e volume de vendas dia a dia
-                </p>
+                <p className="text-sm text-gray-600">{titulo}</p>
+                <p className="text-2xl font-semibold text-brand-900 tabular-nums">{carregando ? '...' : valor}</p>
+              </div>
+            </article>
+          ))}
+        </section>
+
+        {/* Gráfico de evolução */}
+        <section className="mm-card p-5 sm:p-7 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="w-10 h-10 rounded-xl bg-brand-100 text-brand-800 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5" />
+              </span>
+              <div>
+                <h2 className="text-lg font-semibold text-brand-900">Evolução do período</h2>
+                <p className="text-sm text-gray-500">Faturamento e volume de vendas dia a dia</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl self-start sm:self-auto">
-              <button
-                onClick={() => setTipoGrafico('faturamento')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${tipoGrafico === 'faturamento' ? 'bg-[#2d3a22] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
-              >
-                Faturamento (R$)
-              </button>
-              <button
-                onClick={() => setTipoGrafico('quantidade')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${tipoGrafico === 'quantidade' ? 'bg-[#2d3a22] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
-              >
-                Qtd. Pedidos
-              </button>
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl self-start sm:self-auto">
+              {([['faturamento', 'Faturamento'], ['quantidade', 'Pedidos']] as const).map(([chave, rotulo]) => (
+                <button
+                  key={chave}
+                  onClick={() => setTipoGrafico(chave)}
+                  className={`px-4 h-9 rounded-lg text-sm font-semibold transition ${tipoGrafico === chave ? 'bg-white text-brand-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                >
+                  {rotulo}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Destaque do Pico e Card Selecionado (Tamanho Fixo Sem Treme-Treme) */}
           {dadosGrafico.length > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-[#f6f7f2] rounded-xl border border-[#e2e5d9] min-h-[72px]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-brand-50 rounded-2xl border border-brand-100 min-h-[76px]">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-[#2d3a22] text-white rounded-lg shadow-sm">
+                <span className="w-10 h-10 bg-brand-900 text-white rounded-xl flex items-center justify-center">
                   <TrendingUp className="w-4 h-4" />
-                </div>
+                </span>
                 <div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-gray-500">
-                    Pico no Período ({pontoPico.label})
-                  </span>
-                  <p className="text-base font-extrabold text-[#2d3a22]">
-                    {tipoGrafico === 'faturamento' ? formatarMoeda(pontoPico.faturamento) : `${pontoPico.quantidadeVendas} pedidos`}
-                  </p>
+                  <span className="text-xs font-medium text-gray-500">Pico no período ({pontoPico.label})</span>
+                  <p className="text-lg font-semibold text-brand-900">{rotuloValor(tipoGrafico === 'faturamento' ? pontoPico.faturamento : pontoPico.quantidadeVendas)}</p>
                 </div>
               </div>
 
-              {/* Box Selecionado Fixo: visibilidade controlada sem alterar layout/altura */}
-              <div className={`px-4 py-2 bg-white rounded-lg border border-gray-200 text-right shadow-sm transition-opacity duration-200 ${pontoHover ? 'opacity-100' : 'opacity-0'}`}>
-                <span className="text-[10px] font-bold text-gray-400 uppercase">
-                  {pontoHover ? `SELECIONADO: ${pontoHover.label}` : 'SELECIONADO'}
-                </span>
-                <p className="text-sm font-extrabold text-[#2d3a22]">
-                  {pontoHover ? (tipoGrafico === 'faturamento' ? formatarMoeda(pontoHover.faturamento) : `${pontoHover.quantidadeVendas} pedidos`) : '-'}
+              <div className={`px-4 py-2 bg-white rounded-xl border border-gray-200 text-right transition-opacity duration-200 ${pontoHover ? 'opacity-100' : 'opacity-0'}`}>
+                <span className="text-xs font-medium text-gray-500">{pontoHover ? `Selecionado: ${pontoHover.label}` : 'Selecionado'}</span>
+                <p className="text-sm font-semibold text-brand-900">
+                  {pontoHover ? rotuloValor(tipoGrafico === 'faturamento' ? pontoHover.faturamento : pontoHover.quantidadeVendas) : '-'}
                 </p>
               </div>
             </div>
           )}
 
-          {/* Gráfico Visual Fluido e Alinhado à Marca Maria Morena */}
-          <div className="relative pt-12 pb-2 px-2">
-            
-            {/* Linhas de Grade de Fundo Suaves */}
-            <div className="absolute inset-x-0 top-12 bottom-10 flex flex-col justify-between pointer-events-none opacity-30">
-              <div className="border-b border-gray-300 w-full border-dashed" />
-              <div className="border-b border-gray-300 w-full border-dashed" />
-              <div className="border-b border-gray-300 w-full border-dashed" />
-              <div className="border-b border-gray-300 w-full border-dashed" />
+          <div className="relative pt-10 pb-2 px-1">
+            <div className="absolute inset-x-0 top-10 bottom-10 flex flex-col justify-between pointer-events-none">
+              {[0, 1, 2, 3].map((n) => (
+                <div key={n} className="border-b border-dashed border-gray-200 w-full" />
+              ))}
             </div>
 
             {carregando ? (
-              <div className="h-72 flex items-center justify-center text-sm font-bold text-gray-400">
-                Carregando gráfico...
-              </div>
+              <div className="h-72 flex items-center justify-center text-sm font-medium text-gray-400">Carregando gráfico...</div>
             ) : dadosGrafico.length === 0 ? (
-              <div className="h-72 flex items-center justify-center text-sm font-bold text-gray-400">
-                Nenhum dado encontrado para o período.
-              </div>
+              <div className="h-72 flex items-center justify-center text-sm font-medium text-gray-400">Nenhum dado encontrado para o período.</div>
             ) : (
               <div className="h-72 flex items-end justify-between gap-2 sm:gap-4 relative z-10 pt-10 pb-2 overflow-x-auto overflow-y-visible">
                 {dadosGrafico.map((ponto, index) => {
                   const valor = tipoGrafico === 'faturamento' ? Number(ponto.faturamento) : Number(ponto.quantidadeVendas);
-                  // Escala máxima de 75% para garantir espaço livre de sobra para o tooltip sem cortar no topo
                   const alturaPorcentagem = Math.max(Math.round((valor / maxValorGrafico) * 75), valor > 0 ? 8 : 4);
                   const ehPico = ponto.label === pontoPico.label && valor > 0;
 
                   return (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className="flex-1 min-w-[24px] max-w-[56px] flex flex-col items-center h-full justify-end group cursor-pointer relative"
                       onMouseEnter={() => setPontoHover(ponto)}
                       onMouseLeave={() => setPontoHover(null)}
                     >
-                      {/* Tooltip Absoluto Flutuante Sem Corte (z-30) */}
-                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200 px-2.5 py-1 bg-[#2d3a22] text-white text-[11px] rounded-lg shadow-xl font-bold whitespace-nowrap z-30 pointer-events-none border border-[#4c5f3a]">
-                        {tipoGrafico === 'faturamento' ? formatarMoeda(valor) : `${valor} ${valor === 1 ? 'pedido' : 'pedidos'}`}
+                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200 px-2.5 py-1 bg-brand-950 text-white text-xs rounded-lg shadow-lg font-semibold whitespace-nowrap z-30 pointer-events-none">
+                        {rotuloValor(valor)}
                       </div>
 
-                      {/* Barra Estilo Maria Morena (Verde Escuro Brand & Esmeralda) */}
-                      <div 
+                      <div
                         style={{ height: `${alturaPorcentagem}%` }}
-                        className={`w-full rounded-t-lg transition-all duration-300 relative ${
-                          ehPico 
-                            ? 'bg-gradient-to-t from-[#1b2614] to-emerald-600 shadow-md ring-2 ring-emerald-300' 
-                            : 'bg-gradient-to-t from-[#2d3a22] to-[#4c5f3a] group-hover:from-emerald-700 group-hover:to-emerald-500'
+                        className={`w-full rounded-t-xl transition-all duration-300 ${
+                          ehPico
+                            ? 'bg-linear-to-t from-clay-500 to-clay-300 shadow-md'
+                            : 'bg-linear-to-t from-brand-700 to-brand-400 group-hover:from-brand-800 group-hover:to-brand-500'
                         }`}
-                      >
-                        {valor > 0 && (
-                          <div className="absolute top-1 inset-x-0 h-1 bg-white/30 rounded-full mx-1" />
-                        )}
-                      </div>
+                      />
 
-                      {/* Rótulo Eixo X */}
-                      <span className="text-[10px] font-bold text-gray-500 mt-2 truncate w-full text-center group-hover:text-[#2d3a22] transition">
+                      <span className="text-[11px] font-medium text-gray-500 mt-2 truncate w-full text-center group-hover:text-brand-900 transition">
                         {ponto.label}
                       </span>
                     </div>
@@ -548,12 +452,11 @@ export default function PainelPage() {
             )}
           </div>
 
-          <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-100">
-            <span className="font-semibold text-gray-600">Linha do Tempo ({filtroAtivo === 'este_ano' ? 'Meses' : 'Dias'})</span>
-            <span className="font-semibold text-gray-600">{tipoGrafico === 'faturamento' ? 'Faturamento em R$' : 'Quantidade de Pedidos'}</span>
+          <div className="flex items-center justify-between text-xs text-gray-500 pt-4 border-t border-gray-100">
+            <span>Linha do tempo ({filtroAtivo === 'este_ano' ? 'meses' : 'dias'})</span>
+            <span>{tipoGrafico === 'faturamento' ? 'Faturamento em R$' : 'Quantidade de pedidos'}</span>
           </div>
-
-        </div>
+        </section>
 
       </div>
     </div>

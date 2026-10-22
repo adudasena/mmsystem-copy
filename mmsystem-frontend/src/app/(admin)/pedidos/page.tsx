@@ -7,6 +7,7 @@ import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import SelectProdutoFilter from '@/components/SelectProdutoFilter';
 import { formatErrorMessage } from '@/utils/errorUtils';
+import { formatarData } from '@/utils/formatters';
 import { enviarWhatsApp, textoConfirmacaoWhatsApp } from '@/utils/whatsapp';
 
 // ─── Auxiliar de UUID ────────────────────────────────────────────────────────
@@ -453,7 +454,7 @@ const TelaPedidos: React.FC = () => {
     };
 
     return (
-      <span className={`px-2.5 py-0.5 rounded border text-[10px] font-bold uppercase ${estilos[status] || 'bg-gray-100 text-gray-800'}`}>
+      <span className={`px-2.5 py-0.5 rounded-lg border text-[11px] font-semibold uppercase ${estilos[status] || 'bg-gray-100 text-gray-800'}`}>
         {ROTULO_STATUS_PEDIDO[status] || status}
       </span>
     );
@@ -472,33 +473,32 @@ const TelaPedidos: React.FC = () => {
   });
 
   return (
-    <div className="p-4 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
-      <div className="max-w-7xl mx-auto space-y-6">
-        
+    <div className="mm-page">
+      <div className="mm-page-inner">
+
         {/* Cabeçalho */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">
-              Pedidos
-            </h1>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="mm-title">Pedidos</h1>
+            <p className="mm-subtitle">Acompanhe vendas, status e comprovantes das clientes.</p>
           </div>
 
           <button
             onClick={abrirNovoPedidoForm}
-            className="bg-[#2d3a22] hover:bg-[#3d5427] text-white font-bold text-xs uppercase px-4 py-2.5 rounded-lg shadow-sm transition cursor-pointer self-start md:self-auto"
+            className="mm-btn-primary self-start md:self-auto"
           >
             + Novo Pedido
           </button>
         </div>
 
         {mensagemSucesso && (
-          <div className="bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2">
+          <div className="mm-alert-ok">
             <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
             <span>{mensagemSucesso}</span>
           </div>
         )}
         {mensagemAviso && (
-          <div className="bg-amber-50 border-l-4 border-amber-600 p-3 text-amber-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2">
+          <div className="mm-alert-warn">
             <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>{mensagemAviso}</span>
           </div>
@@ -515,17 +515,17 @@ const TelaPedidos: React.FC = () => {
         />
 
         {/* Tabela Principal */}
-        <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col justify-between">
+        <section ref={tabelaRef} className="mm-card overflow-hidden flex flex-col justify-between">
           <div>
-            <div className="p-4 border-b bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div className="px-4 py-3.5 border-b border-gray-200 bg-white flex flex-col sm:flex-row justify-between items-center gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setAbaAtiva('ATIVOS')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  className={`px-4 h-9 rounded-full text-sm font-semibold transition cursor-pointer ${
                     abaAtiva === 'ATIVOS'
-                      ? 'bg-[#2d3a22] text-white shadow-sm'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      ? 'bg-brand-900 text-white shadow-sm'
+                      : 'bg-white text-gray-700 border border-gray-200 hover:bg-brand-50'
                   }`}
                 >
                   Pedidos Ativos
@@ -534,17 +534,17 @@ const TelaPedidos: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setAbaAtiva('EXCLUIDOS')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-4 h-9 rounded-full text-sm font-semibold transition cursor-pointer flex items-center gap-1.5 ${
                     abaAtiva === 'EXCLUIDOS'
                       ? 'bg-red-700 text-white shadow-sm'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : 'bg-white text-gray-700 border border-gray-200 hover:bg-brand-50'
                   }`}
                 >
                   <Trash2 className="w-3.5 h-3.5" /> Pedidos Removidos (Lixeira)
                 </button>
               </div>
 
-              <span className="text-[11px] font-bold text-gray-500 uppercase">
+              <span className="text-[11px] font-semibold text-gray-500">
                 Total: {totalElementos > 0 ? totalElementos : pedidosFiltrados.length}
               </span>
             </div>
@@ -555,7 +555,7 @@ const TelaPedidos: React.FC = () => {
               <div className="overflow-x-auto min-h-[360px]">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-[#cbd0c0] font-bold uppercase text-gray-700">
+                    <tr className="bg-gray-300 font-semibold text-gray-700">
                       <th className="p-3">#ID</th>
                       <th className="p-3">Cliente</th>
                       <th className="p-3">Data</th>
@@ -574,10 +574,10 @@ const TelaPedidos: React.FC = () => {
                     ) : (
                       pedidosFiltrados.map((p) => (
                         <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="p-3 font-bold text-gray-500">#{p.id}</td>
-                          <td className="p-3 font-bold text-gray-800">{p.cliente?.nome || '—'}</td>
-                          <td className="p-3 text-gray-600">{p.dataPedido}</td>
-                          <td className="p-3 font-bold text-gray-800">
+                          <td className="p-3 font-semibold text-gray-500">#{p.id}</td>
+                          <td className="p-3 font-semibold text-gray-800">{p.cliente?.nome || '—'}</td>
+                          <td className="text-gray-600 whitespace-nowrap">{formatarData(p.dataPedido)}</td>
+                          <td className="p-3 font-semibold text-gray-800">
                             R$ {Number(p.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
                           <td className="p-3">{renderBadgeStatus(p.status)}</td>
@@ -585,43 +585,43 @@ const TelaPedidos: React.FC = () => {
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={() => dispararWhatsAppComprovante(p)}
-                                className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer"
+                                className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2.5 h-8 rounded-lg text-xs font-semibold shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer"
                                 title="Enviar comprovante no WhatsApp"
                               >
                                 <MessageSquare className="w-3.5 h-3.5 text-white" /> Whats
                               </button>
                               <button
                                 onClick={() => abrirDetalhes(p)}
-                                className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
+                                className="p-2 rounded-lg text-gray-500 hover:text-brand-900 hover:bg-brand-100/70 transition cursor-pointer"
                                 title="Ver Detalhes do Pedido"
                               >
-                                <Eye className="w-3.5 h-3.5" />
+                                <Eye className="w-4 h-4" />
                               </button>
 
                               {abaAtiva === 'EXCLUIDOS' ? (
                                 <button
                                   type="button"
                                   onClick={() => restaurarPedido(p.id)}
-                                  className="bg-green-700 hover:bg-green-800 text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 cursor-pointer"
+                                  className="bg-brand-700 hover:bg-brand-800 text-white px-2.5 h-8 rounded-lg text-xs font-semibold shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer"
                                   title="Restaurar pedido da lixeira"
                                 >
-                                  <RotateCcw className="w-3.5 h-3.5" /> Restaurar
+                                  <RotateCcw className="w-4 h-4" /> Restaurar
                                 </button>
                               ) : (
                                 <>
                                   <button
                                     onClick={() => prepararEdicao(p)}
-                                    className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
+                                    className="p-2 rounded-lg text-gray-500 hover:text-brand-900 hover:bg-brand-100/70 transition cursor-pointer"
                                     title="Editar Pedido"
                                   >
-                                    <Pencil className="w-3.5 h-3.5" />
+                                    <Pencil className="w-4 h-4" />
                                   </button>
                                   <button
                                     onClick={() => setModalExcluir({ aberto: true, id: p.id })}
-                                    className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
+                                    className="p-2 rounded-lg text-gray-500 hover:text-red-700 hover:bg-red-50 transition cursor-pointer"
                                     title="Mover Pedido para a Lixeira"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </>
                               )}
@@ -647,28 +647,28 @@ const TelaPedidos: React.FC = () => {
 
         {/* MODAL: FORMULÁRIO DE CADASTRO E EDIÇÃO DE PEDIDO */}
         {modalFormAberto && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-            <div className="bg-white rounded-sm w-full max-w-2xl max-h-[90vh] flex flex-col p-6 shadow-2xl border-t-4 border-[#4a5d33]">
-              <div className="flex justify-between items-center border-b pb-2 mb-4">
-                <h3 className="font-serif text-lg text-gray-900">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/50 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white w-full max-w-2xl max-h-[90vh] flex flex-col p-6 shadow-2xl rounded-3xl animate-subir">
+              <div className="flex justify-between items-start gap-3 mb-5">
+                <h3 className="font-display text-xl font-semibold text-brand-900">
                   {editandoId ? `Editando Pedido #${editandoId}` : 'Novo Pedido de Venda'}
                 </h3>
-                <button onClick={() => setModalFormAberto(false)} className="text-gray-400 hover:text-black font-bold text-xl cursor-pointer">×</button>
+                <button onClick={() => setModalFormAberto(false)} className="w-9 h-9 -mr-1 -mt-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-2xl leading-none transition cursor-pointer shrink-0">×</button>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
+              <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-sm">
                 {errosValidacao.length > 0 && (
-                  <div className="bg-red-50 border-l-4 border-red-600 p-2.5 text-red-900 font-semibold rounded-sm space-y-1">
+                  <div className="mm-alert-err flex-col items-start gap-1">
                     {errosValidacao.map((err, i) => <p key={i}>⚠️ {err}</p>)}
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Selecione a Cliente *</label>
+                  <label className="mm-label">Selecione a Cliente *</label>
                   <select
                     value={formPedido.fkClienteId}
                     onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormPedido({ ...formPedido, fkClienteId: e.target.value })}
-                    className="w-full border border-gray-300 p-2 bg-gray-50 text-xs outline-none focus:border-[#4a5d33] rounded-md"
+                    className="mm-input"
                   >
                     <option value="">Escolha uma cliente...</option>
                     {clientesOpcoes.map(cli => (
@@ -679,21 +679,21 @@ const TelaPedidos: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Data do Pedido</label>
+                    <label className="mm-label">Data do Pedido</label>
                     <input
                       type="date"
                       value={formPedido.dataPedido}
                       onChange={(e: ChangeEvent<HTMLInputElement>) => setFormPedido({ ...formPedido, dataPedido: e.target.value })}
-                      className="w-full border border-gray-300 p-2 bg-gray-50 text-xs outline-none rounded-md"
+                      className="mm-input"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Status Inicial</label>
+                    <label className="mm-label">Status Inicial</label>
                     <select
                       value={formPedido.status}
                       onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormPedido({ ...formPedido, status: e.target.value as StatusPedido })}
-                      className="w-full border border-gray-300 p-2 bg-gray-50 text-xs outline-none font-bold rounded-md"
+                      className="mm-input"
                     >
                       <option value="AGUARDANDO_PAGAMENTO">Aguardando pagamento</option>
                       <option value="CANCELADO">Cancelado</option>
@@ -705,15 +705,15 @@ const TelaPedidos: React.FC = () => {
                 {/* SESSÃO DINÂMICA DE ITENS */}
                 <div className="border-t pt-3">
                   <div className="flex justify-between items-center mb-2">
-                    <label className="block text-[10px] font-bold uppercase text-gray-500">Itens do Pedido</label>
+                    <label className="mm-label">Itens do Pedido</label>
                     <button
                       type="button"
                       onClick={adicionarLinhaItem}
                       disabled={!podeAdicionarItem}
                       title={!podeAdicionarItem ? 'Selecione o produto do item atual antes de adicionar outro' : ''}
-                      className={`text-[10px] font-bold transition-all cursor-pointer ${
+                      className={`text-[11px] font-semibold transition-all cursor-pointer ${
                         podeAdicionarItem
-                          ? 'text-[#4a5d33] hover:underline'
+                          ? 'text-brand-700 hover:underline'
                           : 'text-gray-400 cursor-not-allowed opacity-60'
                       }`}
                     >
@@ -759,12 +759,12 @@ const TelaPedidos: React.FC = () => {
                                 value={item.quantidade}
                                 onKeyDown={handleQuantidadeKeyDown}
                                 onChange={(e) => handleQuantidadeChange(item.uuid, e.target.value)}
-                                className="w-full border border-gray-300 p-2 text-center bg-white text-xs font-bold rounded-md outline-none focus:border-[#4a5d33]"
+                                className="mm-input text-center"
                                 placeholder="Qtd"
                               />
                             </div>
                             {prodSel && (
-                              <span className="text-[10px] font-bold text-[#4a5d33] mt-0.5">
+                              <span className="text-[11px] font-semibold text-brand-700 mt-0.5">
                                 ({estoqueMax} un. disp.)
                               </span>
                             )}
@@ -775,7 +775,7 @@ const TelaPedidos: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => removerLinhaItem(item.uuid)}
-                                className="text-red-600 font-bold hover:text-red-800 cursor-pointer p-1 text-base"
+                                className="text-red-600 font-semibold hover:text-red-800 cursor-pointer p-1 text-base"
                                 title="Remover Item"
                               >
                                 ×
@@ -788,14 +788,14 @@ const TelaPedidos: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-gray-100 p-3 rounded text-right font-extrabold text-sm text-[#2d3a22] border">
+                <div className="bg-gray-100 p-3 rounded-lg text-right font-bold text-sm text-brand-900 border">
                   Total Estimado: R$ {calcularValorTotalPedido().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t flex justify-end gap-2">
-                <button onClick={() => setModalFormAberto(false)} className="px-4 py-2 bg-gray-200 text-gray-700 text-[10px] font-bold uppercase hover:bg-gray-300 cursor-pointer rounded-sm">Cancelar</button>
-                <button onClick={salvarPedido} className="px-5 py-2 bg-[#4a5d33] text-white text-[10px] font-bold uppercase hover:brightness-110 shadow-md cursor-pointer rounded-sm">Salvar Pedido</button>
+              <div className="mt-5 pt-4 border-t border-gray-100 flex justify-end gap-2.5">
+                <button onClick={() => setModalFormAberto(false)} className="mm-btn-secondary">Cancelar</button>
+                <button onClick={salvarPedido} className="mm-btn-primary">Salvar Pedido</button>
               </div>
             </div>
           </div>
@@ -803,11 +803,11 @@ const TelaPedidos: React.FC = () => {
 
         {/* MODAL: DETALHES DO PEDIDO */}
         {modalDetalhesAberto && pedidoSelecionado && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl border-t-4 border-[#2d3a22] w-full max-w-xl p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/50 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white w-full max-w-xl p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto rounded-3xl animate-subir">
               <div className="flex items-center justify-between border-b pb-3">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-base font-bold text-gray-900">
+                  <h3 className="text-base font-semibold text-gray-900">
                     Pedido #{pedidoSelecionado.id}
                   </h3>
                   {renderBadgeStatus(pedidoSelecionado.status)}
@@ -820,19 +820,19 @@ const TelaPedidos: React.FC = () => {
 
               {/* Informações do Cliente */}
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="bg-gray-50 p-3 rounded-lg border space-y-1">
-                  <p className="font-bold text-gray-700 flex items-center gap-1 text-[11px]">
-                    <User className="w-3.5 h-3.5 text-[#2d3a22]" /> Cliente
+                <div className="bg-gray-50 p-3 rounded-xl border space-y-1">
+                  <p className="font-semibold text-gray-700 flex items-center gap-1 text-[11px]">
+                    <User className="w-3.5 h-3.5 text-brand-900" /> Cliente
                   </p>
                   <p className="font-semibold text-gray-900">{pedidoSelecionado.cliente?.nome || '—'}</p>
                 </div>
-                <div className="bg-gray-50 p-3 rounded-lg border space-y-1">
-                  <p className="font-bold text-gray-700 flex items-center gap-1 text-[11px]">
-                    <Phone className="w-3.5 h-3.5 text-[#2d3a22]" /> Contato / Data
+                <div className="bg-gray-50 p-3 rounded-xl border space-y-1">
+                  <p className="font-semibold text-gray-700 flex items-center gap-1 text-[11px]">
+                    <Phone className="w-3.5 h-3.5 text-brand-900" /> Contato / Data
                   </p>
                   <p className="text-gray-800">{pedidoSelecionado.cliente?.telefone || 'Sem telefone'}</p>
                   <p className="text-gray-500 flex items-center gap-1">
-                    <Calendar className="w-3 h-3" /> {pedidoSelecionado.dataPedido}
+                    <Calendar className="w-3 h-3" /> {formatarData(pedidoSelecionado.dataPedido)}
                   </p>
                 </div>
               </div>
@@ -840,8 +840,8 @@ const TelaPedidos: React.FC = () => {
               {/* Lista de Itens do Pedido */}
               {pedidoSelecionado.itens && pedidoSelecionado.itens.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-[11px] font-bold uppercase text-gray-500">Itens do Pedido</h4>
-                  <div className="border rounded-lg divide-y text-xs">
+                  <h4 className="text-[11px] font-semibold text-gray-500">Itens do Pedido</h4>
+                  <div className="border rounded-xl divide-y text-xs">
                     {pedidoSelecionado.itens.map((item, idx) => {
                       const nomeProd = item.produto?.nome || item.produtoNome || 'Produto';
                       const precoUnit = item.produto?.preco || item.precoUnitario || 0;
@@ -849,12 +849,12 @@ const TelaPedidos: React.FC = () => {
                       return (
                         <div key={idx} className="p-2.5 flex justify-between items-center">
                           <div>
-                            <p className="font-bold text-gray-800">{nomeProd}</p>
-                            {item.variacao && <p className="text-gray-500 text-[10px]">Variação: {item.variacao}</p>}
+                            <p className="font-semibold text-gray-800">{nomeProd}</p>
+                            {item.variacao && <p className="text-gray-500 text-[11px]">Variação: {item.variacao}</p>}
                           </div>
                           <div className="text-right">
                             <p className="text-gray-600">{item.quantidade}x R$ {Number(precoUnit).toFixed(2)}</p>
-                            <p className="font-bold text-gray-900">R$ {(item.quantidade * Number(precoUnit)).toFixed(2)}</p>
+                            <p className="font-semibold text-gray-900">R$ {(item.quantidade * Number(precoUnit)).toFixed(2)}</p>
                           </div>
                         </div>
                       );
@@ -866,14 +866,14 @@ const TelaPedidos: React.FC = () => {
               {/* Rodapé do Modal */}
               <div className="flex justify-between items-center pt-3 border-t">
                 <div>
-                  <span className="text-[10px] text-gray-500 uppercase font-bold block">Total</span>
-                  <span className="text-lg font-extrabold text-[#2d3a22]">
+                  <span className="text-[11px] text-gray-500 font-semibold block">Total</span>
+                  <span className="text-lg font-bold text-brand-900">
                     R$ {Number(pedidoSelecionado.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 <button
                   onClick={() => setModalDetalhesAberto(false)}
-                  className="px-4 py-1.5 bg-gray-800 hover:bg-black text-white rounded text-xs font-bold uppercase cursor-pointer"
+                  className="px-4 py-1.5 bg-gray-800 hover:bg-black text-white rounded-lg text-xs font-semibold cursor-pointer"
                 >
                   Fechar
                 </button>
@@ -884,22 +884,22 @@ const TelaPedidos: React.FC = () => {
 
         {/* MODAL: EXCLUSÃO DE PEDIDO */}
         {modalExcluir.aberto && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white p-5 max-w-xs w-full rounded-sm border-t-4 border-red-600 shadow-2xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/50 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white p-6 max-w-sm w-full shadow-2xl rounded-3xl animate-subir max-h-[calc(100vh-2rem)] overflow-y-auto">
               <h4 className="font-serif text-base text-red-700 mb-1">⚠️ Excluir Pedido</h4>
-              <p className="text-xs text-gray-600 mb-4">
+              <p className="text-sm text-gray-600 mb-5">
                 Confirma a remoção permanente deste pedido do sistema?
               </p>
-              <div className="flex justify-end gap-2 text-[10px] font-bold uppercase">
+              <div className="flex justify-end gap-2 text-[11px] font-semibold">
                 <button
                   onClick={() => setModalExcluir({ aberto: false, id: null })}
-                  className="px-3 py-1.5 bg-gray-100 text-gray-700 cursor-pointer"
+                  className="mm-btn-secondary"
                 >
                   Voltar
                 </button>
                 <button
                   onClick={confirmarExclusao}
-                  className="px-3 py-1.5 bg-red-600 text-white hover:bg-red-700 cursor-pointer"
+                  className="mm-btn-danger"
                 >
                   Confirmar
                 </button>

@@ -8,6 +8,7 @@ import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import SystemModal from '@/components/SystemModal';
 import { formatErrorMessage } from '@/utils/errorUtils';
+import { formatarData, rotuloStatus } from '@/utils/formatters';
 import { enviarWhatsApp, textoConfirmacaoWhatsApp } from '@/utils/whatsapp';
 import CampoAjuda from '@/components/CampoAjuda';
 
@@ -555,17 +556,18 @@ const TelaCondicionais: React.FC = () => {
   });
 
   return (
-    <div className="p-4 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="mm-page">
+      <div className="mm-page-inner">
         {/* CABEÇALHO */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">Condicionais</h1>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="mm-title">Condicionais</h1>
+            <p className="mm-subtitle">Sacolas em prova: saídas, devoluções e baixas.</p>
           </div>
 
           <button 
             onClick={abrirNovaSacolaForm}
-            className="bg-[#2d3a22] hover:bg-[#3d5427] text-white font-bold text-xs uppercase px-4 py-2.5 rounded-lg shadow-sm transition cursor-pointer self-start md:self-auto"
+            className="mm-btn-primary self-start md:self-auto"
           >
             + Nova Sacola Condicional
           </button>
@@ -573,20 +575,20 @@ const TelaCondicionais: React.FC = () => {
 
         {/* FEEDBACKS */}
         {mensagemSucesso && (
-          <div className="bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2 mb-4">
+          <div className="mm-alert-ok">
             <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
             <span>{mensagemSucesso}</span>
           </div>
         )}
         {mensagemAviso && (
-          <div className="bg-amber-50 border-l-4 border-amber-600 p-3 text-amber-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2 mb-4">
+          <div className="mm-alert-warn">
             <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>{mensagemAviso}</span>
           </div>
         )}
 
         {errosValidacao.length > 0 && (
-          <div className="bg-red-50 border-l-4 border-red-600 p-3 text-red-900 font-semibold text-xs rounded-lg shadow-sm space-y-1 mb-4">
+          <div className="mm-alert-err flex-col items-start gap-1">
             {errosValidacao.map((e, idx) => (
               <p key={idx} className="flex items-center gap-1.5">
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
@@ -606,16 +608,16 @@ const TelaCondicionais: React.FC = () => {
         />
 
         {/* TABELA DE REGISTROS */}
-        <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col justify-between">
-          <div className="p-4 border-b bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <section ref={tabelaRef} className="mm-card overflow-hidden flex flex-col justify-between">
+          <div className="px-4 py-3.5 border-b border-gray-200 bg-white flex flex-col sm:flex-row justify-between items-center gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setAbaAtiva('ativas')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`px-4 h-9 rounded-full text-sm font-semibold transition cursor-pointer ${
                   abaAtiva === 'ativas'
-                    ? 'bg-[#2d3a22] text-white shadow-sm'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-brand-900 text-white shadow-sm'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-brand-50'
                 }`}
               >
                 Condicionais Ativos
@@ -624,10 +626,10 @@ const TelaCondicionais: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAbaAtiva('finalizadas')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`px-4 h-9 rounded-full text-sm font-semibold transition cursor-pointer ${
                   abaAtiva === 'finalizadas'
-                    ? 'bg-[#2d3a22] text-white shadow-sm'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-brand-900 text-white shadow-sm'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-brand-50'
                 }`}
               >
                 Histórico de Finalizados
@@ -636,137 +638,136 @@ const TelaCondicionais: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAbaAtiva('excluidas')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                className={`px-4 h-9 rounded-full text-sm font-semibold transition cursor-pointer flex items-center gap-1.5 ${
                   abaAtiva === 'excluidas'
                     ? 'bg-red-700 text-white shadow-sm'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-brand-50'
                 }`}
               >
                 <Trash2 className="w-3.5 h-3.5" /> Sacolas Removidas (Lixeira)
               </button>
             </div>
 
-            <span className="text-[11px] font-bold text-gray-500 uppercase">
-              TOTAL: {totalElementos > 0 ? totalElementos : listaFiltrada.length}
+            <span className="text-xs font-semibold text-gray-500">
+              Total: {totalElementos > 0 ? totalElementos : listaFiltrada.length}
             </span>
           </div>
           <div className="overflow-x-auto min-h-[360px]">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#cbd0c0] text-[11px] font-bold uppercase text-gray-700 border-b border-gray-300">
-                  <th className="p-3">Código</th>
-                  <th className="p-3">Cliente</th>
-                  <th className="p-3">Valor Estimado</th>
-                  <th className="p-3">Data Início</th>
-                  <th className="p-3">Data Limite / Prazo</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Peças Relacionadas</th>
-                  <th className="p-3 text-center">Ações</th>
+                <tr>
+                  <th>Código</th>
+                  <th>Cliente</th>
+                  <th>Valor estimado</th>
+                  <th>Prazo</th>
+                  <th>Status</th>
+                  <th>Peças</th>
+                  <th className="text-center">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 text-xs">
+              <tbody className="text-sm">
                 {listaFiltrada.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-gray-400 italic bg-white">Nenhum registro encontrado nesta aba.</td>
+                    <td colSpan={7} className="py-12 text-center text-gray-400 bg-white">Nenhum registro encontrado nesta aba.</td>
                   </tr>
                 ) : (
                   listaFiltrada.map((c) => {
                     const prazo = calcularPrazo(c.dataRetorno);
                     return (
-                      <tr key={c.id} className="hover:bg-gray-50 transition-colors bg-white">
-                        <td className="p-3 font-bold text-gray-700">#{String(c.id).padStart(3, '0')}</td>
-                        <td className="p-3">
+                      <tr key={c.id} className="transition-colors bg-white">
+                        <td className="font-semibold text-gray-500">#{String(c.id).padStart(3, '0')}</td>
+                        <td className="whitespace-nowrap">
                           <p className="font-semibold text-gray-900">{c.usuario?.nome || c.cliente?.nome || '—'}</p>
-                          <p className="text-[10px] text-gray-500">{c.usuario?.telefone || c.cliente?.telefone || ''}</p>
+                          <p className="text-xs text-gray-500">{c.usuario?.telefone || c.cliente?.telefone || ''}</p>
                           {c.funcionario?.nome && (
-                            <p className="text-[10px] text-[#2d3a22]">Resp.: {c.funcionario.nome}</p>
+                            <p className="text-xs text-brand-800">Resp.: {c.funcionario.nome}</p>
                           )}
                         </td>
-                        <td className="p-3 font-bold text-gray-900">
+                        <td className="font-semibold text-gray-900 whitespace-nowrap">
                           R$ {Number(c.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </td>
-                        <td className="p-3 text-gray-500">{c.dataSaida}</td>
-                        <td className="p-3">
-                          <span className="block font-medium text-gray-800">{c.dataRetorno}</span>
+                        <td className="whitespace-nowrap">
+                          <span className="block font-medium text-gray-800">{formatarData(c.dataRetorno)}</span>
+                          <span className="block text-xs text-gray-500">Saída {formatarData(c.dataSaida)}</span>
                           {c.status === 'ABERTA' && (
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-0.5 border ${
-                              prazo.status === 'ATRASADO' ? 'bg-red-100 text-red-800 border-red-300' :
-                              prazo.status === 'HOJE' ? 'bg-amber-100 text-amber-800 border-amber-300' :
-                              'bg-green-100 text-green-800 border-green-300'
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold mt-1 border ${
+                              prazo.status === 'ATRASADO' ? 'bg-red-50 text-red-700 border-red-200' :
+                              prazo.status === 'HOJE' ? 'bg-amber-50 text-amber-800 border-amber-200' :
+                              'bg-emerald-50 text-emerald-700 border-emerald-200'
                             }`}>
                               {prazo.texto}
                             </span>
                           )}
                         </td>
-                        <td className="p-3 uppercase font-mono text-[10px]">
-                          <span className={`px-2 py-0.5 rounded border font-bold ${
-                            c.status === 'ABERTA' ? 'bg-amber-100 text-amber-800 border-amber-300' : 
-                            c.status === 'FINALIZADA' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                            'bg-blue-100 text-blue-800 border-blue-300'
+                        <td>
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full border text-[11px] font-semibold ${
+                            c.status === 'ABERTA' ? 'bg-amber-50 text-amber-800 border-amber-200' :
+                            c.status === 'FINALIZADA' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            'bg-sky-50 text-sky-700 border-sky-200'
                           }`}>
-                            {c.status}
+                            {rotuloStatus(c.status)}
                           </span>
                         </td>
-                        <td className="p-3 text-gray-600 max-w-[240px]">
+                        <td className="text-gray-600 min-w-[170px] max-w-[220px]">
                           <div className="space-y-1">
                             {(c.itens || []).map((i, idx) => (
-                              <div key={idx} className="text-[11px] bg-gray-50 p-1 border rounded-sm flex justify-between items-center">
-                                <span className="truncate mr-1">{i.produto?.nome} <strong>({i.corEscolhida || '-'}/{i.tamanhoEscolhido || '-'})</strong></span>
-                                <span className={`text-[9px] px-1 font-bold border uppercase shrink-0 ${
-                                  i.statusItem === 'VENDIDO' ? 'bg-green-100 border-green-300 text-green-800' : 
-                                  i.statusItem === 'DEVOLVIDA' || i.statusItem === 'DISPONIVEL' ? 'bg-blue-100 border-blue-300 text-blue-800' : 
-                                  'bg-white border-gray-300 text-gray-500'
+                              <div key={idx} className="text-xs bg-gray-50 px-2 py-1 border border-gray-200 rounded-lg flex justify-between items-center gap-2">
+                                <span className="truncate">{i.produto?.nome} <strong>({i.corEscolhida || '-'}/{i.tamanhoEscolhido || '-'})</strong></span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold border shrink-0 ${
+                                  i.statusItem === 'VENDIDO' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+                                  i.statusItem === 'DEVOLVIDA' || i.statusItem === 'DISPONIVEL' ? 'bg-sky-50 border-sky-200 text-sky-700' :
+                                  'bg-white border-gray-200 text-gray-500'
                                 }`}>
-                                  {i.statusItem || 'EM COND.'}
+                                  {rotuloStatus(i.statusItem || 'Em cond.')}
                                 </span>
                               </div>
                             ))}
                           </div>
                         </td>
                         <td className="p-3 text-center">
-                          <div className="flex justify-center items-center gap-2">
+                          <div className="flex justify-center items-center gap-1">
                             {abaAtiva === 'excluidas' ? (
                               <button
                                 type="button"
                                 onClick={() => restaurarCondicional(c.id)}
-                                className="bg-green-700 hover:bg-green-800 text-white px-2.5 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 cursor-pointer"
+                                className="bg-brand-700 hover:bg-brand-800 text-white px-2.5 h-8 rounded-lg text-xs font-semibold shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer"
                                 title="Restaurar sacola da lixeira"
                               >
-                                <RotateCcw className="w-3.5 h-3.5" /> Restaurar
+                                <RotateCcw className="w-4 h-4" /> Restaurar
                               </button>
                             ) : c.status === 'ABERTA' ? (
                               <>
                                 <button
                                   onClick={() => enviarCobrancaWhatsApp(c)}
-                                  className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer"
+                                  className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2.5 h-8 rounded-lg text-xs font-semibold shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer"
                                   title="Enviar lembrete no WhatsApp"
                                 >
                                   <MessageSquare className="w-3.5 h-3.5 text-white" /> Whats
                                 </button>
                                 <button 
                                   onClick={() => prepararBaixaIndividual(c)} 
-                                  className="bg-[#4a5d33] hover:bg-[#3d5427] text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 transition-all cursor-pointer" 
+                                  className="bg-brand-700 hover:bg-brand-800 text-white px-2.5 h-8 rounded-lg text-xs font-semibold shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer" 
                                   title="Dar Baixa nas Peças e Atualizar Estoque"
                                 >
                                   Baixa
                                 </button>
                                 <button 
                                   onClick={() => prepararEdicaoLocal(c)} 
-                                  className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black" 
+                                  className="p-2 rounded-lg text-gray-500 hover:text-brand-900 hover:bg-brand-100/70 transition cursor-pointer" 
                                   title="Editar Sacola"
                                 >
-                                  <Pencil className="w-3.5 h-3.5" />
+                                  <Pencil className="w-4 h-4" />
                                 </button>
                                 <button 
                                   onClick={() => setModalExcluir({ aberto: true, id: c.id })} 
-                                  className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700" 
+                                  className="p-2 rounded-lg text-gray-500 hover:text-red-700 hover:bg-red-50 transition cursor-pointer" 
                                   title="Excluir Sacola"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </>
                             ) : (
-                              <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 font-bold uppercase rounded-md border border-gray-200">
+                              <span className="text-[11px] bg-gray-100 text-gray-600 px-2 py-1 font-semibold rounded-md border border-gray-200">
                                 Histórico / Finalizado
                               </span>
                             )}
@@ -792,17 +793,17 @@ const TelaCondicionais: React.FC = () => {
 
       {/* MODAL: FORMULÁRIO DE CRIAÇÃO E EDIÇÃO */}
       {modalFormAberto && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-sm w-full max-w-2xl max-h-[90vh] flex flex-col p-6 shadow-2xl border-t-4 border-[#4a5d33]">
-            <div className="flex justify-between items-center border-b pb-2 mb-4">
-              <h3 className="font-serif text-lg text-gray-900">{editandoId ? `Editando Sacola Nº ${editandoId}` : 'Nova Sacola Condicional'}</h3>
-              <button onClick={() => setModalFormAberto(false)} className="text-gray-400 hover:text-black font-bold text-xl cursor-pointer">×</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white w-full max-w-2xl max-h-[90vh] flex flex-col p-6 shadow-2xl rounded-3xl animate-subir">
+            <div className="flex justify-between items-start gap-3 mb-5">
+              <h3 className="font-display text-xl font-semibold text-brand-900">{editandoId ? `Editando Sacola Nº ${editandoId}` : 'Nova Sacola Condicional'}</h3>
+              <button onClick={() => setModalFormAberto(false)} className="w-9 h-9 -mr-1 -mt-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-2xl leading-none transition cursor-pointer shrink-0">×</button>
             </div>
 
-            <div id="modal-condicional-container" className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
+            <div id="modal-condicional-container" className="flex-1 overflow-y-auto space-y-4 pr-1 text-sm">
               {/* Erros de validação dentro da modal */}
               {errosValidacao.length > 0 && (
-                <div className="bg-red-50 border-l-4 border-red-600 p-3 text-red-900 font-semibold text-xs rounded-lg shadow-sm space-y-1 mb-4">
+                <div className="mm-alert-err flex-col items-start gap-1">
                   {errosValidacao.map((e, idx) => (
                     <p key={idx} className="flex items-center gap-1.5">
                       <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
@@ -812,14 +813,14 @@ const TelaCondicionais: React.FC = () => {
                 </div>
               )}
               <div>
-                <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-gray-500 mb-1">
+                <label className="mm-label flex items-center gap-1.5">
                   Selecione a cliente *
                   <CampoAjuda texto="Quem leva as peças. Cadastro pelo WhatsApp/telefone." />
                 </label>
                 <select
                   value={formCondicional.clienteId}
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormCondicional({ ...formCondicional, clienteId: e.target.value })}
-                  className="w-full border p-2 bg-gray-50 text-xs outline-none focus:border-gray-400 rounded-md"
+                  className="mm-input"
                 >
                   <option value="">Escolha uma cliente...</option>
                   {clientes.map(cli => (
@@ -830,7 +831,7 @@ const TelaCondicionais: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-gray-500 mb-1">
+                  <label className="mm-label flex items-center gap-1.5">
                     Data de saída
                     <CampoAjuda texto="Dia em que a sacola saiu da loja." />
                   </label>
@@ -838,11 +839,11 @@ const TelaCondicionais: React.FC = () => {
                     type="date" 
                     value={formCondicional.dataSaida} 
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setFormCondicional({ ...formCondicional, dataSaida: e.target.value })} 
-                    className="w-full border p-2 bg-gray-50 text-xs outline-none rounded-md" 
+                    className="mm-input" 
                   />
                 </div>
                 <div>
-                  <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-gray-500 mb-1">
+                  <label className="mm-label flex items-center gap-1.5">
                     Data limite de retorno *
                     <CampoAjuda texto="Prazo para devolver ou comprar. Usada para saber se a sacola está atrasada." />
                   </label>
@@ -850,7 +851,7 @@ const TelaCondicionais: React.FC = () => {
                     type="date" 
                     value={formCondicional.dataRetorno} 
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setFormCondicional({ ...formCondicional, dataRetorno: e.target.value })} 
-                    className="w-full border p-2 bg-gray-50 text-xs outline-none rounded-md" 
+                    className="mm-input" 
                   />
                 </div>
               </div>
@@ -858,11 +859,11 @@ const TelaCondicionais: React.FC = () => {
               {/* SESSÃO DINÂMICA DE ITENS */}
               <div className="border-t pt-3">
                 <div className="flex justify-between items-center mb-2">
-                  <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-gray-500">
+                  <label className="mm-label flex items-center gap-1.5">
                     Peças na sacola
                     <CampoAjuda texto="Produto, cor, tamanho e quantidade que saíram do estoque para esta cliente." />
                   </label>
-                  <button type="button" onClick={adicionarLinhaProduto} className="text-[#4a5d33] hover:underline text-[10px] font-bold cursor-pointer">+ Adicionar Peça</button>
+                  <button type="button" onClick={adicionarLinhaProduto} className="text-brand-700 hover:underline text-[11px] font-semibold cursor-pointer">+ Adicionar Peça</button>
                 </div>
 
                 <div className="space-y-2">
@@ -952,12 +953,12 @@ const TelaCondicionais: React.FC = () => {
                       : 99;
 
                     return (
-                      <div key={idx} className="bg-gray-50 p-2 border rounded-md min-w-0 space-y-1">
+                      <div key={idx} className="bg-gray-50 p-2.5 border border-gray-200 rounded-xl min-w-0 space-y-1.5">
                         <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center min-w-0">
                           <select 
                             value={item.produtoId} 
                             onChange={(e: ChangeEvent<HTMLSelectElement>) => handleItemChange(idx, 'produtoId', e.target.value)} 
-                            className="min-w-0 flex-1 border p-1.5 bg-white text-xs outline-none rounded"
+                            className="min-w-0 flex-1 border border-gray-300 h-10 px-2.5 bg-white text-sm rounded-xl"
                           >
                             <option value="">Produto...</option>
                             {produtosDisponiveis.map(p => (
@@ -969,7 +970,7 @@ const TelaCondicionais: React.FC = () => {
                           <select 
                             value={item.corEscolhida} 
                             onChange={(e: ChangeEvent<HTMLSelectElement>) => handleItemChange(idx, 'corEscolhida', e.target.value)} 
-                            className="w-24 shrink-0 border p-1.5 bg-white text-xs outline-none rounded" 
+                            className="w-28 shrink-0 border border-gray-300 h-10 px-2.5 bg-white text-sm rounded-xl" 
                             disabled={!item.produtoId}
                           >
                             <option value="">Cor</option>
@@ -980,7 +981,7 @@ const TelaCondicionais: React.FC = () => {
                           <select 
                             value={item.tamanhoEscolhido} 
                             onChange={(e: ChangeEvent<HTMLSelectElement>) => handleItemChange(idx, 'tamanhoEscolhido', e.target.value)} 
-                            className="w-16 shrink-0 border p-1.5 bg-white text-xs outline-none rounded" 
+                            className="w-20 shrink-0 border border-gray-300 h-10 px-2.5 bg-white text-sm rounded-xl" 
                             disabled={!item.corEscolhida}
                           >
                             <option value="">Tam</option>
@@ -994,15 +995,15 @@ const TelaCondicionais: React.FC = () => {
                             max={estoqueMaxVar > 0 ? estoqueMaxVar : 1}
                             value={item.quantidade} 
                             onChange={(e: ChangeEvent<HTMLInputElement>) => handleItemChange(idx, 'quantidade', parseInt(e.target.value, 10) || 1)} 
-                            className="w-14 shrink-0 border p-1.5 text-center bg-white text-xs rounded font-bold" 
+                            className="w-16 shrink-0 border border-gray-300 h-10 px-1 text-center bg-white text-sm rounded-xl font-semibold" 
                             aria-label="Quantidade"
                           />
                           {formCondicional.itens.length > 1 && (
-                            <button type="button" onClick={() => removerLinhaProduto(idx)} className="text-red-600 font-bold hover:text-red-800 cursor-pointer w-6 shrink-0">×</button>
+                            <button type="button" onClick={() => removerLinhaProduto(idx)} className="text-red-600 font-semibold hover:text-red-800 cursor-pointer w-6 shrink-0">×</button>
                           )}
                         </div>
                         {prodSelecionado && (
-                          <p className="text-[10px] text-[#4a5d33]">
+                          <p className="text-[11px] text-brand-700">
                             {estoqueMaxVar} un. disponíveis nesta variação
                           </p>
                         )}
@@ -1013,9 +1014,9 @@ const TelaCondicionais: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t flex justify-end gap-2">
-              <button onClick={() => setModalFormAberto(false)} className="px-4 py-2 bg-gray-200 text-gray-700 text-[10px] font-bold uppercase hover:bg-gray-300 cursor-pointer rounded-sm">Cancelar</button>
-              <button onClick={salvarCondicional} className="px-5 py-2 bg-[#4a5d33] text-white text-[10px] font-bold uppercase hover:brightness-110 shadow-md cursor-pointer rounded-sm">Salvar Mudanças</button>
+            <div className="mt-5 pt-4 border-t border-gray-100 flex justify-end gap-2.5">
+              <button onClick={() => setModalFormAberto(false)} className="mm-btn-secondary">Cancelar</button>
+              <button onClick={salvarCondicional} className="mm-btn-primary">Salvar Mudanças</button>
             </div>
           </div>
         </div>
@@ -1023,22 +1024,22 @@ const TelaCondicionais: React.FC = () => {
 
       {/* MODAL DE TRIAGEM COM SELETOR DE DEVOLUÇÃO / VENDA */}
       {modalBaixaAberto && sacolaParaBaixa && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-[#2d3a22] text-white p-6 shadow-2xl border border-[#3e4c32] max-w-xl w-full rounded-xl">
-            <div className="flex justify-between items-center border-b border-white/20 pb-2 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white text-gray-800 p-6 shadow-2xl max-w-xl w-full rounded-3xl animate-subir max-h-[calc(100vh-2rem)] overflow-y-auto">
+            <div className="flex justify-between items-start gap-3 mb-5">
               <div>
-                <h3 className="font-serif text-base uppercase tracking-wider">Processar Retorno de Peças (Baixa)</h3>
-                <p className="text-[11px] text-gray-300">Defina quais peças foram vendidas (baixa no estoque) e quais retornaram para a loja.</p>
+                <h3 className="font-display text-xl font-semibold text-brand-900">Processar Retorno de Peças (Baixa)</h3>
+                <p className="text-sm text-gray-500 mt-1">Defina quais peças foram vendidas (baixa no estoque) e quais retornaram para a loja.</p>
               </div>
-              <button onClick={() => setModalBaixaAberto(false)} className="text-white/70 hover:text-white text-xl cursor-pointer">×</button>
+              <button onClick={() => setModalBaixaAberto(false)} className="w-9 h-9 -mr-1 -mt-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-2xl leading-none transition cursor-pointer shrink-0">×</button>
             </div>
 
             <div className="space-y-3 max-h-64 overflow-y-auto mb-4 pr-1">
               {itensBaixa.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between bg-[#1f2818] p-3 border border-white/10 rounded-lg gap-4">
+                <div key={idx} className="flex items-center justify-between bg-gray-50 p-3 border border-gray-200 rounded-xl gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold truncate">{item.nome}</p>
-                    <p className="text-[10px] text-gray-300">Grade: <span className="text-amber-300 font-bold">{item.corEscolhida} / {item.tamanhoEscolhido}</span> ({item.quantidade}x)</p>
+                    <p className="text-xs font-semibold truncate">{item.nome}</p>
+                    <p className="text-xs text-gray-500">Grade: <span className="text-clay-600 font-semibold">{item.corEscolhida} / {item.tamanhoEscolhido}</span> ({item.quantidade}x)</p>
                   </div>
                   
                   {/* SELETOR DE DESTINO DA PEÇA */}
@@ -1046,10 +1047,10 @@ const TelaCondicionais: React.FC = () => {
                     <select
                       value={item.statusItem}
                       onChange={(e: ChangeEvent<HTMLSelectElement>) => handleStatusBaixaChange(idx, e.target.value as 'VENDIDO' | 'DEVOLVIDA')}
-                      className={`w-full text-xs font-bold border p-2 rounded-md outline-none cursor-pointer ${
+                      className={`w-full h-10 px-2 text-sm font-semibold border rounded-xl cursor-pointer ${
                         item.statusItem === 'VENDIDO' 
-                          ? 'bg-emerald-600 text-white border-emerald-400' 
-                          : 'bg-gray-700 text-gray-200 border-gray-500'
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+                          : 'bg-white text-gray-700 border-gray-300'
                       }`}
                     >
                       <option value="DEVOLVIDA">DEVOLVER (Loja)</option>
@@ -1060,14 +1061,14 @@ const TelaCondicionais: React.FC = () => {
               ))}
             </div>
 
-            <div className="p-3 bg-white/10 rounded-lg text-xs text-gray-200 mb-4 flex items-start gap-2">
-              <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="p-3.5 bg-brand-50 border border-brand-100 rounded-xl text-sm text-gray-700 mb-4 flex items-start gap-2.5">
+              <Info className="w-4 h-4 text-brand-700 shrink-0 mt-0.5" />
               <span>As peças marcadas como <strong>VENDIDO</strong> darão baixa imediata no estoque e criarão automaticamente um <strong>Pedido de Venda</strong> e uma cobrança em <strong>Pagamentos</strong>.</span>
             </div>
 
-            <div className="pt-3 border-t border-white/20 flex justify-end gap-2">
-              <button onClick={() => setModalBaixaAberto(false)} className="px-4 py-2 text-[10px] font-bold text-white/80 uppercase hover:underline cursor-pointer">Fechar</button>
-              <button onClick={finalizarBaixaItemPorItem} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold uppercase rounded-md shadow-md transition cursor-pointer">Confirmar Baixa do Estoque</button>
+            <div className="pt-4 border-t border-gray-100 flex justify-end gap-2.5">
+              <button onClick={() => setModalBaixaAberto(false)} className="mm-btn-secondary">Fechar</button>
+              <button onClick={finalizarBaixaItemPorItem} className="mm-btn-primary">Confirmar Baixa do Estoque</button>
             </div>
           </div>
         </div>
@@ -1075,16 +1076,16 @@ const TelaCondicionais: React.FC = () => {
 
       {/* MODAL DE EXCLUSÃO */}
       {modalExcluir.aberto && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white p-5 max-w-xs w-full rounded-xl border-t-4 border-red-600 shadow-2xl">
-            <h4 className="font-sans font-bold text-base text-red-700 mb-1 flex items-center gap-1.5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white p-6 max-w-sm w-full shadow-2xl rounded-3xl animate-subir max-h-[calc(100vh-2rem)] overflow-y-auto">
+            <h4 className="font-sans font-semibold text-base text-red-700 mb-1 flex items-center gap-1.5">
               <AlertCircle className="w-4 h-4 text-red-600" />
               Excluir Sacola Condicional
             </h4>
-            <p className="text-xs text-gray-600 mb-4">Tem certeza que deseja mover esta sacola condicional para a lixeira?</p>
-            <div className="flex justify-end gap-2 text-[10px] font-bold uppercase">
-              <button onClick={() => setModalExcluir({ aberto: false, id: null })} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded cursor-pointer">Cancelar</button>
-              <button onClick={confirmarExclusao} className="px-3 py-1.5 bg-red-600 text-white hover:bg-red-700 rounded cursor-pointer">Mover para a Lixeira</button>
+            <p className="text-sm text-gray-600 mb-5">Tem certeza que deseja mover esta sacola condicional para a lixeira?</p>
+            <div className="flex justify-end gap-2 text-[11px] font-semibold">
+              <button onClick={() => setModalExcluir({ aberto: false, id: null })} className="mm-btn-secondary">Cancelar</button>
+              <button onClick={confirmarExclusao} className="mm-btn-danger">Mover para a Lixeira</button>
             </div>
           </div>
         </div>

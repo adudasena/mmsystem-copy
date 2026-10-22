@@ -2,18 +2,12 @@
 
 /* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect, useRef } from 'react';
-import { DM_Sans } from 'next/font/google';
 import { AxiosError } from 'axios';
-import { ShoppingBag, MessageSquare, ChevronDown, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
+import { ShoppingBag, MessageSquare, ChevronLeft, ChevronRight, Minus, Plus, X, Trash2, Check } from 'lucide-react';
 import api from '@/services/api';
 import SystemModal, { ModalType } from '@/components/SystemModal';
 import { abrirWhatsAppLoja } from '@/utils/whatsapp';
 import { formatarNomePessoa, formatarTelefoneInput, validarNomePessoa, validarWhatsApp } from '@/utils/contato';
-
-const fonteVitrine = DM_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-});
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface ProdutoVitrine {
@@ -78,8 +72,6 @@ export default function VitrineProdutos() {
   // Filtros
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>('');
   const [categoriasVitrine, setCategoriasVitrine] = useState<string[]>([]);
-  const [filtroAberto, setFiltroAberto] = useState<boolean>(false);
-  const filtroRef = useRef<HTMLDivElement>(null);
   const [indiceFoto, setIndiceFoto] = useState<Record<number, number>>({});
   const [indiceFotoModal, setIndiceFotoModal] = useState<number>(0);
 
@@ -238,17 +230,7 @@ export default function VitrineProdutos() {
     };
   }, [mostrarCarrinho]);
 
-  useEffect(() => {
-    const fecharFora = (evento: MouseEvent) => {
-      if (filtroRef.current && !filtroRef.current.contains(evento.target as Node)) {
-        setFiltroAberto(false);
-      }
-    };
-    document.addEventListener('mousedown', fecharFora);
-    return () => document.removeEventListener('mousedown', fecharFora);
-  }, []);
-
-  // Helper para obter a foto do produto
+// Helper para obter a foto do produto
   const obterImagens = (prod: ProdutoVitrine): string[] => {
     const lista: string[] = [];
     if (prod.fotos) {
@@ -622,126 +604,134 @@ export default function VitrineProdutos() {
 
   const totalCarrinho = carrinho.reduce((acc, item) => acc + item.preco * item.quantidade, 0);
 
-  const rotuloCategoria = categoriaFiltro || 'Todas as categorias';
+  const totalItensSacola = carrinho.reduce((acc, item) => acc + item.quantidade, 0);
+
+  const moeda = (valor: number | string) => `R$ ${Number(valor || 0).toFixed(2).replace('.', ',')}`;
 
   return (
-    <div
-      suppressHydrationWarning
-      className={`vitrine-root min-h-screen bg-[#dcded0] text-gray-800 pb-28 overflow-x-hidden ${fonteVitrine.className}`}
-    >
+    <div suppressHydrationWarning className="vitrine-root min-h-screen text-gray-800 pb-28 overflow-x-hidden">
       {/* HEADER / BARRA SUPERIOR */}
-      <header className="bg-[#2c3e1c] text-white py-3 px-3 sm:px-5 sticky top-0 z-40 shadow-md grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center min-h-[56px]">
+      <header className="bg-brand-900/95 backdrop-blur-md text-white py-2.5 px-3 sm:px-6 sticky top-0 z-40 shadow-md grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center min-h-[60px]">
         <div aria-hidden />
 
-        <div className="min-w-0 flex items-center justify-center h-8 md:h-9 px-1">
+        <div className="min-w-0 flex items-center justify-center px-1">
           <img
             src="/escritocompleto1linha.svg"
             alt="Maria Morena"
-            className="h-7 sm:h-8 md:h-9 w-auto max-w-full object-contain object-center"
+            className="w-44 sm:w-52 h-auto object-contain object-center"
           />
         </div>
 
         <button
           type="button"
           onClick={() => setMostrarCarrinho(true)}
-          className="relative justify-self-end shrink-0 bg-white/10 hover:bg-white/15 text-white p-2 rounded-full font-bold transition flex items-center justify-center cursor-pointer min-h-11 min-w-11"
+          className="relative justify-self-end shrink-0 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition flex items-center justify-center min-h-11 min-w-11"
           aria-label="Abrir sacola"
         >
           <ShoppingBag className="w-5 h-5" />
-          {carrinho.length > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 bg-white text-[#2c3e1c] text-[10px] font-extrabold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
-              {carrinho.length}
+          {totalItensSacola > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 bg-clay-300 text-brand-950 text-[10px] font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
+              {totalItensSacola}
             </span>
           )}
         </button>
       </header>
 
-      {/* TITULO DA VITRINE + FILTROS */}
-      <section className="p-4 md:p-6 max-w-7xl mx-auto min-w-0 w-full">
-        <div className="mb-5">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#2d3a22]">Vitrine Digital</h1>
-          <p className="text-sm text-gray-600 mt-1 leading-snug max-w-xl">
-            Escolha as peças para experimentar em casa ou comprar agora.
-          </p>
+      <section className="px-4 md:px-6 max-w-7xl mx-auto min-w-0 w-full">
+        {/* HERO */}
+        <div className="relative overflow-hidden rounded-3xl mt-5 md:mt-8 bg-linear-to-br from-brand-800 via-brand-900 to-brand-950 text-white px-6 py-9 sm:px-10 sm:py-12 shadow-lg">
+          <div className="absolute -right-16 -top-20 w-72 h-72 rounded-full bg-brand-500/20 blur-2xl" />
+          <div className="absolute -left-10 -bottom-24 w-64 h-64 rounded-full bg-clay-400/15 blur-2xl" />
+          <div className="relative max-w-xl">
+            <p className="text-xs font-semibold tracking-widest uppercase text-clay-200 mb-3">Coleção Maria Morena</p>
+            <h1 className="font-display text-4xl sm:text-5xl font-medium leading-[1.05] tracking-tight">Vitrine Digital</h1>
+            <p className="text-brand-100/85 mt-4 leading-relaxed text-base sm:text-lg">
+              Escolha as peças para experimentar em casa ou comprar agora.
+            </p>
+          </div>
         </div>
 
-        <div className="relative mb-6 z-20" ref={filtroRef}>
-          <button
-            type="button"
-            onClick={() => setFiltroAberto((aberto) => !aberto)}
-            className="w-full sm:w-64 bg-white border border-[#c5cbb8] rounded-xl px-4 py-3 text-sm font-medium text-gray-800 shadow-sm flex items-center justify-between gap-2 min-h-11"
-            aria-expanded={filtroAberto}
-            aria-haspopup="listbox"
-          >
-            <span className="truncate">{rotuloCategoria}</span>
-            <ChevronDown className={`w-4 h-4 shrink-0 text-gray-500 transition-transform ${filtroAberto ? 'rotate-180' : ''}`} />
-          </button>
-          {filtroAberto && (
-            <ul
-              role="listbox"
-              className="absolute left-0 right-0 sm:right-auto sm:w-64 mt-1.5 bg-white border border-[#c5cbb8] rounded-xl shadow-lg overflow-hidden z-30 max-h-64 overflow-y-auto"
-            >
-              <li>
+        {/* CATEGORIAS */}
+        <div className="sticky top-[60px] z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-3 mt-2 bg-fundo/85 backdrop-blur-md">
+          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Categorias">
+            {['', ...categoriasVitrine].map((cat) => {
+              const ativa = categoriaFiltro === cat;
+              return (
                 <button
+                  key={cat || 'todas'}
                   type="button"
-                  className={`w-full text-left px-4 py-2.5 text-sm hover:bg-[#eef2e4] ${!categoriaFiltro ? 'font-semibold text-[#2c3e1c] bg-[#eef2e4]' : 'text-gray-700'}`}
-                  onClick={() => {
-                    setCategoriaFiltro('');
-                    setFiltroAberto(false);
-                  }}
+                  role="tab"
+                  aria-selected={ativa}
+                  onClick={() => setCategoriaFiltro(cat)}
+                  className={`shrink-0 px-4 h-10 rounded-full text-sm font-semibold border transition ${
+                    ativa
+                      ? 'bg-brand-900 text-white border-brand-900 shadow-sm'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-brand-300 hover:bg-brand-50'
+                  }`}
                 >
-                  Todas as categorias
+                  {cat || 'Todas'}
                 </button>
-              </li>
-              {categoriasVitrine.map((cat) => (
-                <li key={cat}>
-                  <button
-                    type="button"
-                    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-[#eef2e4] ${categoriaFiltro === cat ? 'font-semibold text-[#2c3e1c] bg-[#eef2e4]' : 'text-gray-700'}`}
-                    onClick={() => {
-                      setCategoriaFiltro(cat);
-                      setFiltroAberto(false);
-                    }}
-                  >
-                    {cat}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+              );
+            })}
+          </div>
         </div>
+
+        {!loading && !erro && (
+          <p className="text-sm text-gray-500 mb-4 mt-1">
+            {produtosFiltrados.length} {produtosFiltrados.length === 1 ? 'peça' : 'peças'}
+            {categoriaFiltro ? ` em ${categoriaFiltro}` : ''}
+          </p>
+        )}
 
         {/* FEEDBACKS */}
         {loading && (
-          <div className="text-center py-20">
-            <p className="text-sm font-semibold text-gray-500 animate-pulse">Buscando as peças da loja</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-4" aria-busy="true" aria-label="Buscando as peças da loja">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl overflow-hidden border border-gray-200/70 animate-pulse">
+                <div className="aspect-[3/4] bg-gray-100" />
+                <div className="p-4 space-y-2.5">
+                  <div className="h-3.5 w-3/4 rounded bg-gray-100" />
+                  <div className="h-3 w-full rounded bg-gray-100" />
+                  <div className="h-9 w-full rounded-xl bg-gray-100 mt-4" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
         {erro && (
-          <div className="bg-red-50 border border-red-300 text-red-700 p-4 rounded-xl text-center text-xs font-bold my-4">
-            {erro}
+          <div className="mm-alert-err justify-center my-4">{erro}</div>
+        )}
+
+        {!loading && !erro && produtosFiltrados.length === 0 && (
+          <div className="text-center py-20 mm-card">
+            <ShoppingBag className="w-10 h-10 mx-auto text-gray-300 mb-3" />
+            <p className="font-display text-xl text-brand-900">Nenhuma peça por aqui ainda</p>
+            <p className="text-sm text-gray-500 mt-1">Tente outra categoria ou volte em breve.</p>
           </div>
         )}
 
         {/* GRID DE PRODUTOS */}
-        {!loading && !erro && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+        {!loading && !erro && produtosFiltrados.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
             {produtosFiltrados.map((prod) => {
               const fotos = obterImagens(prod);
               const iFoto = Math.min(indiceFoto[prod.id] || 0, Math.max(fotos.length - 1, 0));
               const src = fotos[iFoto] || '';
               return (
-                <div
+                <article
                   key={prod.id}
-                  className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col border border-[#e4e6dc] min-w-0"
+                  className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition duration-300 flex flex-col border border-gray-200/70 min-w-0"
                 >
-                  <div className="relative aspect-[3/4] w-full bg-[#eceee4] overflow-hidden">
+                  <div
+                    className="relative aspect-[3/4] w-full bg-gray-100 overflow-hidden cursor-pointer"
+                    onClick={() => abrirModalProduto(prod)}
+                  >
                     {src ? (
                       <img
                         src={src}
                         alt={prod.nome}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
                         loading={iFoto === 0 && produtosFiltrados[0]?.id === prod.id ? 'eager' : 'lazy'}
                         fetchPriority={iFoto === 0 && produtosFiltrados[0]?.id === prod.id ? 'high' : 'low'}
                         decoding="async"
@@ -755,58 +745,56 @@ export default function VitrineProdutos() {
                       <>
                         <button
                           type="button"
-                          className="absolute left-1 top-1/2 -translate-y-1/2 bg-white/85 rounded-full p-1 cursor-pointer"
+                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-sm rounded-full p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition"
                           aria-label="Foto anterior"
                           onClick={(e) => {
                             e.stopPropagation();
                             setIndiceFoto((m) => ({ ...m, [prod.id]: (iFoto - 1 + fotos.length) % fotos.length }));
                           }}
                         >
-                          <ChevronLeft className="w-4 h-4 text-[#2c3e1c]" />
+                          <ChevronLeft className="w-4 h-4 text-brand-900" />
                         </button>
                         <button
                           type="button"
-                          className="absolute right-1 top-1/2 -translate-y-1/2 bg-white/85 rounded-full p-1 cursor-pointer"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-sm rounded-full p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition"
                           aria-label="Próxima foto"
                           onClick={(e) => {
                             e.stopPropagation();
                             setIndiceFoto((m) => ({ ...m, [prod.id]: (iFoto + 1) % fotos.length }));
                           }}
                         >
-                          <ChevronRight className="w-4 h-4 text-[#2c3e1c]" />
+                          <ChevronRight className="w-4 h-4 text-brand-900" />
                         </button>
-                        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
+                        <div className="absolute bottom-2.5 left-0 right-0 flex justify-center gap-1">
                           {fotos.map((_, i) => (
-                            <span key={i} className={`h-1.5 rounded-full ${i === iFoto ? 'w-3 bg-white' : 'w-1.5 bg-white/60'}`} />
+                            <span key={i} className={`h-1.5 rounded-full transition-all ${i === iFoto ? 'w-4 bg-white' : 'w-1.5 bg-white/60'}`} />
                           ))}
                         </div>
                       </>
                     )}
-                    <span className="absolute top-2 left-2 bg-[#2c3e1c]/85 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                    <span className="absolute top-2.5 left-2.5 bg-white/90 backdrop-blur text-brand-800 text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-xs">
                       {prod.categoria || 'Geral'}
                     </span>
                   </div>
 
-                  <div className="p-3 flex flex-col flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 leading-snug">{prod.nome}</h3>
+                  <div className="p-3.5 sm:p-4 flex flex-col flex-1 min-w-0">
+                    <h3 className="font-semibold text-[15px] text-gray-900 line-clamp-2 leading-snug">{prod.nome}</h3>
                     <p className="text-xs text-gray-500 line-clamp-2 mt-1 min-h-[2rem]">
                       {prod.descricao || 'Peça da coleção Maria Morena.'}
                     </p>
 
-                    <div className="mt-auto pt-3 flex flex-col gap-2">
-                      <p className="text-base font-semibold text-[#2c3e1c] tabular-nums">
-                        R$ {Number(prod.preco || 0).toFixed(2).replace('.', ',')}
-                      </p>
+                    <div className="mt-auto pt-3.5 flex flex-col gap-3">
+                      <p className="font-display text-xl font-medium text-brand-900 tabular-nums">{moeda(prod.preco)}</p>
                       <button
                         type="button"
                         onClick={() => abrirModalProduto(prod)}
-                        className="w-full bg-[#2c3e1c] hover:bg-[#3d5427] text-white text-xs font-semibold py-2.5 rounded-lg transition cursor-pointer min-h-10"
+                        className="mm-btn-primary h-10 w-full text-sm"
                       >
                         Escolher
                       </button>
                     </div>
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>
@@ -830,157 +818,170 @@ export default function VitrineProdutos() {
           (c) => obterEstoqueVariacao(estoqueMap, c, tamanho, produtoSelecionado.quantidadeEstoque) > 0
         );
 
-        return (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-xs">
-            <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl relative max-h-[92vh] overflow-y-auto">
-              <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden relative">
-                <button
-                  type="button"
-                  onClick={() => setProdutoSelecionado(null)}
-                  className="absolute top-2 right-2 z-20 w-9 h-9 rounded-full bg-white/95 text-[#2c3e1c] shadow-md hover:bg-white font-bold cursor-pointer text-lg leading-none flex items-center justify-center"
-                  aria-label="Fechar"
-                >
-                  ×
-                </button>
-                {(() => {
-                  const fotosModal = obterImagens(produtoSelecionado);
-                  const iM = Math.min(indiceFotoModal, Math.max(fotosModal.length - 1, 0));
-                  const srcM = fotosModal[iM];
-                  if (!srcM) {
-                    return <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">Sem foto</div>;
-                  }
-                  return (
-                    <>
-                      <img src={srcM} alt={produtoSelecionado.nome} className="w-full h-full object-cover" />
-                      {fotosModal.length > 1 && (
-                        <>
-                          <button type="button" className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/85 rounded-full p-1 cursor-pointer" onClick={() => setIndiceFotoModal((iM - 1 + fotosModal.length) % fotosModal.length)}>
-                            <ChevronLeft className="w-5 h-5 text-[#2c3e1c]" />
-                          </button>
-                          <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/85 rounded-full p-1 cursor-pointer" onClick={() => setIndiceFotoModal((iM + 1) % fotosModal.length)}>
-                            <ChevronRight className="w-5 h-5 text-[#2c3e1c]" />
-                          </button>
-                        </>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
+        const fotosModal = obterImagens(produtoSelecionado);
+        const iM = Math.min(indiceFotoModal, Math.max(fotosModal.length - 1, 0));
+        const srcM = fotosModal[iM];
 
-              <div>
-                <h3 className="font-bold text-base text-gray-900">{produtoSelecionado.nome}</h3>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-base font-extrabold text-[#2c3e1c]">
-                    R$ {Number(produtoSelecionado.preco || 0).toFixed(2).replace('.', ',')}
-                  </p>
-                  {saldoRestante > 0 ? (
-                    <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                      ✓ {saldoRestante} un. disponíveis
-                    </span>
-                  ) : (
-                    <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                      ✕ {estoqueDisponivel <= 0 ? 'Indisponível' : 'Já está no limite da sacola'}
-                    </span>
-                  )}
-                </div>
-                {produtoSelecionado.descricao && (
-                  <p className="text-xs text-gray-600 italic mt-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100 leading-relaxed whitespace-pre-wrap">
-                    {produtoSelecionado.descricao}
-                  </p>
+        return (
+          <div
+            className="fixed inset-0 bg-brand-950/55 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 backdrop-blur-sm animate-fadeIn"
+            onClick={() => setProdutoSelecionado(null)}
+          >
+            <div
+              className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md md:max-w-3xl shadow-2xl relative max-h-[94vh] overflow-y-auto animate-subir md:grid md:grid-cols-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setProdutoSelecionado(null)}
+                className="absolute top-3 right-3 z-20 w-10 h-10 rounded-full bg-white/95 text-brand-900 shadow-md hover:bg-white flex items-center justify-center transition"
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="aspect-square md:aspect-auto md:min-h-[32rem] bg-gray-100 overflow-hidden relative sm:rounded-none">
+                {!srcM ? (
+                  <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">Sem foto</div>
+                ) : (
+                  <>
+                    <img src={srcM} alt={produtoSelecionado.nome} className="w-full h-full object-cover" />
+                    {fotosModal.length > 1 && (
+                      <>
+                        <button type="button" aria-label="Foto anterior" className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-sm rounded-full p-2 transition" onClick={() => setIndiceFotoModal((iM - 1 + fotosModal.length) % fotosModal.length)}>
+                          <ChevronLeft className="w-5 h-5 text-brand-900" />
+                        </button>
+                        <button type="button" aria-label="Próxima foto" className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-sm rounded-full p-2 transition" onClick={() => setIndiceFotoModal((iM + 1) % fotosModal.length)}>
+                          <ChevronRight className="w-5 h-5 text-brand-900" />
+                        </button>
+                        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                          {fotosModal.map((_, i) => (
+                            <span key={i} className={`h-1.5 rounded-full transition-all ${i === iM ? 'w-5 bg-white' : 'w-1.5 bg-white/60'}`} />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
                 )}
               </div>
 
-              <div className="space-y-3 text-xs">
+              <div className="p-5 sm:p-7 space-y-5">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Tamanho:</label>
-                  <div className="flex flex-wrap gap-2">
-                    {(tamanhosEmEstoque.length > 0 ? tamanhosEmEstoque : tamanhosDisponiveis).map((tam) => (
-                      <button
-                        key={tam}
-                        type="button"
-                        onClick={() => {
-                          setTamanho(tam);
-                          setQuantidade(1);
-                          if (obterEstoqueVariacao(estoqueMap, cor, tam, produtoSelecionado.quantidadeEstoque) === 0) {
-                            const cAlt = coresDisponiveis.find((c) => obterEstoqueVariacao(estoqueMap, c, tam, produtoSelecionado.quantidadeEstoque) > 0);
-                            if (cAlt) setCor(cAlt);
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-lg border font-bold text-xs transition-all cursor-pointer ${tamanho === tam
-                            ? 'bg-[#2c3e1c] text-white border-[#2c3e1c]'
-                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                          }`}
-                      >
-                        {tam}
-                      </button>
-                    ))}
+                  <p className="text-xs font-semibold tracking-wide text-clay-600 mb-1">{produtoSelecionado.categoria || 'Geral'}</p>
+                  <h3 className="font-display text-2xl font-medium text-brand-900 leading-tight pr-8">{produtoSelecionado.nome}</h3>
+                  <div className="flex items-center justify-between gap-3 mt-2">
+                    <p className="font-display text-2xl font-medium text-brand-900 tabular-nums">{moeda(produtoSelecionado.preco)}</p>
+                    {saldoRestante > 0 ? (
+                      <span className="mm-badge bg-emerald-50 text-emerald-700 border-emerald-200">
+                        <Check className="w-3 h-3" /> {saldoRestante} {saldoRestante === 1 ? 'disponível' : 'disponíveis'}
+                      </span>
+                    ) : (
+                      <span className="mm-badge bg-rose-50 text-rose-700 border-rose-200">
+                        {estoqueDisponivel <= 0 ? 'Indisponível' : 'Limite da sacola'}
+                      </span>
+                    )}
                   </div>
+                  {produtoSelecionado.descricao && (
+                    <p className="text-sm text-gray-600 mt-3 leading-relaxed whitespace-pre-wrap">
+                      {produtoSelecionado.descricao}
+                    </p>
+                  )}
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Cor:</label>
-                  <div className="flex flex-wrap gap-2">
-                    {(coresEmEstoque.length > 0 ? coresEmEstoque : coresDisponiveis).map((c) => {
-                      const st = obterEstoqueVariacao(estoqueMap, c, tamanho, produtoSelecionado.quantidadeEstoque);
-                      return (
+                <div className="space-y-4">
+                  <div>
+                    <span className="mm-label">Tamanho</span>
+                    <div className="flex flex-wrap gap-2">
+                      {(tamanhosEmEstoque.length > 0 ? tamanhosEmEstoque : tamanhosDisponiveis).map((tam) => (
                         <button
-                          key={c}
+                          key={tam}
                           type="button"
-                          disabled={st === 0}
                           onClick={() => {
-                            setCor(c);
+                            setTamanho(tam);
                             setQuantidade(1);
+                            if (obterEstoqueVariacao(estoqueMap, cor, tam, produtoSelecionado.quantidadeEstoque) === 0) {
+                              const cAlt = coresDisponiveis.find((c) => obterEstoqueVariacao(estoqueMap, c, tam, produtoSelecionado.quantidadeEstoque) > 0);
+                              if (cAlt) setCor(cAlt);
+                            }
                           }}
-                          className={`px-3 py-1.5 rounded-lg border font-bold text-xs transition-all cursor-pointer ${cor === c
-                              ? 'bg-[#2c3e1c] text-white border-[#2c3e1c]'
-                              : st === 0
-                                ? 'bg-gray-100 text-gray-400 border-gray-200 opacity-60 cursor-not-allowed'
-                                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                            }`}
+                          className={`min-w-11 h-11 px-3.5 rounded-xl border font-semibold text-sm transition-all ${
+                            tamanho === tam
+                              ? 'bg-brand-900 text-white border-brand-900 shadow-sm'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-brand-400'
+                          }`}
                         >
-                          {c} {st === 0 ? '(Esgotado)' : ''}
+                          {tam}
                         </button>
-                      );
-                    })}
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="mm-label">Cor</span>
+                    <div className="flex flex-wrap gap-2">
+                      {(coresEmEstoque.length > 0 ? coresEmEstoque : coresDisponiveis).map((c) => {
+                        const st = obterEstoqueVariacao(estoqueMap, c, tamanho, produtoSelecionado.quantidadeEstoque);
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            disabled={st === 0}
+                            onClick={() => {
+                              setCor(c);
+                              setQuantidade(1);
+                            }}
+                            className={`h-11 px-4 rounded-xl border font-semibold text-sm transition-all ${
+                              cor === c
+                                ? 'bg-brand-900 text-white border-brand-900 shadow-sm'
+                                : st === 0
+                                  ? 'bg-gray-100 text-gray-400 border-gray-200 opacity-60 cursor-not-allowed'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:border-brand-400'
+                            }`}
+                          >
+                            {c} {st === 0 ? '(Esgotado)' : ''}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="mm-label">Quantidade</span>
+                    <div className="inline-flex items-center rounded-xl border border-gray-300 bg-white">
+                      <button
+                        type="button"
+                        aria-label="Diminuir quantidade"
+                        disabled={saldoRestante <= 0 || quantidade <= 1}
+                        onClick={() => setQuantidade((q) => Math.max(1, q - 1))}
+                        className="w-11 h-11 text-brand-900 flex items-center justify-center disabled:opacity-35 disabled:cursor-not-allowed hover:bg-gray-50 rounded-l-xl transition"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="w-12 text-center text-sm font-semibold tabular-nums">{quantidade}</span>
+                      <button
+                        type="button"
+                        aria-label="Aumentar quantidade"
+                        disabled={saldoRestante <= 0 || quantidade >= saldoRestante}
+                        onClick={() => setQuantidade((q) => Math.min(saldoRestante, q + 1))}
+                        className="w-11 h-11 text-brand-900 flex items-center justify-center disabled:opacity-35 disabled:cursor-not-allowed hover:bg-gray-50 rounded-r-xl transition"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Quantidade:</label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      aria-label="Diminuir quantidade"
-                      disabled={saldoRestante <= 0 || quantidade <= 1}
-                      onClick={() => setQuantidade((q) => Math.max(1, q - 1))}
-                      className="w-10 h-10 rounded-lg border border-gray-200 bg-white text-[#2c3e1c] font-bold flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-gray-50"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="w-12 text-center text-sm font-bold tabular-nums">{quantidade}</span>
-                    <button
-                      type="button"
-                      aria-label="Aumentar quantidade"
-                      disabled={saldoRestante <= 0 || quantidade >= saldoRestante}
-                      onClick={() => setQuantidade((q) => Math.min(saldoRestante, q + 1))}
-                      className="w-10 h-10 rounded-lg border border-gray-200 bg-white text-[#2c3e1c] font-bold flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-gray-50"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={adicionarAoCarrinho}
+                  disabled={saldoRestante <= 0}
+                  className="mm-btn-primary w-full h-12 text-base"
+                >
+                  {saldoRestante <= 0
+                    ? (estoqueDisponivel <= 0 ? 'Indisponível' : 'Já está no limite da sacola')
+                    : 'Adicionar à sacola'}
+                </button>
               </div>
-
-              <button
-                type="button"
-                onClick={adicionarAoCarrinho}
-                disabled={saldoRestante <= 0}
-                className="w-full bg-[#2c3e1c] hover:bg-[#3d5427] disabled:bg-gray-300 text-white py-2.5 rounded-xl font-bold uppercase text-xs transition shadow cursor-pointer disabled:cursor-not-allowed"
-              >
-                {saldoRestante <= 0
-                  ? (estoqueDisponivel <= 0 ? 'Indisponível' : 'Já está no limite da sacola')
-                  : 'Adicionar à Sacola de Interesse'}
-              </button>
             </div>
           </div>
         );
@@ -988,51 +989,61 @@ export default function VitrineProdutos() {
 
       {/* DRAWER DA SACOLA */}
       {mostrarCarrinho && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-stretch sm:justify-end">
+        <div className="fixed inset-0 bg-brand-950/55 backdrop-blur-sm z-50 flex items-end sm:items-stretch sm:justify-end animate-fadeIn">
           <button
             type="button"
-            className="absolute inset-0 cursor-pointer"
+            className="absolute inset-0 cursor-default"
             aria-label="Fechar sacola"
             onClick={() => setMostrarCarrinho(false)}
           />
-          <div className="relative z-10 bg-white w-full sm:max-w-sm sm:h-full max-h-[72vh] sm:max-h-none rounded-t-2xl sm:rounded-none p-5 sm:p-6 flex flex-col shadow-2xl overflow-y-auto">
-            <div>
-              <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
-                <h2 className="text-base font-semibold text-[#2c3e1c]">Sacola</h2>
-                <button
-                  type="button"
-                  onClick={() => setMostrarCarrinho(false)}
-                  className="text-gray-400 hover:text-black font-bold cursor-pointer text-base min-w-8 min-h-8"
-                >
-                  ✕
-                </button>
+          <div className="relative z-10 bg-white w-full sm:max-w-md sm:h-full max-h-[88vh] sm:max-h-none rounded-t-3xl sm:rounded-none sm:rounded-l-3xl flex flex-col shadow-2xl animate-subir">
+            <div className="flex justify-between items-center px-5 sm:px-6 pt-5 pb-4 border-b border-gray-100">
+              <div>
+                <h2 className="font-display text-2xl font-medium text-brand-900">Sua sacola</h2>
+                {carrinho.length > 0 && (
+                  <p className="text-xs text-gray-500">{totalItensSacola} {totalItensSacola === 1 ? 'peça' : 'peças'}</p>
+                )}
               </div>
+              <button
+                type="button"
+                onClick={() => setMostrarCarrinho(false)}
+                className="w-10 h-10 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 flex items-center justify-center transition"
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
+            <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4">
               {carrinho.length === 0 ? (
-                <p className="text-gray-500 text-sm text-center py-6">Nenhum item adicionado ainda.</p>
+                <div className="text-center py-14">
+                  <ShoppingBag className="w-10 h-10 mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-500 text-sm">Nenhuma peça adicionada ainda.</p>
+                </div>
               ) : (
-                <div className="space-y-3 max-h-[42vh] overflow-y-auto pr-1">
+                <div className="space-y-3">
                   {carrinho.map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex justify-between items-center bg-[#f7f7f5] p-3 rounded-xl border border-gray-100"
-                    >
-                      <div className="flex-1 pr-2">
-                        <h4 className="font-bold text-xs text-gray-800">{item.nome}</h4>
-                        <p className="text-[11px] text-gray-500">
-                          Tam: {item.tamanhoEscolhido} | Cor: {item.corEscolhida} ({item.quantidade}x)
+                    <div key={index} className="flex gap-3 bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                      <div className="w-16 h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                        {item.imagemUrl ? (
+                          <img src={item.imagemUrl} alt={item.nome} className="w-full h-full object-cover" />
+                        ) : null}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm text-gray-900 truncate">{item.nome}</h4>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Tam. {item.tamanhoEscolhido} · {item.corEscolhida} · {item.quantidade}x
                         </p>
-                        <p className="text-xs font-extrabold text-[#2c3e1c] mt-0.5">
-                          R$ {(item.preco * item.quantidade).toFixed(2).replace('.', ',')}
-                        </p>
+                        <p className="text-sm font-semibold text-brand-900 mt-1.5 tabular-nums">{moeda(item.preco * item.quantidade)}</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => removerDoCarrinho(index)}
-                        className="text-red-500 hover:text-red-700 font-bold text-sm cursor-pointer p-1"
+                        className="self-start text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition"
                         title="Remover peça"
+                        aria-label="Remover peça"
                       >
-                        ✕
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
@@ -1040,13 +1051,13 @@ export default function VitrineProdutos() {
               )}
 
               {carrinho.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
-                  <h3 className="text-xs font-bold text-gray-700 uppercase">Seus Dados para Contato:</h3>
+                <div className="mt-6 space-y-4">
+                  <h3 className="text-sm font-semibold text-brand-900">Seus dados para contato</h3>
                   {erroContatoLoja && (
-                    <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">{erroContatoLoja}</p>
+                    <p className="mm-alert-warn text-xs">{erroContatoLoja}</p>
                   )}
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Seu WhatsApp *</label>
+                    <label className="mm-label">Seu WhatsApp *</label>
                     <input
                       type="tel"
                       inputMode="numeric"
@@ -1055,12 +1066,12 @@ export default function VitrineProdutos() {
                       value={telefoneCliente}
                       onChange={(e) => setTelefoneCliente(formatarTelefoneInput(e.target.value))}
                       placeholder="Ex: (43) 99999-9999"
-                      className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none focus:border-[#2c3e1c]"
+                      className="mm-input"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Seu Nome *</label>
+                    <label className="mm-label">Seu nome *</label>
                     <input
                       type="text"
                       autoComplete="name"
@@ -1068,18 +1079,18 @@ export default function VitrineProdutos() {
                       value={nomeCliente}
                       onChange={(e) => setNomeCliente(formatarNomePessoa(e.target.value))}
                       placeholder="Ex: Maria da Silva"
-                      className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none focus:border-[#2c3e1c]"
+                      className="mm-input"
                     />
                     {nomeCliente.trim().length >= 2 && telefoneCliente.replace(/\D/g, '').length >= 10 && (
-                      <p className="text-[10px] text-gray-500 mt-1">Pedido será enviado neste WhatsApp.</p>
+                      <p className="text-xs text-gray-500 mt-1.5">Pedido será enviado neste WhatsApp.</p>
                     )}
                   </div>
-                  <label className="flex items-start gap-2 text-[11px] text-gray-700 cursor-pointer">
+                  <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer bg-brand-50 border border-brand-100 rounded-xl p-3.5">
                     <input
                       type="checkbox"
                       checked={compraDireta}
                       onChange={(e) => setCompraDireta(e.target.checked)}
-                      className="mt-0.5"
+                      className="mt-0.5 w-4 h-4"
                     />
                     <span>Quero comprar agora, sem prova em casa (venda à vista).</span>
                   </label>
@@ -1088,23 +1099,23 @@ export default function VitrineProdutos() {
             </div>
 
             {carrinho.length > 0 && (
-              <div className="border-t pt-4 mt-4">
-                <div className="flex justify-between items-center text-sm font-bold mb-3">
-                  <span>Subtotal Estimado:</span>
-                  <span className="text-[#2c3e1c]">R$ {totalCarrinho.toFixed(2).replace('.', ',')}</span>
+              <div className="border-t border-gray-100 px-5 sm:px-6 pt-4 pb-5 bg-white">
+                <div className="flex justify-between items-baseline mb-4">
+                  <span className="text-sm text-gray-600">Subtotal estimado</span>
+                  <span className="font-display text-2xl font-medium text-brand-900 tabular-nums">{moeda(totalCarrinho)}</span>
                 </div>
                 {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? (
                   <div className="mb-3">
                     {captchaCarregando && !captchaErro && (
-                      <p className="text-[10px] text-gray-500 text-center mb-2">Validando…</p>
+                      <p className="text-xs text-gray-500 text-center mb-2">Validando…</p>
                     )}
                     {captchaErro && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-2 text-center">
-                        <p className="text-[11px] text-amber-900">{captchaErro}</p>
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-2 text-center">
+                        <p className="text-xs text-amber-900">{captchaErro}</p>
                         <button
                           type="button"
                           onClick={reiniciarCaptcha}
-                          className="mt-1 text-[10px] font-bold uppercase text-[#2c3e1c] underline cursor-pointer"
+                          className="mt-1 text-xs font-semibold text-brand-900 underline"
                         >
                           Tentar de novo
                         </button>
@@ -1116,12 +1127,12 @@ export default function VitrineProdutos() {
                         type="button"
                         onClick={executarCaptcha}
                         disabled={captchaCarregando}
-                        className="mt-2 w-full border border-[#2c3e1c] text-[#2c3e1c] py-2 rounded-lg text-[10px] font-bold uppercase cursor-pointer disabled:opacity-50"
+                        className="mm-btn-secondary mm-btn-sm mt-2 w-full"
                       >
                         Confirmar que não sou um robô
                       </button>
                     ) : (
-                      <p className="mt-2 text-[10px] text-emerald-800 text-center font-semibold">Verificação ok. Pode finalizar.</p>
+                      <p className="mt-2 text-xs text-emerald-700 text-center font-semibold">Verificação ok. Pode finalizar.</p>
                     )}
                   </div>
                 ) : null}
@@ -1129,12 +1140,12 @@ export default function VitrineProdutos() {
                   type="button"
                   onClick={finalizarPedido}
                   disabled={finalizando}
-                  className="w-full bg-[#2c3e1c] hover:bg-[#3d5427] disabled:bg-gray-400 text-white py-3 rounded-xl text-xs font-bold uppercase transition shadow-md cursor-pointer flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                  className="mm-btn-primary w-full h-12 text-base"
                 >
                   <MessageSquare className="w-4 h-4" />
                   {finalizando
                     ? 'Enviando pedido…'
-                    : (compraDireta ? 'CONFIRMAR COMPRA DIRETA' : 'SOLICITAR SACOLA CONDICIONAL')}
+                    : (compraDireta ? 'Confirmar compra direta' : 'Solicitar sacola condicional')}
                 </button>
               </div>
             )}
@@ -1142,22 +1153,22 @@ export default function VitrineProdutos() {
         </div>
       )}
 
-      {/* FAB sacola — visível no celular, não cobre o último card */}
+      {/* FAB sacola: visível no celular, não cobre o último card */}
       <button
         type="button"
         onClick={() => setMostrarCarrinho(true)}
-        className="sm:hidden fixed bottom-5 right-4 z-30 bg-[#2c3e1c] text-white rounded-full shadow-lg p-3.5 min-h-12 min-w-12 flex items-center justify-center"
+        className="sm:hidden fixed bottom-5 right-4 z-30 bg-brand-900 text-white rounded-full shadow-xl p-3.5 min-h-14 min-w-14 flex items-center justify-center active:scale-95 transition"
         aria-label="Abrir sacola"
       >
         <ShoppingBag className="w-5 h-5" />
-        {carrinho.length > 0 && (
-          <span className="absolute -top-1 -right-1 bg-white text-[#2c3e1c] text-[10px] font-extrabold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
-            {carrinho.length}
+        {totalItensSacola > 0 && (
+          <span className="absolute -top-1 -right-1 bg-clay-300 text-brand-950 text-[10px] font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
+            {totalItensSacola}
           </span>
         )}
       </button>
 
-      {/* Modal Customizado do Sistema */}
+      {/* Modal customizado do sistema */}
       <SystemModal
         isOpen={modalSistema.isOpen}
         title={modalSistema.title}

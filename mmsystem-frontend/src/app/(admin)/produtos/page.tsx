@@ -518,24 +518,25 @@ const TelaProdutos: React.FC = () => {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="p-4 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">
-            {editandoId ? 'Editando Produto' : 'Produtos'}
-          </h1>
+    <div className="mm-page">
+      <div className="mm-page-inner">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="mm-title">{editandoId ? 'Editando produto' : 'Produtos'}</h1>
+            <p className="mm-subtitle">Catálogo, grade de estoque e fotos da vitrine.</p>
+          </div>
           <button
             type="button"
             onClick={() => setGuiaAtivo(true)}
-            className="text-[11px] font-bold uppercase text-[#2c3e1c] underline cursor-pointer self-start md:self-auto"
+            className="mm-btn-secondary mm-btn-sm self-start md:self-auto"
           >
             Como cadastrar?
           </button>
         </div>
 
         {errosValidacao.length > 0 && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-600 p-4 text-red-900 rounded-lg shadow-sm">
-            <p className="font-bold text-xs uppercase tracking-wide mb-1">Inconsistências encontradas:</p>
+          <div className="mm-alert-err flex-col items-start gap-1">
+            <p className="font-semibold text-xs tracking-wide mb-1">Inconsistências encontradas:</p>
             <ul className="list-disc list-inside text-xs space-y-0.5">
               {errosValidacao.map((err, i) => <li key={i}>{err}</li>)}
             </ul>
@@ -543,7 +544,7 @@ const TelaProdutos: React.FC = () => {
         )}
 
         {mensagemSucesso && (
-          <div className="mb-6 bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2">
+          <div className="mm-alert-ok">
             <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
             <span>{mensagemSucesso}</span>
           </div>
@@ -553,9 +554,9 @@ const TelaProdutos: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
 
           {/* INFORMAÇÕES BÁSICAS */}
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#e4e6dc]">
+          <div className="mm-card p-5 md:p-6">
             <div data-guia="nome">
-            <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mb-2 text-gray-500">
+            <label className="mm-label flex items-center gap-1.5">
               Nome do produto (máx. 80)
               <CampoAjuda texto="Como a cliente vê o card. Objetivo, sem emoji. O limite evita título cortado na vitrine." />
             </label>
@@ -563,27 +564,27 @@ const TelaProdutos: React.FC = () => {
               maxLength={80}
               value={produto.nome}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setProduto({ ...produto, nome: e.target.value })}
-              className="w-full border border-gray-200 p-2.5 bg-gray-50 outline-none focus:border-[#2c3e1c] rounded-lg text-xs h-10 font-sans"
+              className="mm-input"
             />
             </div>
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-end" data-guia="categoria">
               <div>
-                <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mb-2 text-gray-500">
+                <label className="mm-label flex items-center gap-1.5">
                   Categoria
                   <CampoAjuda texto="Agrupa na vitrine (Vestidos, Saias…). Uma categoria por tipo de peça." />
                 </label>
                 <select
                   value={produto.categoria}
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => setProduto({ ...produto, categoria: e.target.value })}
-                  className="w-full border border-gray-200 p-2.5 bg-gray-50 outline-none focus:border-[#2c3e1c] rounded-lg text-xs h-10 font-sans"
+                  className="mm-input"
                 >
                   <option value="">Selecione...</option>
                   {categorias.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
               <div>
-                <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mb-2 text-gray-500">Nova categoria</label>
+                <label className="mm-label flex items-center gap-1.5">Nova categoria</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -592,15 +593,15 @@ const TelaProdutos: React.FC = () => {
                     value={novaCategoriaTexto}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setNovaCategoriaTexto(e.target.value)}
                     onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && adicionarCategoriaCustomizada()}
-                    className="w-full text-xs border border-gray-200 p-2.5 outline-none bg-gray-50 focus:border-[#2c3e1c] rounded-lg h-10 font-sans"
+                    className="mm-input"
                   />
-                  <button type="button" onClick={adicionarCategoriaCustomizada} className="bg-[#2c3e1c] text-white text-xs w-10 font-bold hover:bg-[#3d5427] rounded-lg cursor-pointer h-10 shrink-0">+</button>
+                  <button type="button" onClick={adicionarCategoriaCustomizada} className="bg-brand-900 text-white text-xs w-10 font-semibold hover:bg-brand-800 rounded-xl cursor-pointer h-10 shrink-0">+</button>
                 </div>
               </div>
             </div>
 
             <div data-guia="descricao">
-            <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mt-4 mb-2 text-gray-500">
+            <label className="flex items-center gap-1.5 text-[11px] font-semibold mt-4 mb-2 text-gray-500">
               Descrição curta ({produto.descricao.length}/500)
               <CampoAjuda texto="Tecido, caimento e detalhes. Texto menor no card da vitrine." />
             </label>
@@ -608,25 +609,25 @@ const TelaProdutos: React.FC = () => {
               maxLength={500}
               value={produto.descricao}
               onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setProduto({ ...produto, descricao: e.target.value })}
-              className="w-full border border-gray-200 p-2.5 h-28 bg-gray-50 outline-none resize-none focus:border-[#2c3e1c] rounded-lg text-xs font-sans"
+              className="mm-input resize-none h-28"
             />
             </div>
           </div>
 
           {/* FOTOS */}
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#e4e6dc]" data-guia="imagens">
+          <div className="mm-card p-5 md:p-6" data-guia="imagens">
             <div className="flex justify-between items-center mb-4">
-              <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase text-gray-500">
+              <label className="mm-label flex items-center gap-1.5">
                 Imagens do produto (mín. 1, máx. 4)
                 <CampoAjuda texto="Foto nítida, fundo limpo. É o que a cliente vê. Com mais de uma foto, ela passa para o lado na vitrine." />
               </label>
-              <span className="text-[10px] text-gray-400 font-sans">{produto.fotos.length}/4 carregadas</span>
+              <span className="text-[11px] text-gray-400 font-sans">{produto.fotos.length}/4 carregadas</span>
             </div>
             <div className="flex flex-wrap gap-3">
               {produto.fotos.length < 4 && (
                 <label className="w-24 h-24 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 rounded-xl transition shrink-0">
                   <Camera className="w-5 h-5 text-gray-400 mb-1" />
-                  <span className="text-[8px] font-bold uppercase text-gray-500">Adicionar</span>
+                  <span className="text-[8px] font-semibold text-gray-500">Adicionar</span>
                   <input type="file" accept="image/*" multiple onChange={handleFotos} className="hidden" />
                 </label>
               )}
@@ -636,7 +637,7 @@ const TelaProdutos: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => removerFoto(i)}
-                    className="absolute inset-0 bg-black/70 text-white font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[10px] uppercase cursor-pointer"
+                    className="absolute inset-0 bg-black/70 text-white font-semibold opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[11px] cursor-pointer"
                   >
                     Remover
                   </button>
@@ -648,9 +649,9 @@ const TelaProdutos: React.FC = () => {
 
         <div className="space-y-6">
           {/* PREÇO E ESTOQUE */}
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#e4e6dc] grid grid-cols-2 gap-4 items-end">
+          <div className="mm-card p-5 md:p-6 grid grid-cols-2 gap-4 items-end">
             <div data-guia="preco">
-              <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mb-2 text-gray-500">
+              <label className="mm-label flex items-center gap-1.5">
                 Preço (R$)
                 <CampoAjuda texto="Valor da peça na vitrine e na venda." />
               </label>
@@ -659,23 +660,23 @@ const TelaProdutos: React.FC = () => {
                 value={produto.preco}
                 onChange={handlePrecoInput}
                 placeholder="0.00"
-                className="w-full border border-gray-200 p-2.5 bg-gray-50 outline-none focus:border-[#2c3e1c] rounded-lg text-xs h-10 font-sans"
+                className="mm-input"
               />
             </div>
             <div onClick={abrirGestaoEstoque} className="cursor-pointer group" data-guia="estoque">
-              <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mb-2 text-gray-500 group-hover:text-[#2c3e1c]">
+              <label className="flex items-center gap-1.5 text-[11px] font-semibold mb-2 text-gray-500 group-hover:text-brand-900">
                 Grade estoque
                 <CampoAjuda texto="Quantidade por cor e tamanho. Zero nessa combinação = esgotado." />
               </label>
-              <div className="w-full border border-gray-200 h-10 flex items-center justify-center bg-gray-50 font-semibold text-xs text-[#2c3e1c] rounded-lg group-hover:bg-[#2c3e1c] group-hover:text-white transition">
+              <div className="w-full border border-gray-200 h-10 flex items-center justify-center bg-gray-50 font-semibold text-xs text-brand-900 rounded-xl group-hover:bg-brand-900 group-hover:text-white transition">
                 {Object.values(produto.estoqueDetalhado).reduce((a, b) => a + b, 0)} un
               </div>
             </div>
           </div>
 
           {/* TAMANHOS */}
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#e4e6dc]" data-guia="variacoes">
-            <label className="flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase mb-3 text-gray-500">
+          <div className="mm-card p-5 md:p-6" data-guia="variacoes">
+            <label className="flex items-center justify-center gap-1.5 text-[11px] font-semibold mb-3 text-gray-500">
               Tamanhos disponíveis
               <CampoAjuda texto="Variações da peça. Marque os tamanhos que realmente existem neste modelo." />
             </label>
@@ -689,7 +690,7 @@ const TelaProdutos: React.FC = () => {
                       : [...produto.tamanhosSelecionados, t];
                     setProduto({ ...produto, tamanhosSelecionados: novos });
                   }}
-                  className={`w-9 h-9 text-[10px] font-bold border rounded-lg transition-all cursor-pointer ${produto.tamanhosSelecionados.includes(t) ? 'bg-[#2c3e1c] text-white border-[#2c3e1c]' : 'bg-white text-gray-400 border-gray-200 hover:border-gray-400'}`}
+                  className={`w-9 h-9 text-[11px] font-semibold border rounded-xl transition-all cursor-pointer ${produto.tamanhosSelecionados.includes(t) ? 'bg-brand-900 text-white border-brand-900' : 'bg-white text-gray-400 border-gray-200 hover:border-gray-400'}`}
                 >
                   {t}
                 </button>
@@ -703,15 +704,15 @@ const TelaProdutos: React.FC = () => {
                 value={novoTamanhoTexto}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNovoTamanhoTexto(e.target.value)}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && adicionarTamanhoCustomizado()}
-                className="flex-1 text-xs border border-gray-200 p-2.5 outline-none bg-gray-50 focus:border-[#2c3e1c] rounded-lg h-10 font-sans"
+                className="mm-input flex-1"
               />
-              <button type="button" onClick={adicionarTamanhoCustomizado} className="bg-[#2c3e1c] text-white text-xs w-10 h-10 font-bold hover:bg-[#3d5427] rounded-lg cursor-pointer shrink-0">+</button>
+              <button type="button" onClick={adicionarTamanhoCustomizado} className="mm-btn-primary w-11 px-0 shrink-0">+</button>
             </div>
           </div>
 
           {/* CORES */}
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#e4e6dc]">
-            <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase mb-3 text-gray-500">
+          <div className="mm-card p-5 md:p-6">
+            <label className="mm-label flex items-center gap-1.5">
               Cores disponíveis
               <CampoAjuda texto="Variações de cor desta peça. Combinam com os tamanhos na grade de estoque." />
             </label>
@@ -720,7 +721,7 @@ const TelaProdutos: React.FC = () => {
                 <label key={c.nome} className="flex items-center gap-2 cursor-pointer select-none min-w-0">
                   <input
                     type="checkbox"
-                    className="w-3.5 h-3.5 accent-[#2c3e1c] shrink-0"
+                    className="w-3.5 h-3.5 accent-brand-900 shrink-0"
                     checked={produto.coresSelecionadas.includes(c.nome)}
                     onChange={() => {
                       const novos = produto.coresSelecionadas.includes(c.nome)
@@ -742,24 +743,24 @@ const TelaProdutos: React.FC = () => {
                 value={novaCorNome}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNovaCorNome(e.target.value)}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && adicionarCorCustomizada()}
-                className="flex-1 text-xs border border-gray-200 p-2.5 outline-none bg-gray-50 focus:border-[#2c3e1c] rounded-lg h-10 font-sans"
+                className="mm-input flex-1"
               />
               <input
                 type="color"
                 value={novaCorHex}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNovaCorHex(e.target.value)}
-                className="w-10 h-10 cursor-pointer border border-gray-200 p-0.5 rounded-lg shrink-0"
+                className="w-11 h-11 cursor-pointer border border-gray-300 bg-white p-1 rounded-xl shrink-0"
               />
-              <button type="button" onClick={adicionarCorCustomizada} className="bg-[#2c3e1c] text-white text-xs w-10 h-10 font-bold hover:bg-[#3d5427] rounded-lg cursor-pointer shrink-0">+</button>
+              <button type="button" onClick={adicionarCorCustomizada} className="mm-btn-primary w-11 px-0 shrink-0">+</button>
             </div>
           </div>
         </div>
       </div>
 
       {/* BOTÕES DE AÇÃO */}
-      <div className="flex justify-end gap-4 mb-8">
-        <button onClick={resetarForm} className="px-10 py-2.5 bg-black text-white text-[11px] font-bold uppercase rounded-lg hover:opacity-80 transition cursor-pointer">Cancelar</button>
-        <button onClick={salvarProduto} className="px-12 py-2.5 bg-[#4a5d33] text-white text-[11px] font-bold uppercase rounded-lg shadow-md hover:brightness-110 transition cursor-pointer">
+      <div className="flex justify-end gap-3 mb-8">
+        <button onClick={resetarForm} className="mm-btn-secondary px-8">Cancelar</button>
+        <button onClick={salvarProduto} className="mm-btn-primary px-10">
           {editandoId ? 'Atualizar Produto' : 'Salvar Produto'}
         </button>
       </div>
@@ -780,15 +781,15 @@ const TelaProdutos: React.FC = () => {
       </div>
 
       {/* TABELA PRINCIPAL LIMPA */}
-      <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden border-t-4 border-[#4a5d33]">
-        <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
+      <section ref={tabelaRef} className="mm-card overflow-hidden">
+        <div className="px-5 py-4 bg-white border-b border-gray-200 flex justify-between items-center gap-3">
           <div>
-            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-widest flex items-center gap-1.5">
-              <Trash2 className="w-4 h-4 text-gray-500" />
-              {visualizandoExcluidos ? "Histórico de Produtos Removidos" : "Produtos Cadastrados"}
+            <h3 className="text-base font-semibold text-brand-900 flex items-center gap-2">
+              {visualizandoExcluidos ? <Trash2 className="w-4 h-4 text-gray-500" /> : <Package className="w-4 h-4 text-brand-700" />}
+              {visualizandoExcluidos ? "Histórico de produtos removidos" : "Produtos cadastrados"}
             </h3>
             {!visualizandoExcluidos && totalElementos > 0 && (
-              <span className="text-[10px] text-gray-500 font-semibold">
+              <span className="text-xs text-gray-500">
                 Total: {totalElementos} itens (Pág. {paginaAtual + 1} de {totalPaginas})
               </span>
             )}
@@ -799,10 +800,10 @@ const TelaProdutos: React.FC = () => {
               if (!visualizandoExcluidos) buscarExcluidos();
               setVisualizandoExcluidos(!visualizandoExcluidos);
             }}
-            className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded-lg transition tracking-wider border cursor-pointer ${
-              visualizandoExcluidos 
-                ? 'bg-gray-600 hover:bg-gray-700 text-white border-gray-600' 
-                : 'bg-[#4a5d33] hover:bg-[#3b4b28] text-white border-[#4a5d33]'
+            className={`px-4 h-9 text-sm font-semibold rounded-full transition border cursor-pointer ${
+              visualizandoExcluidos
+                ? 'bg-brand-900 hover:bg-brand-800 text-white border-brand-900'
+                : 'bg-white hover:bg-brand-50 text-gray-700 border-gray-200'
             }`}
           >
             {visualizandoExcluidos ? "Voltar aos Ativos" : "Ver Removidos"}
@@ -811,7 +812,7 @@ const TelaProdutos: React.FC = () => {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-[#cbd0c0] text-[10px] font-bold uppercase text-gray-700 border-b border-gray-300">
+            <thead className="bg-gray-300 text-[11px] font-semibold text-gray-700 border-b border-gray-300">
               <tr>
                 <th className="p-3">Foto</th>
                 <th className="p-3">Produto</th>
@@ -850,31 +851,31 @@ const TelaProdutos: React.FC = () => {
                           try {
                             const f = typeof p.fotos === 'string' ? JSON.parse(p.fotos) : p.fotos;
                             const srcFoto = Array.isArray(f) ? f[0] : f;
-                            return <img src={srcFoto} className="w-10 h-10 object-cover rounded-lg border" alt="prod" />;
+                            return <img src={srcFoto} className="w-10 h-10 object-cover rounded-xl border" alt="prod" />;
                           } catch {
                             return (
-                              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                              <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400">
                                 <Package className="w-5 h-5" />
                               </div>
                             );
                           }
                         })()}
                       </td>
-                      <td className="p-3 font-bold text-gray-800">{p.nome}</td>
+                      <td className="p-3 font-semibold text-gray-800">{p.nome}</td>
                       <td className="p-3 text-gray-600 font-medium">
                         R$ {Number(p.preco || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="p-3 font-bold text-[#4a5d33]">{totalCalculado} un</td>
+                      <td className="p-3 font-semibold text-brand-700">{totalCalculado} un</td>
                       <td className="p-3 text-center">
                         {visualizandoExcluidos ? (
                           <div className="flex items-center justify-center gap-2">
-                            <span className="text-[10px] bg-red-50 text-red-600 px-2 py-1 font-bold uppercase rounded-md border border-red-200">
+                            <span className="text-[11px] bg-red-50 text-red-600 px-2 py-1 font-semibold rounded-md border border-red-200">
                               Inativo / Removido
                             </span>
                             {p.id && (
                               <button
                                 onClick={() => restaurarProduto(p.id!)}
-                                className="p-1 hover:scale-110 transition cursor-pointer text-[#4a5d33] hover:text-[#2d3a22]"
+                                className="p-1 hover:scale-110 transition cursor-pointer text-brand-700 hover:text-brand-900"
                                 title="Restaurar Produto"
                               >
                                 <RotateCcw className="w-4 h-4" />
@@ -885,24 +886,24 @@ const TelaProdutos: React.FC = () => {
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => verDetalhes(p)}
-                              className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
+                              className="p-2 rounded-lg text-gray-500 hover:text-brand-900 hover:bg-brand-100/70 transition cursor-pointer"
                               title="Ver Detalhes do Produto"
                             >
-                              <Eye className="w-3.5 h-3.5" />
+                              <Eye className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => prepararEdicao(p)}
-                              className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
+                              className="p-2 rounded-lg text-gray-500 hover:text-brand-900 hover:bg-brand-100/70 transition cursor-pointer"
                               title="Editar Produto"
                             >
-                              <Pencil className="w-3.5 h-3.5" />
+                              <Pencil className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => setModalExcluir({ aberto: true, id: p.id ?? null })}
-                              className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
+                              className="p-2 rounded-lg text-gray-500 hover:text-red-700 hover:bg-red-50 transition cursor-pointer"
                               title="Excluir Produto"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         )}
@@ -928,22 +929,22 @@ const TelaProdutos: React.FC = () => {
 
       {/* MODAL: GRADE ESTOQUE */}
       {modalEstoqueAberto && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl border-t-4 border-[#4a5d33] w-full max-w-md max-h-[80vh] flex flex-col p-6 shadow-2xl relative">
-            <button onClick={() => setModalEstoqueAberto(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black font-bold text-xl cursor-pointer">×</button>
-            <h3 className="font-sans font-bold text-lg text-gray-900 border-b pb-2 mb-4">Lançador de Estoque por Variação</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white w-full max-w-md max-h-[80vh] flex flex-col p-6 shadow-2xl relative rounded-3xl animate-subir">
+            <button onClick={() => setModalEstoqueAberto(false)} className="absolute top-4 right-4 w-9 h-9 -mr-1 -mt-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-2xl leading-none transition cursor-pointer shrink-0">×</button>
+            <h3 className="font-sans font-semibold text-lg text-gray-900 border-b pb-2 mb-4">Lançador de Estoque por Variação</h3>
             <div className="flex-1 overflow-y-auto space-y-3 pr-1">
               {produto.coresSelecionadas.map(cor =>
                 produto.tamanhosSelecionados.map(tam => {
                   const chave = `${cor}-${tam}`;
                   return (
-                    <div key={chave} className="flex items-center justify-between p-2 bg-gray-50 border rounded-lg">
+                    <div key={chave} className="flex items-center justify-between p-2 bg-gray-50 border rounded-xl">
                       <span className="text-xs font-semibold text-gray-700">{cor} — Tam {tam}</span>
                       <input
                         type="number" min="0"
                         value={produto.estoqueDetalhado[chave] || 0}
                         onChange={(e: ChangeEvent<HTMLInputElement>) => atualizarQtdEstoque(chave, e.target.value)}
-                        className="w-20 text-center border p-1 text-xs font-bold bg-white outline-none focus:border-gray-400 rounded-md"
+                        className="w-20 text-center border p-1 text-xs font-semibold bg-white outline-none focus:border-gray-400 rounded-md"
                       />
                     </div>
                   );
@@ -951,7 +952,7 @@ const TelaProdutos: React.FC = () => {
               )}
             </div>
             <div className="mt-6 pt-4 border-t flex justify-end">
-              <button onClick={() => setModalEstoqueAberto(false)} className="px-6 py-2 bg-[#4a5d33] text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow hover:brightness-110 cursor-pointer">
+              <button onClick={() => setModalEstoqueAberto(false)} className="mm-btn-primary">
                 Confirmar Grade
               </button>
             </div>
@@ -961,16 +962,16 @@ const TelaProdutos: React.FC = () => {
 
       {/* MODAL: EXCLUSÃO */}
       {modalExcluir.aberto && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl border-t-4 border-red-600 w-full max-w-sm p-6 shadow-2xl">
-            <h3 className="font-sans font-bold text-lg text-red-700 mb-2 flex items-center gap-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white w-full max-w-sm p-6 shadow-2xl rounded-3xl animate-subir max-h-[calc(100vh-2rem)] overflow-y-auto">
+            <h3 className="font-sans font-semibold text-lg text-red-700 mb-2 flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-red-600" />
               Excluir Registro
             </h3>
             <p className="text-xs text-gray-600 mb-6">Tem certeza de que deseja remover este produto? Esta ação não pode ser desfeita.</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setModalExcluir({ aberto: false, id: null })} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold uppercase text-[10px] rounded-lg cursor-pointer">Cancelar</button>
-              <button onClick={confirmarExclusao} className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold uppercase text-[10px] rounded-lg cursor-pointer">Confirmar Exclusão</button>
+              <button onClick={() => setModalExcluir({ aberto: false, id: null })} className="mm-btn-secondary">Cancelar</button>
+              <button onClick={confirmarExclusao} className="mm-btn-danger">Confirmar Exclusão</button>
             </div>
           </div>
         </div>
@@ -978,17 +979,17 @@ const TelaProdutos: React.FC = () => {
 
       {/* MODAL: DETALHES */}
       {modalDetalhes.aberto && modalDetalhes.dados && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl border-t-4 border-gray-700 w-full max-w-lg max-h-[85vh] flex flex-col p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white border-gray-700 w-full max-w-lg max-h-[85vh] flex flex-col p-6 shadow-2xl rounded-3xl animate-subir">
             <div className="flex justify-between items-start border-b pb-3 mb-4">
               <div>
-                <h3 className="font-sans font-bold text-xl text-gray-900 uppercase">{modalDetalhes.dados.nome}</h3>
-                <span className="text-[9px] font-mono uppercase bg-gray-100 text-gray-500 px-1 border rounded">ID: {modalDetalhes.dados.id}</span>
+                <h3 className="font-sans font-semibold text-xl text-gray-900">{modalDetalhes.dados.nome}</h3>
+                <span className="text-[9px] font-mono bg-gray-100 text-gray-500 px-1 border rounded-lg">ID: {modalDetalhes.dados.id}</span>
               </div>
-              <button onClick={() => setModalDetalhes({ aberto: false, dados: null })} className="text-gray-400 hover:text-black font-bold text-xl cursor-pointer">×</button>
+              <button onClick={() => setModalDetalhes({ aberto: false, dados: null })} className="w-9 h-9 -mr-1 -mt-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-2xl leading-none transition cursor-pointer shrink-0">×</button>
             </div>
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs text-gray-700">
-              <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 border rounded-lg">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-sm text-gray-700">
+              <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 border rounded-xl">
                 <p><strong>Categoria:</strong> {modalDetalhes.dados.categoria || '—'}</p>
                 <p><strong>Preço:</strong> R$ {Number(modalDetalhes.dados.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 <p className="col-span-2"><strong>Cores:</strong> {Array.isArray(modalDetalhes.dados.coresC) ? modalDetalhes.dados.coresC.join(', ') : '—'}</p>
@@ -998,19 +999,19 @@ const TelaProdutos: React.FC = () => {
                 <div className="p-2 border-l-2 border-gray-400 italic bg-gray-50/50 rounded-r">&quot;{modalDetalhes.dados.descricao}&quot;</div>
               )}
               <div>
-                <p className="font-bold uppercase text-[10px] text-gray-400 tracking-wider mb-2">Grade de Estoque:</p>
+                <p className="font-semibold uppercase text-[11px] text-gray-400 tracking-wider mb-2">Grade de Estoque:</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                   {Object.entries(modalDetalhes.dados.estoqueDetalhado || {}).map(([key, value]) => (
                     <div key={key} className="flex justify-between border-b pb-1 font-mono text-[11px]">
                       <span className="text-gray-500">• {key}:</span>
-                      <span className="font-bold text-gray-900">{value} un</span>
+                      <span className="font-semibold text-gray-900">{value} un</span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
             <div className="mt-6 pt-3 border-t">
-              <button onClick={() => setModalDetalhes({ aberto: false, dados: null })} className="w-full py-2 bg-gray-800 hover:bg-black text-white font-bold uppercase text-xs tracking-wider rounded-lg cursor-pointer">
+              <button onClick={() => setModalDetalhes({ aberto: false, dados: null })} className="w-full py-2 bg-gray-800 hover:bg-black text-white font-semibold uppercase text-xs tracking-wider rounded-xl cursor-pointer">
                 Fechar
               </button>
             </div>

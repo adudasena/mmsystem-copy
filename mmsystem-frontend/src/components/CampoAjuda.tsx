@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 export default function CampoAjuda({ texto }: { texto: string }) {
@@ -8,7 +8,8 @@ export default function CampoAjuda({ texto }: { texto: string }) {
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const botaoRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
+  // useLayoutEffect: posiciona o balão antes da primeira pintura (evita o "flash" no canto superior esquerdo)
+  useLayoutEffect(() => {
     if (!aberto || !botaoRef.current) return;
 
     const colocar = () => {
@@ -55,7 +56,7 @@ export default function CampoAjuda({ texto }: { texto: string }) {
           e.preventDefault();
           setAberto((v) => !v);
         }}
-        className="w-3.5 h-3.5 rounded-full bg-[#2c3e1c] text-[#dcded0] text-[8px] font-bold leading-none flex items-center justify-center hover:bg-[#3d5427] cursor-pointer"
+        className="w-4 h-4 rounded-full bg-brand-900 text-fundo text-[9px] font-semibold leading-none flex items-center justify-center hover:bg-brand-800 cursor-pointer"
         aria-label="Ajuda"
       >
         i
@@ -63,7 +64,7 @@ export default function CampoAjuda({ texto }: { texto: string }) {
       {aberto && typeof document !== 'undefined' && createPortal(
         <span
           data-mm-ajuda="balao"
-          className="fixed z-[200] w-64 max-w-[calc(100vw-1rem)] bg-white border border-[#c5cbb8] rounded-lg shadow-xl p-2.5 text-[11px] font-normal normal-case tracking-normal text-gray-700 leading-snug"
+          className="fixed z-[200] w-64 max-w-[calc(100vw-1rem)] bg-white border border-gray-200 rounded-xl shadow-xl p-3 text-xs font-normal normal-case tracking-normal text-gray-700 leading-snug"
           style={{ top: pos.top, left: pos.left }}
         >
           {texto}

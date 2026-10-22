@@ -85,10 +85,10 @@ export default function GuiaCadastroProduto({ ativo, onPular, onConcluir }: Prop
 
   return (
     <>
-      <div className="fixed inset-0 z-[60] bg-black/45 pointer-events-none" />
+      <div className="fixed inset-0 z-[60] bg-brand-950/50 pointer-events-none" />
       {caixa && (
         <div
-          className="fixed z-[61] rounded-xl ring-2 ring-[#2c3e1c] ring-offset-2 pointer-events-none"
+          className="fixed z-[61] rounded-xl ring-2 ring-brand-900 ring-offset-2 pointer-events-none"
           style={{
             top: caixa.top - 6,
             left: caixa.left - 6,
@@ -98,13 +98,13 @@ export default function GuiaCadastroProduto({ ativo, onPular, onConcluir }: Prop
         />
       )}
       <div
-        className="fixed z-[62] w-[min(22rem,calc(100%-1.5rem))] bg-white rounded-xl shadow-2xl border border-[#c5cbb8] p-4"
+        className="fixed z-[62] w-[min(22rem,calc(100%-1.5rem))] bg-white rounded-2xl shadow-2xl border border-gray-200 p-5"
         style={{
           top: caixa ? Math.min(caixa.bottom + 12, window.innerHeight - 200) : 80,
           left: 16,
         }}
       >
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[#2c3e1c] mb-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-900 mb-1">
           Cadastro guiado · {indice + 1} de {PASSOS.length}
         </p>
         <h3 className="text-sm font-semibold text-gray-900">{passo.titulo}</h3>
@@ -122,7 +122,7 @@ export default function GuiaCadastroProduto({ ativo, onPular, onConcluir }: Prop
               <button
                 type="button"
                 onClick={() => setIndice((i) => i - 1)}
-                className="px-3 py-1.5 text-[11px] font-bold uppercase border rounded-lg cursor-pointer"
+                className="px-3 py-1.5 text-[11px] font-semibold border rounded-xl cursor-pointer"
               >
                 Voltar
               </button>
@@ -133,7 +133,7 @@ export default function GuiaCadastroProduto({ ativo, onPular, onConcluir }: Prop
                 if (ultimo) onConcluir();
                 else setIndice((i) => i + 1);
               }}
-              className="px-3 py-1.5 text-[11px] font-bold uppercase bg-[#2c3e1c] text-white rounded-lg cursor-pointer"
+              className="mm-btn-primary"
             >
               {ultimo ? 'Concluir' : 'Próximo'}
             </button>

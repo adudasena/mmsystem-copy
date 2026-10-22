@@ -6,6 +6,7 @@ import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import { formatErrorMessage } from '@/utils/errorUtils';
+import { formatarData } from '@/utils/formatters';
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface PedidoRef {
@@ -315,27 +316,26 @@ const TelaPagamentos: React.FC = () => {
   });
 
   return (
-    <div className="p-4 md:p-8 bg-[#dcded0] min-h-screen font-sans text-gray-800">
-      <div className="max-w-7xl mx-auto space-y-6">
-        
+    <div className="mm-page">
+      <div className="mm-page-inner">
+
         {/* Cabeçalho */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-sans font-bold text-[#2d3a22]">
-              Pagamentos
-            </h1>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="mm-title">Pagamentos</h1>
+            <p className="mm-subtitle">Controle recebimentos, vencimentos e pagamentos futuros.</p>
           </div>
 
           <button
             onClick={abrirNovoPagamentoForm}
-            className="bg-[#2d3a22] hover:bg-[#3d5427] text-white font-bold text-xs uppercase px-4 py-2.5 rounded-lg shadow-sm transition cursor-pointer self-start md:self-auto"
+            className="mm-btn-primary self-start md:self-auto"
           >
             + Novo Lançamento
           </button>
         </div>
 
         {mensagemSucesso && (
-          <div className="bg-green-50 border-l-4 border-green-600 p-3 text-green-900 font-semibold text-xs rounded-lg shadow-sm flex items-center gap-2">
+          <div className="mm-alert-ok">
             <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
             <span>{mensagemSucesso}</span>
           </div>
@@ -352,16 +352,16 @@ const TelaPagamentos: React.FC = () => {
         />
 
         {/* Tabela de Lançamentos */}
-        <section ref={tabelaRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-4 border-b bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <section ref={tabelaRef} className="mm-card overflow-hidden">
+          <div className="px-4 py-3.5 border-b border-gray-200 bg-white flex flex-col sm:flex-row justify-between items-center gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setAbaAtiva('ATIVOS')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`px-4 h-9 rounded-full text-sm font-semibold transition cursor-pointer ${
                   abaAtiva === 'ATIVOS'
-                    ? 'bg-[#2d3a22] text-white shadow-sm'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-brand-900 text-white shadow-sm'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-brand-50'
                 }`}
               >
                 Pagamentos Ativos
@@ -370,10 +370,10 @@ const TelaPagamentos: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAbaAtiva('VENCIDOS')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`px-4 h-9 rounded-full text-sm font-semibold transition cursor-pointer ${
                   abaAtiva === 'VENCIDOS'
                     ? 'bg-amber-700 text-white shadow-sm'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-brand-50'
                 }`}
               >
                 Pagamentos vencidos
@@ -382,17 +382,17 @@ const TelaPagamentos: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAbaAtiva('EXCLUIDOS')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                className={`px-4 h-9 rounded-full text-sm font-semibold transition cursor-pointer flex items-center gap-1.5 ${
                   abaAtiva === 'EXCLUIDOS'
                     ? 'bg-red-700 text-white shadow-sm'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-brand-50'
                 }`}
               >
                 <Trash2 className="w-3.5 h-3.5" /> Pagamentos Removidos (Lixeira)
               </button>
             </div>
 
-            <span className="text-[11px] font-bold text-gray-500 uppercase">
+            <span className="text-[11px] font-semibold text-gray-500">
               Total: {totalElementos > 0 ? totalElementos : pagamentosFiltrados.length}
             </span>
           </div>
@@ -405,7 +405,7 @@ const TelaPagamentos: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-[#cbd0c0] font-bold uppercase text-gray-700 border-b border-gray-300">
+                  <tr className="bg-gray-300 font-semibold text-gray-700 border-b border-gray-300">
                     <th className="p-3">#ID</th>
                     <th className="p-3">Pedido Ref.</th>
                     <th className="p-3">Método</th>
@@ -429,22 +429,22 @@ const TelaPagamentos: React.FC = () => {
                   ) : (
                     pagamentosFiltrados.map((pag) => (
                       <tr key={pag.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="p-3 font-bold text-gray-500">#{pag.id}</td>
-                        <td className="p-3 font-bold text-gray-800">
+                        <td className="p-3 font-semibold text-gray-500">#{pag.id}</td>
+                        <td className="p-3 font-semibold text-gray-800">
                           {pag.pedido?.id ? `Pedido #${pag.pedido.id}` : '—'}
                         </td>
                         <td className="p-3 text-xs font-sans text-gray-700">
                           {rotuloMetodoPagamento(pag.metodoPagamento, pag.parcelas)}
                         </td>
                         <td className="p-3 text-gray-600">
-                          {pag.dataVencimento || '—'}
+                          {formatarData(pag.dataVencimento)}
                         </td>
-                        <td className="p-3 font-bold text-gray-800">
+                        <td className="p-3 font-semibold text-gray-800">
                           R$ {Number(pag.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </td>
                         <td className="p-3">
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                            className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold uppercase border ${
                               pag.status === 'APROVADO' || pag.status === 'PAGO'
                                 ? 'bg-green-100 text-green-800 border-green-300'
                                 : pag.status === 'CANCELADO' || pag.status === 'ESTORNADO'
@@ -456,31 +456,31 @@ const TelaPagamentos: React.FC = () => {
                           </span>
                         </td>
                         <td className="p-3 text-center">
-                          <div className="flex justify-center items-center gap-2">
+                          <div className="flex justify-center items-center gap-1">
                             {abaAtiva === 'EXCLUIDOS' ? (
                               <button
                                 type="button"
                                 onClick={() => restaurarPagamento(pag.id)}
-                                className="bg-green-700 hover:bg-green-800 text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm flex items-center gap-1 cursor-pointer"
+                                className="bg-brand-700 hover:bg-brand-800 text-white px-2.5 h-8 rounded-lg text-xs font-semibold shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer"
                                 title="Restaurar lançamento financeiro"
                               >
-                                <RotateCcw className="w-3.5 h-3.5" /> Restaurar
+                                <RotateCcw className="w-4 h-4" /> Restaurar
                               </button>
                             ) : (
                               <>
                                 <button
                                   onClick={() => prepararEdicao(pag)}
-                                  className="p-1 hover:scale-110 transition cursor-pointer text-gray-700 hover:text-black"
+                                  className="p-2 rounded-lg text-gray-500 hover:text-brand-900 hover:bg-brand-100/70 transition cursor-pointer"
                                   title="Editar Lançamento"
                                 >
-                                  <Pencil className="w-3.5 h-3.5" />
+                                  <Pencil className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => setModalExcluir({ aberto: true, id: pag.id })}
-                                  className="p-1 hover:scale-110 transition cursor-pointer text-gray-600 hover:text-red-700"
+                                  className="p-2 rounded-lg text-gray-500 hover:text-red-700 hover:bg-red-50 transition cursor-pointer"
                                   title="Mover Lançamento para a Lixeira"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </>
                             )}
@@ -505,15 +505,15 @@ const TelaPagamentos: React.FC = () => {
 
         {/* MODAL: FORMULÁRIO DE LANÇAMENTO / EDIÇÃO DE PAGAMENTO */}
         {modalFormAberto && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-            <div className="bg-white rounded-sm w-full max-w-md p-6 shadow-2xl border-t-4 border-[#4a5d33]">
-              <div className="flex justify-between items-center border-b pb-2 mb-4">
-                <h3 className="font-serif text-lg text-gray-900">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/50 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white w-full max-w-md p-6 shadow-2xl rounded-3xl animate-subir max-h-[calc(100vh-2rem)] overflow-y-auto">
+              <div className="flex justify-between items-start gap-3 mb-5">
+                <h3 className="font-display text-xl font-semibold text-brand-900">
                   {editandoId ? `Editando Pagamento #${editandoId}` : 'Novo Lançamento Financeiro'}
                 </h3>
                 <button
                   onClick={() => setModalFormAberto(false)}
-                  className="text-gray-400 hover:text-black font-bold text-xl cursor-pointer"
+                  className="w-9 h-9 -mr-1 -mt-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-2xl leading-none transition cursor-pointer shrink-0"
                 >
                   ×
                 </button>
@@ -521,7 +521,7 @@ const TelaPagamentos: React.FC = () => {
 
               <div className="space-y-4 text-xs">
                 {errosValidacao.length > 0 && (
-                  <div className="bg-red-50 border-l-4 border-red-600 p-2.5 text-red-900 font-semibold rounded-sm">
+                  <div className="mm-alert-err">
                     {errosValidacao.map((err, i) => (
                       <p key={i} className="flex items-center gap-1">
                         <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
@@ -532,7 +532,7 @@ const TelaPagamentos: React.FC = () => {
                 )}
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">
+                  <label className="mm-label">
                     Vincular ao Pedido (Opcional)
                   </label>
                   <select
@@ -546,7 +546,7 @@ const TelaPagamentos: React.FC = () => {
                         valor: pedEncontrado?.valorTotal ? String(pedEncontrado.valorTotal) : prev.valor
                       }));
                     }}
-                    className="w-full border p-2 bg-gray-50 text-xs outline-none focus:border-gray-400 rounded-lg"
+                    className="mm-input"
                   >
                     <option value="">Sem Pedido Vinculado (Avulso)</option>
                     {pedidosOpcoes.map((ped) => (
@@ -559,7 +559,7 @@ const TelaPagamentos: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">
+                    <label className="mm-label">
                       Valor (R$) *
                     </label>
                     <input
@@ -571,12 +571,12 @@ const TelaPagamentos: React.FC = () => {
                       onChange={(e: ChangeEvent<HTMLInputElement>) =>
                         setFormPagamento({ ...formPagamento, valor: e.target.value })
                       }
-                      className="w-full border p-2 bg-gray-50 text-xs outline-none font-bold text-gray-800"
+                      className="mm-input"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">
+                    <label className="mm-label">
                       Método *
                     </label>
                     <select
@@ -588,7 +588,7 @@ const TelaPagamentos: React.FC = () => {
                           parcelas: e.target.value === 'CARTAO_CREDITO' ? (formPagamento.parcelas || 1) : 1,
                         })
                       }
-                      className="w-full border p-2 bg-gray-50 text-xs outline-none font-sans rounded-md"
+                      className="mm-input"
                     >
                       <option value="PIX">PIX</option>
                       <option value="CARTAO_CREDITO">Cartão de crédito</option>
@@ -602,7 +602,7 @@ const TelaPagamentos: React.FC = () => {
 
                 {formPagamento.metodoPagamento === 'CARTAO_CREDITO' && (
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">
+                    <label className="mm-label">
                       Parcelas *
                     </label>
                     <select
@@ -610,7 +610,7 @@ const TelaPagamentos: React.FC = () => {
                       onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                         setFormPagamento({ ...formPagamento, parcelas: Number(e.target.value) })
                       }
-                      className="w-full border p-2 bg-gray-50 text-xs outline-none font-sans rounded-md"
+                      className="mm-input"
                     >
                       {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
                         <option key={n} value={n}>
@@ -623,7 +623,7 @@ const TelaPagamentos: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">
+                    <label className="mm-label">
                       Data Vencimento
                     </label>
                     <input
@@ -632,12 +632,12 @@ const TelaPagamentos: React.FC = () => {
                       onChange={(e: ChangeEvent<HTMLInputElement>) =>
                         setFormPagamento({ ...formPagamento, dataVencimento: e.target.value })
                       }
-                      className="w-full border p-2 bg-gray-50 text-xs outline-none"
+                      className="mm-input"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">
+                    <label className="mm-label">
                       Status Lançamento
                     </label>
                     <select
@@ -645,7 +645,7 @@ const TelaPagamentos: React.FC = () => {
                       onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                         setFormPagamento({ ...formPagamento, status: e.target.value })
                       }
-                      className="w-full border p-2 bg-gray-50 text-xs outline-none font-bold"
+                      className="mm-input"
                     >
                       <option value="PENDENTE">PENDENTE</option>
                       <option value="APROVADO">APROVADO</option>
@@ -659,13 +659,13 @@ const TelaPagamentos: React.FC = () => {
               <div className="mt-6 pt-3 border-t flex justify-end gap-2">
                 <button
                   onClick={() => setModalFormAberto(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 text-[10px] font-bold uppercase hover:bg-gray-300 cursor-pointer"
+                  className="mm-btn-secondary"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={salvarPagamento}
-                  className="px-5 py-2 bg-[#4a5d33] text-white text-[10px] font-bold uppercase hover:brightness-110 shadow-md cursor-pointer"
+                  className="mm-btn-primary"
                 >
                   Salvar Lançamento
                 </button>
@@ -676,25 +676,25 @@ const TelaPagamentos: React.FC = () => {
 
         {/* MODAL: EXCLUSÃO DE LANÇAMENTO */}
         {modalExcluir.aberto && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white p-5 max-w-xs w-full rounded-sm border-t-4 border-red-600 shadow-2xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/50 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white p-6 max-w-sm w-full shadow-2xl rounded-3xl animate-subir max-h-[calc(100vh-2rem)] overflow-y-auto">
               <h4 className="font-serif text-base text-red-700 mb-1 flex items-center gap-1">
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
                 Excluir Pagamento
               </h4>
-              <p className="text-xs text-gray-600 mb-4">
+              <p className="text-sm text-gray-600 mb-5">
                 Confirma a remoção permanente deste lançamento financeiro?
               </p>
-              <div className="flex justify-end gap-2 text-[10px] font-bold uppercase">
+              <div className="flex justify-end gap-2 text-[11px] font-semibold">
                 <button
                   onClick={() => setModalExcluir({ aberto: false, id: null })}
-                  className="px-3 py-1.5 bg-gray-100 text-gray-700 cursor-pointer"
+                  className="mm-btn-secondary"
                 >
                   Voltar
                 </button>
                 <button
                   onClick={confirmarExclusao}
-                  className="px-3 py-1.5 bg-red-600 text-white hover:bg-red-700 cursor-pointer"
+                  className="mm-btn-danger"
                 >
                   Confirmar
                 </button>

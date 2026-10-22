@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import MenuLateral from '@/components/MenuLateral';
@@ -40,20 +41,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [pathname]);
 
   return (
-    <div className="min-h-screen bg-[#dcded0]" suppressHydrationWarning>
+    <div className="min-h-screen" suppressHydrationWarning>
       {montado && autorizado ? (
         <>
           <MenuLateral aberto={menuAberto} onFechar={() => setMenuAberto(false)} />
 
-          <header className="lg:hidden sticky top-0 z-30 bg-[#2c3e1c] text-white px-3 py-2 flex items-center shadow-md">
+          <header className="lg:hidden sticky top-0 z-30 bg-brand-900/95 backdrop-blur text-white px-3 h-14 flex items-center gap-2 shadow-md">
             <button
               type="button"
               onClick={() => setMenuAberto(true)}
-              className="p-2 rounded-lg hover:bg-white/10 cursor-pointer min-h-11 min-w-11 flex items-center justify-center"
+              className="p-2 rounded-xl hover:bg-white/10 transition min-h-11 min-w-11 flex items-center justify-center"
               aria-label="Abrir menu"
             >
               <Menu className="w-6 h-6" />
             </button>
+            <Image src="/escritocompleto1linha.svg" alt="Maria Morena" width={805} height={123} className="w-40 h-auto mx-auto -translate-x-5" />
           </header>
 
           <main className="lg:pl-72 min-h-screen min-w-0 overflow-x-hidden">

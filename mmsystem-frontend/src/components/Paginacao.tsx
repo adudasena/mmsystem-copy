@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PaginacaoProps {
   paginaAtual: number; // 0-indexed
@@ -20,6 +21,13 @@ const Paginacao: React.FC<PaginacaoProps> = ({
     return null;
   }
 
+  const classeBotao = (ativo: boolean) =>
+    `min-w-9 h-9 px-2 flex items-center justify-center rounded-xl text-sm font-semibold transition cursor-pointer ${
+      ativo
+        ? 'bg-brand-900 text-white shadow-sm'
+        : 'text-gray-700 hover:bg-brand-100/70'
+    }`;
+
   // Gera a lista de páginas de forma previsível para manter o layout estável
   const renderBotoesPagina = () => {
     const botoes: React.ReactNode[] = [];
@@ -33,53 +41,34 @@ const Paginacao: React.FC<PaginacaoProps> = ({
       startPage = Math.max(0, endPage - maxBotoesVisiveis + 1);
     }
 
-    // Primeira página + reticências
     if (startPage > 0) {
       botoes.push(
-        <button
-          key={0}
-          onClick={() => onMudarPagina(0)}
-          className={`w-8 h-8 flex items-center justify-center rounded text-xs font-bold transition-all cursor-pointer border ${
-            paginaAtual === 0
-              ? 'bg-[#4a5d33] text-white border-[#4a5d33]'
-              : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'
-          }`}
-        >
+        <button key={0} onClick={() => onMudarPagina(0)} className={classeBotao(paginaAtual === 0)}>
           1
         </button>
       );
       if (startPage > 1) {
         botoes.push(
-          <span key="dots-start" className="w-6 text-center text-xs text-gray-400 select-none">
-            ...
+          <span key="dots-start" className="w-6 text-center text-sm text-gray-400 select-none">
+            …
           </span>
         );
       }
     }
 
-    // Intervalo principal de páginas
     for (let i = startPage; i <= endPage; i++) {
       botoes.push(
-        <button
-          key={i}
-          onClick={() => onMudarPagina(i)}
-          className={`w-8 h-8 flex items-center justify-center rounded text-xs font-bold transition-all cursor-pointer border ${
-            paginaAtual === i
-              ? 'bg-[#4a5d33] text-white border-[#4a5d33]'
-              : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'
-          }`}
-        >
+        <button key={i} onClick={() => onMudarPagina(i)} className={classeBotao(paginaAtual === i)}>
           {i + 1}
         </button>
       );
     }
 
-    // Última página + reticências
     if (endPage < totalPaginas - 1) {
       if (endPage < totalPaginas - 2) {
         botoes.push(
-          <span key="dots-end" className="w-6 text-center text-xs text-gray-400 select-none">
-            ...
+          <span key="dots-end" className="w-6 text-center text-sm text-gray-400 select-none">
+            …
           </span>
         );
       }
@@ -87,11 +76,7 @@ const Paginacao: React.FC<PaginacaoProps> = ({
         <button
           key={totalPaginas - 1}
           onClick={() => onMudarPagina(totalPaginas - 1)}
-          className={`w-8 h-8 flex items-center justify-center rounded text-xs font-bold transition-all cursor-pointer border ${
-            paginaAtual === totalPaginas - 1
-              ? 'bg-[#4a5d33] text-white border-[#4a5d33]'
-              : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'
-          }`}
+          className={classeBotao(paginaAtual === totalPaginas - 1)}
         >
           {totalPaginas}
         </button>
@@ -101,33 +86,36 @@ const Paginacao: React.FC<PaginacaoProps> = ({
     return botoes;
   };
 
+  const classeSeta =
+    'h-9 px-2.5 flex items-center justify-center gap-1 rounded-xl text-sm font-semibold text-gray-700 hover:bg-brand-100/70 disabled:opacity-35 disabled:hover:bg-transparent disabled:cursor-not-allowed cursor-pointer transition';
+
   return (
-    <div className="p-4 bg-gray-50 border-t flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600 select-none">
-      <span className="font-medium">
-        Página <strong>{paginaAtual + 1}</strong> de <strong>{totalPaginas}</strong> (Total: {totalElementos} {totalElementos === 1 ? 'item' : 'itens'})
+    <div className="px-4 py-3.5 bg-gray-50/70 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-600 select-none">
+      <span>
+        Página <strong className="text-brand-900">{paginaAtual + 1}</strong> de <strong className="text-brand-900">{totalPaginas}</strong>
+        <span className="text-gray-400"> · </span>
+        {totalElementos} {totalElementos === 1 ? 'item' : 'itens'}
       </span>
 
-      <div className="flex items-center gap-1.5 min-w-[280px] justify-end">
+      <div className="flex items-center gap-1 justify-end">
         <button
           type="button"
           onClick={() => onMudarPagina(paginaAtual - 1)}
           disabled={paginaAtual === 0}
-          className="px-3 h-8 flex items-center justify-center border border-gray-300 rounded font-bold text-xs uppercase bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition shadow-2xs"
+          className={classeSeta}
         >
-          ← Anterior
+          <ChevronLeft className="w-4 h-4" /> Anterior
         </button>
 
-        <div className="flex items-center gap-1">
-          {renderBotoesPagina()}
-        </div>
+        <div className="flex items-center gap-1">{renderBotoesPagina()}</div>
 
         <button
           type="button"
           onClick={() => onMudarPagina(paginaAtual + 1)}
           disabled={paginaAtual >= totalPaginas - 1}
-          className="px-3 h-8 flex items-center justify-center border border-gray-300 rounded font-bold text-xs uppercase bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition shadow-2xs"
+          className={classeSeta}
         >
-          Próxima →
+          Próxima <ChevronRight className="w-4 h-4" />
         </button>
       </div>
     </div>
