@@ -71,9 +71,14 @@ public class VitrineController {
             @Valid @RequestBody VitrinePedidoDTO dto,
             HttpServletRequest request
     ) {
-        captchaService.validar(dto.getCaptchaToken(), ipCliente(request));
-        vitrineProtecaoService.protegerCheckout(ipCliente(request), dto);
         String tipo = dto.getTipoFluxo() != null ? dto.getTipoFluxo().toUpperCase() : "CONDICIONAL";
+        if ("VENDA_DIRETA".equals(tipo)) {
+            captchaService.validarVendaDireta(dto.getCaptchaToken(), ipCliente(request));
+        } else {
+            captchaService.validar(dto.getCaptchaToken(), ipCliente(request));
+        }
+        vitrineProtecaoService.protegerCheckout(ipCliente(request), dto);
+        exigirWhatsAppExistente(dto.getTelefoneCliente());
         VitrineCheckoutResponseDTO resposta;
         if ("VENDA_DIRETA".equals(tipo)) {
             resposta = new VitrineCheckoutResponseDTO(
@@ -91,6 +96,13 @@ public class VitrineController {
         vitrineProtecaoService.marcarPedidoRegistrado(dto);
         notificarCliente(dto, tipo);
         return ResponseEntity.status(201).body(resposta);
+    }
+
+    private void exigirWhatsAppExistente(String telefone) {
+        if (whatsAppService.verificarNumero(telefone) == WhatsAppService.ResultadoNumero.NAO_EXISTE) {
+            throw new IllegalArgumentException(
+                    "WhatsApp não encontrado. Confira o número com DDD e tente de novo.");
+        }
     }
 
     private void notificarCliente(VitrinePedidoDTO dto, String tipo) {

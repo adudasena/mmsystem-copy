@@ -18,17 +18,39 @@ public class CaptchaService {
 
     private final String secret;
     private final String provider;
+    private final boolean exigirNaVendaDireta;
     private final RestClient restClient;
 
+    public CaptchaService(boolean enabled, String secret, String provider) {
+        this(enabled, secret, provider, false);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
     public CaptchaService(
             @Value("${app.captcha.enabled:false}") boolean enabled,
             @Value("${app.captcha.secret:}") String secret,
-            @Value("${app.captcha.provider:turnstile}") String provider
+            @Value("${app.captcha.provider:turnstile}") String provider,
+            @Value("${app.captcha.exigir-venda-direta:true}") boolean exigirNaVendaDireta
     ) {
+        this.exigirNaVendaDireta = exigirNaVendaDireta;
         // enabled permanece no construtor por compatibilidade; a secret é o que liga a verificação.
         this.secret = secret;
         this.provider = provider == null ? "turnstile" : provider.toLowerCase();
         this.restClient = RestClient.create();
+    }
+
+    /**
+     * Compra direta (venda à vista) nunca passa sem anti-robô: se a secret não estiver
+     * configurada o checkout é recusado (falha fechada), a menos que
+     * app.captcha.exigir-venda-direta=false (dev/teste).
+     */
+    public void validarVendaDireta(String token, String remoteIp) {
+        if (exigirNaVendaDireta && (secret == null || secret.isBlank())) {
+            logger.error("Compra direta recusada: anti-robô (TURNSTILE_SECRET) não configurado no servidor.");
+            throw new IllegalArgumentException(
+                    "Compra direta indisponível no momento (verificação anti-robô não configurada). Use a sacola condicional ou fale com a loja.");
+        }
+        validar(token, remoteIp);
     }
 
     public void validar(String token, String remoteIp) {

@@ -106,6 +106,9 @@ public class CondicionalService {
         }
 
         if (dto.getItens() != null) {
+            // Devolve ao estoque o que os itens antigos seguravam; preencherItens reaplica o novo estado.
+            // Sem isso, cada edição abateria o estoque de novo (baixa em duplicidade).
+            restaurarEstoqueDosItens(condicional, false);
             condicional.getItens().clear();
             repository.saveAndFlush(condicional);
 
@@ -148,7 +151,7 @@ public class CondicionalService {
                 } else if (acaoVendedora.equals("DISPONIVEL") || acaoVendedora.equals("DEVOLVIDO")
                         || acaoVendedora.equals("DEVOLVIDA")) {
                     // Restaura estoque pois item saiu de EM_CONDICIONAL para DISPONIVEL
-                    if (!"DISPONIVEL".equalsIgnoreCase(itemBanco.getStatusItem())) {
+                    if (mantemEstoque(itemBanco.getStatusItem())) {
                         alterarEstoqueProduto(itemBanco.getProduto(), itemBanco.getCorEscolhida(),
                                 itemBanco.getTamanhoEscolhido(), +itemBanco.getQuantidade());
                     }
@@ -187,6 +190,8 @@ public class CondicionalService {
                 itemPed.setPedido(pedido);
                 itemPed.setProduto(itemCond.getProduto());
                 itemPed.setQuantidade(itemCond.getQuantidade() != null ? itemCond.getQuantidade() : 1);
+                itemPed.setCorEscolhida(itemCond.getCorEscolhida());
+                itemPed.setTamanhoEscolhido(itemCond.getTamanhoEscolhido());
                 itensPedido.add(itemPed);
 
                 BigDecimal precoUnit = itemCond.getProduto() != null && itemCond.getProduto().getPreco() != null
@@ -218,9 +223,34 @@ public class CondicionalService {
         return repository.findByDeletedAtIsNotNull(pageable);
     }
 
+    /** Item "segura" estoque enquanto está com a cliente (ou vendido). DISPONIVEL/DEVOLVIDO já voltou à prateleira. */
+    private static boolean mantemEstoque(String statusItem) {
+        return !"DISPONIVEL".equalsIgnoreCase(statusItem)
+                && !"DEVOLVIDO".equalsIgnoreCase(statusItem)
+                && !"DEVOLVIDA".equalsIgnoreCase(statusItem);
+    }
+
+    /** Devolve ao estoque os itens que ainda seguram peças. Se apenasEmCondicional, preserva os já VENDIDOS. */
+    private void restaurarEstoqueDosItens(Condicional condicional, boolean apenasEmCondicional) {
+        if (condicional.getItens() == null) {
+            return;
+        }
+        for (ItemCondicional item : condicional.getItens()) {
+            boolean devolver = apenasEmCondicional
+                    ? "EM_CONDICIONAL".equalsIgnoreCase(item.getStatusItem())
+                    : mantemEstoque(item.getStatusItem());
+            if (devolver && item.getProduto() != null && item.getQuantidade() != null) {
+                alterarEstoqueProduto(item.getProduto(), item.getCorEscolhida(),
+                        item.getTamanhoEscolhido(), +item.getQuantidade());
+            }
+        }
+    }
+
     @Transactional
     public void excluir(Long id) {
         Condicional condicional = buscarPorId(id);
+        // Sacola excluída com peças ainda na rua: elas voltam para o estoque (e para a vitrine).
+        restaurarEstoqueDosItens(condicional, true);
         condicional.setDeletedAt(LocalDateTime.now());
         repository.save(condicional);
     }
@@ -229,6 +259,17 @@ public class CondicionalService {
     public void restaurar(Long id) {
         Condicional condicional = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Condicional não encontrada: " + id));
+        if (condicional.getDeletedAt() != null && condicional.getItens() != null) {
+            // Reabre a sacola: as peças em condicional voltam a sair do estoque (com validação de saldo).
+            for (ItemCondicional item : condicional.getItens()) {
+                if ("EM_CONDICIONAL".equalsIgnoreCase(item.getStatusItem())) {
+                    validarEstoqueDisponivel(item.getProduto(), item.getCorEscolhida(),
+                            item.getTamanhoEscolhido(), item.getQuantidade());
+                    alterarEstoqueProduto(item.getProduto(), item.getCorEscolhida(),
+                            item.getTamanhoEscolhido(), -item.getQuantidade());
+                }
+            }
+        }
         condicional.setDeletedAt(null);
         repository.save(condicional);
     }
@@ -289,8 +330,7 @@ public class CondicionalService {
             String statusItem = itemDTO.getStatusItem() != null ? itemDTO.getStatusItem().toUpperCase()
                     : "EM_CONDICIONAL";
 
-            if (!"DISPONIVEL".equalsIgnoreCase(statusItem) && !"DEVOLVIDO".equalsIgnoreCase(statusItem)
-                    && !"DEVOLVIDA".equalsIgnoreCase(statusItem)) {
+            if (mantemEstoque(statusItem)) {
                 validarEstoqueDisponivel(produto, cor, tamanho, qtd);
                 alterarEstoqueProduto(produto, cor, tamanho, -qtd);
             }
@@ -432,8 +472,18 @@ public class CondicionalService {
 
             if (chaveEncontrada != null) {
                 int qtdAtual = estoque.get(chaveEncontrada) != null ? estoque.get(chaveEncontrada) : 0;
-                int novaQtd = Math.max(0, qtdAtual + deltaQtd);
-                estoque.put(chaveEncontrada, novaQtd);
+                if (deltaQtd < 0 && qtdAtual < -deltaQtd) {
+                    // Outra compra pode ter levado a peça entre a validação e a baixa.
+                    throw new IllegalArgumentException("Saldo insuficiente em estoque para o produto '"
+                            + produto.getNome() + "'. Estoque disponível: " + qtdAtual
+                            + ", Solicitado: " + (-deltaQtd) + ".");
+                }
+                estoque.put(chaveEncontrada, Math.max(0, qtdAtual + deltaQtd));
+            } else if (deltaQtd > 0 && c.isEmpty() && t.isEmpty()) {
+                // Registro antigo sem variação (ex.: pedido legado): devolve ao primeiro saldo cadastrado.
+                String primeira = estoque.keySet().iterator().next();
+                int qtdAtual = estoque.get(primeira) != null ? estoque.get(primeira) : 0;
+                estoque.put(primeira, qtdAtual + deltaQtd);
             } else if (deltaQtd < 0) {
                 int restante = Math.abs(deltaQtd);
                 for (Map.Entry<String, Integer> entry : estoque.entrySet()) {
@@ -448,8 +498,12 @@ public class CondicionalService {
 
             produto.setEstoqueDetalhado(objectMapper.writeValueAsString(estoque));
             produtoRepository.saveAndFlush(produto);
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
-            System.err.println("Falha ao atualizar estoque no condicional: " + e.getMessage());
+            // Não engolir: se o estoque não for gravado, a operação inteira (transacional) deve falhar
+            // para vitrine e painel nunca divergirem.
+            throw new IllegalStateException("Falha ao atualizar o estoque do produto: " + e.getMessage(), e);
         }
     }
 }

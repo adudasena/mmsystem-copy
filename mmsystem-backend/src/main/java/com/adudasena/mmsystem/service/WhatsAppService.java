@@ -44,6 +44,45 @@ public class WhatsAppService {
                 && apiKey != null && !apiKey.isBlank();
     }
 
+    public enum ResultadoNumero { EXISTE, NAO_EXISTE, INDETERMINADO }
+
+    /**
+     * Consulta a Evolution API para saber se o número tem WhatsApp.
+     * INDETERMINADO quando a integração está desligada ou indisponível (não bloqueia a compra).
+     */
+    public ResultadoNumero verificarNumero(String telefone) {
+        if (!isEnabled()) {
+            return ResultadoNumero.INDETERMINADO;
+        }
+        String numero = telefone == null ? "" : telefone.replaceAll("\\D", "");
+        if (numero.isBlank()) {
+            return ResultadoNumero.NAO_EXISTE;
+        }
+        if (numero.length() <= 11 && !numero.startsWith("55")) {
+            numero = "55" + numero;
+        }
+        try {
+            String url = evolutionUrl.replaceAll("/$", "") + "/chat/whatsappNumbers/" + instance;
+            java.util.List<?> resposta = restClient.post()
+                    .uri(url)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("apikey", apiKey)
+                    .body(Map.of("numbers", java.util.List.of(numero)))
+                    .retrieve()
+                    .body(java.util.List.class);
+            if (resposta == null || resposta.isEmpty()) {
+                return ResultadoNumero.INDETERMINADO;
+            }
+            if (resposta.get(0) instanceof Map<?, ?> mapa) {
+                return Boolean.TRUE.equals(mapa.get("exists")) ? ResultadoNumero.EXISTE : ResultadoNumero.NAO_EXISTE;
+            }
+            return ResultadoNumero.INDETERMINADO;
+        } catch (Exception e) {
+            logger.warn("Não foi possível verificar o número no WhatsApp: {}", e.getMessage());
+            return ResultadoNumero.INDETERMINADO;
+        }
+    }
+
     public boolean enviar(WhatsAppMensagemDTO dto) {
         if (!isEnabled()) {
             return false;

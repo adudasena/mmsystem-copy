@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect, useRef } from 'react';
@@ -81,6 +81,10 @@ export default function VitrineProdutos() {
   const [cor, setCor] = useState<string>('Padrão');
   const [quantidade, setQuantidade] = useState<number>(1);
   const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([]);
+  const carrinhoRef = useRef<ItemCarrinho[]>([]);
+  useEffect(() => {
+    carrinhoRef.current = carrinho;
+  }, [carrinho]);
   const [mostrarCarrinho, setMostrarCarrinho] = useState<boolean>(false);
 
   // Dados da cliente para a sacola
@@ -401,6 +405,81 @@ export default function VitrineProdutos() {
     type: 'info',
   });
 
+  // Estoque atual (da lista carregada da API) para a variação de um item da sacola
+  const estoqueDoItem = (item: ItemCarrinho, lista: ProdutoVitrine[] = produtos): number | null => {
+    const prod = lista.find((p) => p.id === item.produtoId);
+    if (!prod) return null;
+    return obterEstoqueVariacao(
+      extrairEstoqueDetalhado(prod.estoqueDetalhado),
+      item.corEscolhida,
+      item.tamanhoEscolhido,
+      prod.quantidadeEstoque
+    );
+  };
+
+  // Aumenta/diminui a quantidade direto na sacola, respeitando o estoque
+  const alterarQuantidadeCarrinho = (index: number, delta: number): void => {
+    const item = carrinho[index];
+    if (!item) return;
+    const limite = estoqueDoItem(item);
+    const nova = item.quantidade + delta;
+    if (nova < 1) return;
+    if (limite !== null && nova > limite) {
+      setModalSistema({
+        isOpen: true,
+        type: 'warning',
+        title: 'Estoque na sacola',
+        message: `Só temos ${limite} unidade(s) desta variação.`,
+        confirmText: 'Ok',
+      });
+      return;
+    }
+    setCarrinho((prev) => prev.map((it, i) => (i === index ? { ...it, quantidade: nova } : it)));
+  };
+
+  // Recarrega o catálogo (estoque real) e ajusta a sacola ao que ainda existe
+  const sincronizarEstoqueVitrine = async (avisar: boolean): Promise<void> => {
+    try {
+      const res = await api.get<PageSpring<ProdutoVitrine> | ProdutoVitrine[]>('/vitrine/produtos?size=50');
+      const lista = Array.isArray((res.data as PageSpring<ProdutoVitrine>)?.content)
+        ? (res.data as PageSpring<ProdutoVitrine>).content
+        : (Array.isArray(res.data) ? (res.data as ProdutoVitrine[]) : null);
+      if (!lista) return;
+      setProdutos(lista);
+      setProdutoSelecionado((atual) => (atual ? (lista.find((p) => p.id === atual.id) ?? atual) : atual));
+
+      let ajustou = false;
+      const ajustada: ItemCarrinho[] = [];
+      for (const item of carrinhoRef.current) {
+        const limite = estoqueDoItem(item, lista);
+        if (limite === null || limite <= 0) {
+          ajustou = true;
+          continue;
+        }
+        if (item.quantidade > limite) {
+          ajustou = true;
+          ajustada.push({ ...item, quantidade: limite });
+        } else {
+          ajustada.push(item);
+        }
+      }
+      if (ajustou) {
+        setCarrinho(ajustada);
+        if (avisar) {
+          setModalSistema({
+            isOpen: true,
+            type: 'warning',
+            title: 'Sacola atualizada',
+            message: 'O estoque mudou: ajustamos sua sacola ao que ainda está disponível.',
+            confirmText: 'Ok',
+          });
+        }
+      }
+    } catch {
+      /* mantém o último catálogo conhecido */
+    }
+  };
+
   const montarMensagemLoja = (idPedido?: number, idCondicional?: number): string => {
     const linhasItens = carrinho
       .map((item) => `- ${item.nome} (${item.corEscolhida}/${item.tamanhoEscolhido}) x${item.quantidade}`)
@@ -501,6 +580,16 @@ export default function VitrineProdutos() {
     }
 
     const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    if (compraDireta && !siteKey) {
+      setModalSistema({
+        isOpen: true,
+        type: 'warning',
+        title: 'Compra direta indisponível',
+        message: 'A verificação “não sou um robô” não está ativa. Use a sacola condicional ou fale com a loja.',
+        confirmText: 'Ok',
+      });
+      return;
+    }
     if (siteKey && (captchaErro || !captchaToken)) {
       setModalSistema({
         isOpen: true,
@@ -541,6 +630,8 @@ export default function VitrineProdutos() {
       setMostrarCarrinho(false);
       setCaptchaToken('');
       setFinalizando(false);
+      // O estoque mudou no servidor: atualiza a vitrine para refletir o que saiu
+      void sincronizarEstoqueVitrine(false);
 
       if (!telefoneLojaDaApi) {
         const fallbackTel = telefoneLoja || process.env.NEXT_PUBLIC_WHATSAPP_LOJA || '';
@@ -576,13 +667,17 @@ export default function VitrineProdutos() {
         ? 'Uma das peças não tem mais saldo. Ajuste a sacola e tente de novo.'
         : mensagemErro;
 
+      const whatsNaoEncontrado = /whatsapp n[ãa]o encontrado/i.test(mensagemErro);
       setModalSistema({
         isOpen: true,
         type: 'warning',
-        title: 'Atenção ao Finalizar Sacola',
+        title: whatsNaoEncontrado ? 'WhatsApp não encontrado' : 'Atenção ao Finalizar Sacola',
         message: estoque,
         confirmText: 'Ok',
       });
+      if (/estoque|saldo/i.test(mensagemErro)) {
+        void sincronizarEstoqueVitrine(false);
+      }
       setCaptchaToken('');
       const w = window as Window & { turnstile?: { reset: (id: string) => void } };
       if (turnstileWidgetId.current && w.turnstile) {
@@ -595,6 +690,27 @@ export default function VitrineProdutos() {
       setFinalizando(false);
     }
   };
+
+  // Mantém a vitrine sincronizada com o estoque real (condicionais, devoluções, edições no painel)
+  const abrirCarrinho = (): void => {
+    setMostrarCarrinho(true);
+    void sincronizarEstoqueVitrine(true);
+  };
+
+  useEffect(() => {
+    const atualizar = () => {
+      if (document.visibilityState === 'visible') {
+        void sincronizarEstoqueVitrine(true);
+      }
+    };
+    const intervalo = window.setInterval(atualizar, 60000);
+    document.addEventListener('visibilitychange', atualizar);
+    return () => {
+      window.clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', atualizar);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Filtragem local segura com Array.isArray
   const produtosFiltrados = (Array.isArray(produtos) ? produtos : []).filter((p) => {
@@ -624,7 +740,7 @@ export default function VitrineProdutos() {
 
         <button
           type="button"
-          onClick={() => setMostrarCarrinho(true)}
+          onClick={abrirCarrinho}
           className="relative justify-self-end shrink-0 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition flex items-center justify-center min-h-11 min-w-11"
           aria-label="Abrir sacola"
         >
@@ -1032,8 +1148,29 @@ export default function VitrineProdutos() {
                       <div className="flex-1 min-w-0">
                         <h4 className="font-semibold text-sm text-gray-900 truncate">{item.nome}</h4>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          Tam. {item.tamanhoEscolhido} · {item.corEscolhida} · {item.quantidade}x
+                          Tam. {item.tamanhoEscolhido} · {item.corEscolhida}
                         </p>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <button
+                            type="button"
+                            aria-label="Diminuir quantidade"
+                            disabled={item.quantidade <= 1}
+                            onClick={() => alterarQuantidadeCarrinho(index, -1)}
+                            className="w-7 h-7 rounded-full border border-gray-300 bg-white flex items-center justify-center disabled:opacity-40"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-6 text-center text-sm font-semibold tabular-nums">{item.quantidade}</span>
+                          <button
+                            type="button"
+                            aria-label="Aumentar quantidade"
+                            disabled={(() => { const lim = estoqueDoItem(item); return lim !== null && item.quantidade >= lim; })()}
+                            onClick={() => alterarQuantidadeCarrinho(index, 1)}
+                            className="w-7 h-7 rounded-full border border-gray-300 bg-white flex items-center justify-center disabled:opacity-40"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                         <p className="text-sm font-semibold text-brand-900 mt-1.5 tabular-nums">{moeda(item.preco * item.quantidade)}</p>
                       </div>
                       <button
@@ -1156,7 +1293,7 @@ export default function VitrineProdutos() {
       {/* FAB sacola: visível no celular, não cobre o último card */}
       <button
         type="button"
-        onClick={() => setMostrarCarrinho(true)}
+        onClick={abrirCarrinho}
         className="sm:hidden fixed bottom-5 right-4 z-30 bg-brand-900 text-white rounded-full shadow-xl p-3.5 min-h-14 min-w-14 flex items-center justify-center active:scale-95 transition"
         aria-label="Abrir sacola"
       >

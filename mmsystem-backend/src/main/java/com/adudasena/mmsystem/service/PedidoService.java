@@ -156,10 +156,12 @@ public class PedidoService {
         if (pedidoExistente == null) {
             return null;
         }
+        StatusPedido statusAnterior = pedidoExistente.getStatus();
         pedidoExistente.getItens().clear();
         pedidoRepository.saveAndFlush(pedidoExistente);
 
         preencherDadosPedido(pedidoExistente, dto);
+        sincronizarEstoquePorStatus(pedidoExistente, statusAnterior, pedidoExistente.getStatus());
 
         if (dto.getValorTotal() == null || dto.getValorTotal().compareTo(BigDecimal.ZERO) <= 0) {
             BigDecimal totalCalculado = BigDecimal.ZERO;
@@ -226,6 +228,7 @@ public class PedidoService {
         if (pedido != null && status != null) {
             try {
                 StatusPedido statusEnum = StatusPedido.valueOf(status.toUpperCase());
+                sincronizarEstoquePorStatus(pedido, pedido.getStatus(), statusEnum);
                 pedido.setStatus(statusEnum);
                 Pedido salvo = pedidoRepository.save(pedido);
 
@@ -249,6 +252,36 @@ public class PedidoService {
             }
         }
         return pedido;
+    }
+
+    /**
+     * Cancelar um pedido devolve as peças ao estoque (e à vitrine); reabri-lo abate de novo.
+     * Só age na transição de/para CANCELADO, então repetir o mesmo status nunca duplica a baixa.
+     */
+    private void sincronizarEstoquePorStatus(Pedido pedido, StatusPedido anterior, StatusPedido novo) {
+        boolean eraCancelado = anterior == StatusPedido.CANCELADO;
+        boolean ficaCancelado = novo == StatusPedido.CANCELADO;
+        if (eraCancelado == ficaCancelado || pedido.getItens() == null) {
+            return;
+        }
+        for (ItemPedido item : pedido.getItens()) {
+            if (item.getProduto() == null || item.getQuantidade() == null || item.getQuantidade() <= 0) {
+                continue;
+            }
+            if (ficaCancelado) {
+                condicionalService.alterarEstoqueProduto(item.getProduto(), item.getCorEscolhida(),
+                        item.getTamanhoEscolhido(), +item.getQuantidade());
+            } else {
+                boolean temVariacao = (item.getCorEscolhida() != null && !item.getCorEscolhida().isBlank())
+                        || (item.getTamanhoEscolhido() != null && !item.getTamanhoEscolhido().isBlank());
+                if (temVariacao) {
+                    condicionalService.validarEstoqueDisponivel(item.getProduto(), item.getCorEscolhida(),
+                            item.getTamanhoEscolhido(), item.getQuantidade());
+                }
+                condicionalService.alterarEstoqueProduto(item.getProduto(), item.getCorEscolhida(),
+                        item.getTamanhoEscolhido(), -item.getQuantidade());
+            }
+        }
     }
 
     private void preencherDadosPedido(Pedido pedido, PedidoDTO dto) {
@@ -360,6 +393,8 @@ public class PedidoService {
             item.setPedido(pedido);
             item.setProduto(produto);
             item.setQuantidade(qtd);
+            item.setCorEscolhida(itemDto.getCorEscolhida());
+            item.setTamanhoEscolhido(itemDto.getTamanhoEscolhido());
             pedido.getItens().add(item);
 
             BigDecimal preco = produto.getPreco() != null ? produto.getPreco() : BigDecimal.ZERO;
