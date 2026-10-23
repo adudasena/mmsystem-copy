@@ -317,3 +317,10 @@ tbody.divide-y > tr {
     @apply text-sm text-gray-600 mt-1;
   }
 }
+
+/* Chave de teste do Turnstile: o iframe traz a faixa vermelha abaixo dos 65px do widget. */
+.turnstile-sem-faixa-teste {
+  height: 65px;
+  max-height: 65px;
+  overflow: hidden;
+}

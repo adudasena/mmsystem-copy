@@ -1272,11 +1272,18 @@ export default function VitrineProdutos() {
                       </div>
                     )}
                     {/* Nunca esconder: o Turnstile tenta de novo sozinho e falha (600010) se o iframe estiver oculto */}
-                    {/* Chaves de teste (1x/2x/3x...) mostram uma faixa "Somente para teste" abaixo do widget de 65px */}
-                    <div
-                      ref={turnstileRef}
-                      className={`flex justify-center${/^[1-3]x/.test(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '') ? ' h-[65px] overflow-hidden' : ''}`}
-                    />
+                    <div className="flex justify-center">
+                      <div
+                        className={/^[123]x/.test(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '') ? 'turnstile-sem-faixa-teste' : undefined}
+                        style={
+                          /^[123]x/.test(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '')
+                            ? { height: 65, maxHeight: 65, overflow: 'hidden' }
+                            : undefined
+                        }
+                      >
+                        <div ref={turnstileRef} />
+                      </div>
+                    </div>
                     {!captchaToken ? (
                       <button
                         type="button"
