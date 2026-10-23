@@ -63,11 +63,9 @@ type TurnstileApi = {
   execute: (id: string) => void;
 };
 
-/** A chave de teste visível (…AA) desenha a faixa "Somente para teste"; a invisível (…BB) também sempre aprova e não mostra nada. */
-const TURNSTILE_SITE_KEY =
-  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY === '1x00000000000000000000AA'
-    ? '1x00000000000000000000BB'
-    : process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+/** Chaves de teste da Cloudflare (1x/2x/3x…) desenham a faixa "Somente para teste" na parte de baixo do widget (a partir de ~39px dos 65px). */
+const TURNSTILE_CHAVE_TESTE = /^[123]x/.test(TURNSTILE_SITE_KEY ?? '');
 
 /** Traduz o código do Turnstile e registra no console para diagnóstico. */
 function mensagemErroTurnstile(codigo?: string): string {
@@ -1277,7 +1275,11 @@ export default function VitrineProdutos() {
                       </div>
                     )}
                     {/* Nunca esconder: o Turnstile tenta de novo sozinho e falha (600010) se o iframe estiver oculto */}
-                    <div ref={turnstileRef} className="flex justify-center" />
+                    <div className="flex justify-center">
+                      <div style={TURNSTILE_CHAVE_TESTE ? { height: 38, overflow: 'hidden', borderRadius: 4 } : undefined}>
+                        <div ref={turnstileRef} />
+                      </div>
+                    </div>
                     {!captchaToken ? (
                       <button
                         type="button"
