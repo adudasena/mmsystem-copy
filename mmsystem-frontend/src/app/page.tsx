@@ -63,6 +63,11 @@ type TurnstileApi = {
   execute: (id: string) => void;
 };
 
+/** A chave de teste visível (…AA) desenha a faixa "Somente para teste"; a invisível (…BB) também sempre aprova e não mostra nada. */
+const TURNSTILE_SITE_KEY =
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY === '1x00000000000000000000AA'
+    ? '1x00000000000000000000BB'
+    : process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 /** Traduz o código do Turnstile e registra no console para diagnóstico. */
 function mensagemErroTurnstile(codigo?: string): string {
@@ -162,7 +167,7 @@ export default function VitrineProdutos() {
 
     carregarProdutosInicial();
 
-    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    const siteKey = TURNSTILE_SITE_KEY;
     if (siteKey && !document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]')) {
       const script = document.createElement('script');
       script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
@@ -177,7 +182,7 @@ export default function VitrineProdutos() {
   }, []);
 
   useEffect(() => {
-    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    const siteKey = TURNSTILE_SITE_KEY;
     // O container do widget só existe com itens na sacola
     if (!siteKey || !mostrarCarrinho || !sacolaTemItens) {
       return;
@@ -540,7 +545,7 @@ export default function VitrineProdutos() {
     if (turnstileRef.current && w.turnstile) {
       try {
         turnstileWidgetId.current = w.turnstile.render(turnstileRef.current, {
-          sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+          sitekey: TURNSTILE_SITE_KEY,
           appearance: 'always',
           retry: 'auto',
           callback: (token: string) => {
@@ -592,7 +597,7 @@ export default function VitrineProdutos() {
       return;
     }
 
-    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    const siteKey = TURNSTILE_SITE_KEY;
     if (compraDireta && !siteKey) {
       setModalSistema({
         isOpen: true,
@@ -1254,7 +1259,7 @@ export default function VitrineProdutos() {
                   <span className="text-sm text-gray-600">Subtotal estimado</span>
                   <span className="font-display text-2xl font-medium text-brand-900 tabular-nums">{moeda(totalCarrinho)}</span>
                 </div>
-                {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? (
+                {TURNSTILE_SITE_KEY ? (
                   <div className="mb-3">
                     {captchaCarregando && !captchaErro && (
                       <p className="text-xs text-gray-500 text-center mb-2">Validando…</p>
