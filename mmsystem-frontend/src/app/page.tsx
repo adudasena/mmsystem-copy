@@ -70,6 +70,7 @@ function mensagemErroTurnstile(codigo?: string): string {
   const c = String(codigo || '');
   if (c.startsWith('110200')) return `Este endereço do site não está autorizado no Turnstile (código ${c}). Avise a loja.`;
   if (c.startsWith('110100') || c.startsWith('110110') || c.startsWith('400020')) return `Chave do Turnstile inválida (código ${c}). Avise a loja.`;
+  if (c.startsWith('600')) return `A verificação não passou (código ${c}). Se aparecer a caixa abaixo, clique nela; senão toque em tentar de novo.`;
   return `Não foi possível validar agora${c ? ` (código ${c})` : ''}. Verifique a conexão e toque em tentar de novo.`;
 }
 
@@ -91,6 +92,7 @@ export default function VitrineProdutos() {
   const [quantidade, setQuantidade] = useState<number>(1);
   const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([]);
   const carrinhoRef = useRef<ItemCarrinho[]>([]);
+  const sacolaTemItens = carrinho.length > 0;
   useEffect(() => {
     carrinhoRef.current = carrinho;
   }, [carrinho]);
@@ -176,7 +178,8 @@ export default function VitrineProdutos() {
 
   useEffect(() => {
     const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-    if (!siteKey || !mostrarCarrinho) {
+    // O container do widget só existe com itens na sacola
+    if (!siteKey || !mostrarCarrinho || !sacolaTemItens) {
       return;
     }
     const w = window as Window & { turnstile?: TurnstileApi };
@@ -241,7 +244,7 @@ export default function VitrineProdutos() {
       }
       turnstileWidgetId.current = '';
     };
-  }, [mostrarCarrinho]);
+  }, [mostrarCarrinho, sacolaTemItens]);
 
 // Helper para obter a foto do produto
   const obterImagens = (prod: ProdutoVitrine): string[] => {
@@ -1268,7 +1271,8 @@ export default function VitrineProdutos() {
                         </button>
                       </div>
                     )}
-                    <div ref={turnstileRef} className={`flex justify-center ${captchaErro ? 'hidden' : ''}`} />
+                    {/* Nunca esconder: o Turnstile tenta de novo sozinho e falha (600010) se o iframe estiver oculto */}
+                    <div ref={turnstileRef} className="flex justify-center" />
                     {!captchaToken ? (
                       <button
                         type="button"
