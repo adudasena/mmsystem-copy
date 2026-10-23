@@ -56,15 +56,41 @@ interface ApiErrorResponse {
 }
 
 // ─── Constantes e Helpers ──────────────────────────────────────────────────
-const TAMANHOS_PADRAO: string[] = ['PP', 'P', 'M', 'G', 'GG', 'G1', 'G2'];
-const CATEGORIAS_PADRAO: string[] = ['Blusas', 'Vestidos', 'Saias', 'Camisas', 'Calças', 'Shorts'];
-const CORES_PADRAO: Cor[] = [
-  { nome: 'Vermelho', hex: '#e11d48' }, { nome: 'Amarelo', hex: '#facc15' },
-  { nome: 'Laranja', hex: '#ea580c' }, { nome: 'Verde', hex: '#16a34a' },
-  { nome: 'Branco', hex: '#ffffff' }, { nome: 'Rosa', hex: '#f472b6' },
-  { nome: 'Azul', hex: '#2563eb' }, { nome: 'Preto', hex: '#000000' },
-  { nome: 'Roxo', hex: '#9333ea' },
-];
+const HEX_COR_FORA_DA_LISTA = '#d1d5db';
+
+/** Só as combinações cor-tamanho marcadas; quantidades de variações desmarcadas não vão para o banco. */
+const estoqueDasVariacoes = (p: Produto): Record<string, number> => {
+  const ativo: Record<string, number> = {};
+  p.coresSelecionadas.forEach((cor) => {
+    p.tamanhosSelecionados.forEach((tam) => {
+      const chave = `${cor}-${tam}`;
+      if (p.estoqueDetalhado[chave] !== undefined) ativo[chave] = p.estoqueDetalhado[chave];
+    });
+  });
+  return ativo;
+};
+
+const somaEstoque = (estoque: Record<string, number>): number =>
+  Object.values(estoque).reduce((a, b) => a + b, 0);
+
+interface AtributosDoBanco {
+  categorias: string[];
+  tamanhos: string[];
+  cores: Cor[];
+}
+
+const buscarAtributosDoBanco = async (): Promise<AtributosDoBanco> => {
+  const [resCat, resTam, resCor] = await Promise.all([
+    api.get<{ id: number; nome: string }[]>('/api/atributos/categorias'),
+    api.get<{ id: number; nome: string }[]>('/api/atributos/tamanhos'),
+    api.get<{ id: number; nome: string; hexCode?: string }[]>('/api/atributos/cores'),
+  ]);
+  return {
+    categorias: Array.isArray(resCat.data) ? resCat.data.map((c) => c.nome) : [],
+    tamanhos: Array.isArray(resTam.data) ? resTam.data.map((t) => t.nome) : [],
+    cores: Array.isArray(resCor.data) ? resCor.data.map((c) => ({ nome: c.nome, hex: c.hexCode || '#000000' })) : [],
+  };
+};
 
 const TelaProdutos: React.FC = () => {
   const [editandoId, setEditandoId] = useState<number | null>(null);
@@ -103,9 +129,10 @@ const TelaProdutos: React.FC = () => {
   });
 
   // ─── Opções customizáveis ──────────────────────────────────────────────────
-  const [tamanhos, setTamanhos] = useState<string[]>(TAMANHOS_PADRAO);
-  const [categorias, setCategorias] = useState<string[]>(CATEGORIAS_PADRAO);
-  const [listaCores, setListaCores] = useState<Cor[]>(CORES_PADRAO);
+  const [tamanhos, setTamanhos] = useState<string[]>([]);
+  const [categorias, setCategorias] = useState<string[]>([]);
+  const [listaCores, setListaCores] = useState<Cor[]>([]);
+  const [estadoAtributos, setEstadoAtributos] = useState<'carregando' | 'ok' | 'erro'>('carregando');
 
   // ─── Lixeira / Removidos ──────────────────────────────────────────────────
   const [produtosExcluidos, setProdutosExcluidos] = useState<Produto[]>([]);
@@ -130,6 +157,23 @@ const TelaProdutos: React.FC = () => {
     }
   }, [tamanhoPagina]);
 
+  const aplicarAtributos = useCallback((a: AtributosDoBanco): void => {
+    setCategorias(a.categorias);
+    setTamanhos(a.tamanhos);
+    setListaCores(a.cores);
+    setEstadoAtributos('ok');
+  }, []);
+
+  const falhaAoCarregarAtributos = useCallback((erro: unknown): void => {
+    console.error('Erro ao carregar atributos:', erro);
+    setEstadoAtributos('erro');
+  }, []);
+
+  const recarregarAtributos = (): void => {
+    setEstadoAtributos('carregando');
+    buscarAtributosDoBanco().then(aplicarAtributos).catch(falhaAoCarregarAtributos);
+  };
+
   // ─── Efeito de Inicialização Segura ───────────────────────────────────────
   useEffect(() => {
     let montado = true;
@@ -149,37 +193,20 @@ const TelaProdutos: React.FC = () => {
     };
 
     carregarInicial();
+    buscarAtributosDoBanco()
+      .then((a) => { if (montado) aplicarAtributos(a); })
+      .catch((erro) => { if (montado) falhaAoCarregarAtributos(erro); });
 
-    const carregarAtributos = async () => {
-      try {
-        const [resCat, resTam, resCor, resFiltro] = await Promise.all([
-          api.get<{ id: number; nome: string }[]>('/api/atributos/categorias'),
-          api.get<{ id: number; nome: string }[]>('/api/atributos/tamanhos'),
-          api.get<{ id: number; nome: string; hexCode?: string }[]>('/api/atributos/cores'),
-          api.get<string[]>('/produtos/opcoes-filtro'),
-        ]);
-        if (Array.isArray(resCat.data) && resCat.data.length > 0) {
-          setCategorias(resCat.data.map((c) => c.nome));
-        }
-        if (Array.isArray(resFiltro.data)) {
-          setCategoriasFiltro(resFiltro.data.filter(Boolean));
-        }
-        if (Array.isArray(resTam.data) && resTam.data.length > 0) {
-          setTamanhos(resTam.data.map((t) => t.nome));
-        }
-        if (Array.isArray(resCor.data) && resCor.data.length > 0) {
-          setListaCores(resCor.data.map((c) => ({ nome: c.nome, hex: c.hexCode || '#000000' })));
-        }
-      } catch (erro) {
-        console.error('Erro ao carregar atributos:', erro);
-      }
-    };
-    void carregarAtributos();
+    api.get<string[]>('/produtos/opcoes-filtro')
+      .then((res) => {
+        if (montado && Array.isArray(res.data)) setCategoriasFiltro(res.data.filter(Boolean));
+      })
+      .catch((erro) => console.error('Erro ao carregar categorias do filtro:', erro));
 
     return () => {
       montado = false;
     };
-  }, [tamanhoPagina]);
+  }, [tamanhoPagina, aplicarAtributos, falhaAoCarregarAtributos]);
 
   const encerrarGuia = (): void => {
     setGuiaAtivo(false);
@@ -377,8 +404,7 @@ const TelaProdutos: React.FC = () => {
     if (produto.tamanhosSelecionados.length === 0) erros.push('Selecione pelo menos um tamanho.');
     if (produto.fotos.length === 0) erros.push('Insira ao menos 1 foto.');
 
-    const totalEstoque = Object.values(produto.estoqueDetalhado).reduce((a, b) => a + b, 0);
-    if (totalEstoque === 0) erros.push('O estoque total não pode ser zero. Configure a grade de estoque.');
+    if (somaEstoque(estoqueDasVariacoes(produto)) === 0) erros.push('O estoque total não pode ser zero. Configure a grade de estoque.');
 
     return erros;
   };
@@ -402,7 +428,7 @@ const TelaProdutos: React.FC = () => {
         preco: Number(produto.preco),
         coresSelecionadas: produto.coresSelecionadas,
         tamanhosSelecionados: produto.tamanhosSelecionados,
-        estoqueDetalhado: produto.estoqueDetalhado,
+        estoqueDetalhado: estoqueDasVariacoes(produto),
         fotos: produto.fotos,
         status: produto.status || 'DISPONIVEL',
       };
@@ -516,6 +542,22 @@ const TelaProdutos: React.FC = () => {
     return atendeCategoria && atendeBusca;
   });
 
+  // Valores gravados no produto que saíram das listas continuam visíveis para poder desmarcar
+  const categoriasVisiveis = produto.categoria && !categorias.includes(produto.categoria)
+    ? [...categorias, produto.categoria]
+    : categorias;
+  const tamanhosVisiveis = [
+    ...tamanhos,
+    ...produto.tamanhosSelecionados.filter((t) => !tamanhos.includes(t)),
+  ];
+  const coresVisiveis: Cor[] = [
+    ...listaCores,
+    ...produto.coresSelecionadas
+      .filter((nome) => !listaCores.some((c) => c.nome === nome))
+      .map((nome) => ({ nome, hex: HEX_COR_FORA_DA_LISTA })),
+  ];
+  const totalEstoqueAtivo = somaEstoque(estoqueDasVariacoes(produto));
+
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="mm-page">
@@ -540,6 +582,15 @@ const TelaProdutos: React.FC = () => {
             <ul className="list-disc list-inside text-xs space-y-0.5">
               {errosValidacao.map((err, i) => <li key={i}>{err}</li>)}
             </ul>
+          </div>
+        )}
+
+        {estadoAtributos === 'erro' && (
+          <div className="mm-alert-err items-center justify-between gap-3">
+            <span className="text-xs">Não foi possível carregar categorias, cores e tamanhos do banco.</span>
+            <button type="button" onClick={recarregarAtributos} className="mm-btn-secondary mm-btn-sm shrink-0">
+              Tentar de novo
+            </button>
           </div>
         )}
 
@@ -579,8 +630,8 @@ const TelaProdutos: React.FC = () => {
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => setProduto({ ...produto, categoria: e.target.value })}
                   className="mm-input"
                 >
-                  <option value="">Selecione...</option>
-                  {categorias.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                  <option value="">{estadoAtributos === 'carregando' ? 'Carregando...' : 'Selecione...'}</option>
+                  {categoriasVisiveis.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
               <div>
@@ -669,7 +720,7 @@ const TelaProdutos: React.FC = () => {
                 <CampoAjuda texto="Quantidade por cor e tamanho. Zero nessa combinação = esgotado." />
               </label>
               <div className="w-full border border-gray-200 h-10 flex items-center justify-center bg-gray-50 font-semibold text-xs text-brand-900 rounded-xl group-hover:bg-brand-900 group-hover:text-white transition">
-                {Object.values(produto.estoqueDetalhado).reduce((a, b) => a + b, 0)} un
+                {totalEstoqueAtivo} un
               </div>
             </div>
           </div>
@@ -681,7 +732,12 @@ const TelaProdutos: React.FC = () => {
               <CampoAjuda texto="Variações da peça. Marque os tamanhos que realmente existem neste modelo." />
             </label>
             <div className="flex flex-wrap gap-1.5 justify-center mb-4">
-              {tamanhos.map(t => (
+              {tamanhosVisiveis.length === 0 && (
+                <p className="text-xs text-gray-400 font-sans">
+                  {estadoAtributos === 'carregando' ? 'Carregando...' : 'Nenhum tamanho cadastrado. Adicione abaixo.'}
+                </p>
+              )}
+              {tamanhosVisiveis.map(t => (
                 <button
                   key={t} type="button"
                   onClick={() => {
@@ -717,7 +773,12 @@ const TelaProdutos: React.FC = () => {
               <CampoAjuda texto="Variações de cor desta peça. Combinam com os tamanhos na grade de estoque." />
             </label>
             <div className="grid grid-cols-2 gap-y-2.5 max-h-40 overflow-y-auto mb-4 pr-1">
-              {listaCores.map(c => (
+              {coresVisiveis.length === 0 && (
+                <p className="col-span-2 text-xs text-gray-400 font-sans">
+                  {estadoAtributos === 'carregando' ? 'Carregando...' : 'Nenhuma cor cadastrada. Adicione abaixo.'}
+                </p>
+              )}
+              {coresVisiveis.map(c => (
                 <label key={c.nome} className="flex items-center gap-2 cursor-pointer select-none min-w-0">
                   <input
                     type="checkbox"
