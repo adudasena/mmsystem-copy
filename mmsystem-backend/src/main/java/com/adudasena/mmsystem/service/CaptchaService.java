@@ -4,11 +4,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 
 @Service
@@ -36,7 +38,10 @@ public class CaptchaService {
         // enabled permanece no construtor por compatibilidade; a secret é o que liga a verificação.
         this.secret = secret;
         this.provider = provider == null ? "turnstile" : provider.toLowerCase();
-        this.restClient = RestClient.create();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofSeconds(5));
+        requestFactory.setReadTimeout(Duration.ofSeconds(8));
+        this.restClient = RestClient.builder().requestFactory(requestFactory).build();
     }
 
     /**
