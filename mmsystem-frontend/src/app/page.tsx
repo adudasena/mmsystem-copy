@@ -633,7 +633,7 @@ export default function VitrineProdutos() {
 
     setFinalizando(true);
     try {
-      const res = await api.post<CheckoutVitrine>('/vitrine/pedido', payload);
+      const res = await api.post<CheckoutVitrine>('/vitrine/pedido', payload, { timeout: 30000 });
       const idPedido = res.data?.pedido?.id;
       const idCondicional = res.data?.condicional?.id;
       const idTxt = compraDireta
@@ -678,7 +678,9 @@ export default function VitrineProdutos() {
       const mensagemErro = erroAxios.response?.data?.mensagem
         || erroAxios.response?.data?.message
         || erroAxios.response?.data?.erro
-        || 'Falha na conexão com o servidor.';
+        || (erroAxios.code === 'ECONNABORTED'
+          ? 'O servidor demorou para responder. Confira com a loja se o pedido entrou antes de tentar de novo.'
+          : 'Falha na conexão com o servidor.');
       const estoque = /estoque|saldo/i.test(mensagemErro)
         ? 'Uma das peças não tem mais saldo. Ajuste a sacola e tente de novo.'
         : mensagemErro;

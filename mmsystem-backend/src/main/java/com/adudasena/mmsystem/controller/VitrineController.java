@@ -94,7 +94,8 @@ public class VitrineController {
             );
         }
         vitrineProtecaoService.marcarPedidoRegistrado(dto);
-        notificarCliente(dto, tipo);
+        // O pedido já está gravado: o aviso por WhatsApp não pode segurar a resposta da cliente
+        java.util.concurrent.CompletableFuture.runAsync(() -> notificarCliente(dto, tipo));
         return ResponseEntity.status(201).body(resposta);
     }
 

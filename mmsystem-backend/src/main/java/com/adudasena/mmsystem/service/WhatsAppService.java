@@ -5,10 +5,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.time.Duration;
 import java.util.Map;
 
 @Service
@@ -35,7 +37,10 @@ public class WhatsAppService {
         this.instance = instance;
         this.apiKey = apiKey;
         this.antiSpamService = antiSpamService;
-        this.restClient = RestClient.create();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofSeconds(3));
+        requestFactory.setReadTimeout(Duration.ofSeconds(5));
+        this.restClient = RestClient.builder().requestFactory(requestFactory).build();
     }
 
     public boolean isEnabled() {
