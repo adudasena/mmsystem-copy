@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect, useRef } from 'react';
@@ -190,7 +190,6 @@ export default function VitrineProdutos() {
 
     const opcoesTurnstile = {
       sitekey: siteKey,
-      execution: 'execute',
       appearance: 'always',
       retry: 'auto',
       'refresh-expired': 'auto',
@@ -514,7 +513,8 @@ export default function VitrineProdutos() {
     setCaptchaCarregando(true);
     setCaptchaToken('');
     try {
-      w.turnstile.execute(turnstileWidgetId.current);
+      // Modo padrão: o desafio roda sozinho ao renderizar; aqui só reiniciamos para tentar de novo.
+      w.turnstile.reset(turnstileWidgetId.current);
     } catch {
       setCaptchaCarregando(false);
       setCaptchaErro('Não foi possível iniciar a verificação. Tente de novo.');
@@ -538,7 +538,6 @@ export default function VitrineProdutos() {
       try {
         turnstileWidgetId.current = w.turnstile.render(turnstileRef.current, {
           sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
-          execution: 'execute',
           appearance: 'always',
           retry: 'auto',
           callback: (token: string) => {

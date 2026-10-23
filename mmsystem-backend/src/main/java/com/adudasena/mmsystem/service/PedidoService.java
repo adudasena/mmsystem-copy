@@ -133,16 +133,10 @@ public class PedidoService {
             }
         }
 
-        Pedido pedidoSalvo = pedidoRepository.save(pedido);
+        // 1. Valida e dá baixa no estoque (falha => nada é gravado). Pedido cancelado não segura estoque.
+        aplicarDeltaEstoque(Map.of(), quantidadesRetidas(pedido, pedido.getStatus()));
 
-        // 1. Dá baixa no estoque para cada item do pedido criado
-        if (pedidoSalvo.getItens() != null) {
-            for (ItemPedido item : pedidoSalvo.getItens()) {
-                if (item.getProduto() != null && item.getProduto().getId() != null && item.getQuantidade() != null && item.getQuantidade() > 0) {
-                    darBaixaEstoqueProduto(item.getProduto().getId(), item.getQuantidade());
-                }
-            }
-        }
+        Pedido pedidoSalvo = pedidoRepository.save(pedido);
 
         // 2. Gera automaticamente um registro em Pagamentos (Contas a Receber)
         gerarPagamentoAutomaticoParaPedido(pedidoSalvo);
@@ -156,12 +150,13 @@ public class PedidoService {
         if (pedidoExistente == null) {
             return null;
         }
-        StatusPedido statusAnterior = pedidoExistente.getStatus();
+        Map<Long, Integer> retidoAntes = quantidadesRetidas(pedidoExistente, pedidoExistente.getStatus());
         pedidoExistente.getItens().clear();
         pedidoRepository.saveAndFlush(pedidoExistente);
 
         preencherDadosPedido(pedidoExistente, dto);
-        sincronizarEstoquePorStatus(pedidoExistente, statusAnterior, pedidoExistente.getStatus());
+        // Só a diferença mexe no estoque: aumentar a quantidade valida o saldo, reduzir/cancelar devolve.
+        aplicarDeltaEstoque(retidoAntes, quantidadesRetidas(pedidoExistente, pedidoExistente.getStatus()));
 
         if (dto.getValorTotal() == null || dto.getValorTotal().compareTo(BigDecimal.ZERO) <= 0) {
             BigDecimal totalCalculado = BigDecimal.ZERO;
@@ -327,32 +322,73 @@ public class PedidoService {
         }
     }
 
-    private void darBaixaEstoqueProduto(Long produtoId, int qtdVendida) {
-        try {
-            Produto produto = produtoRepository.findById(produtoId).orElse(null);
-            if (produto == null) return;
+    /** Quantidade por produto que o pedido mantém fora do estoque (vazio se cancelado). */
+    private Map<Long, Integer> quantidadesRetidas(Pedido pedido, StatusPedido status) {
+        Map<Long, Integer> mapa = new LinkedHashMap<>();
+        if (status == StatusPedido.CANCELADO || pedido.getItens() == null) {
+            return mapa;
+        }
+        for (ItemPedido item : pedido.getItens()) {
+            if (item.getProduto() != null && item.getProduto().getId() != null
+                    && item.getQuantidade() != null && item.getQuantidade() > 0) {
+                mapa.merge(item.getProduto().getId(), item.getQuantidade(), Integer::sum);
+            }
+        }
+        return mapa;
+    }
 
-            String jsonEstoque = produto.getEstoqueDetalhado();
-            if (jsonEstoque == null || jsonEstoque.trim().isEmpty()) return;
-
-            Map<String, Integer> estoque = objectMapper.readValue(
-                    jsonEstoque, new TypeReference<Map<String, Integer>>() {}
-            );
-
-            int restanteParaDeduzir = qtdVendida;
-            for (Map.Entry<String, Integer> entry : estoque.entrySet()) {
-                int saldoItem = entry.getValue() != null ? entry.getValue() : 0;
-                if (saldoItem > 0 && restanteParaDeduzir > 0) {
-                    int deduzir = Math.min(saldoItem, restanteParaDeduzir);
-                    estoque.put(entry.getKey(), saldoItem - deduzir);
-                    restanteParaDeduzir -= deduzir;
+    private void aplicarDeltaEstoque(Map<Long, Integer> antes, Map<Long, Integer> depois) {
+        Set<Long> ids = new LinkedHashSet<>(antes.keySet());
+        ids.addAll(depois.keySet());
+        // Primeiro devolve (delta > 0), depois retira (delta < 0), para não falhar à toa.
+        for (int passo = 0; passo < 2; passo++) {
+            for (Long id : ids) {
+                int delta = antes.getOrDefault(id, 0) - depois.getOrDefault(id, 0);
+                if ((passo == 0 && delta > 0) || (passo == 1 && delta < 0)) {
+                    Produto produto = produtoRepository.findById(id).orElse(null);
+                    if (produto != null) {
+                        ajustarEstoqueTotal(produto, delta);
+                    }
                 }
             }
+        }
+    }
 
+    /** Ajuste sem variação (pedido manual): soma/subtrai no total, validando saldo. Estoque não controlado = ignora. */
+    private void ajustarEstoqueTotal(Produto produto, int delta) {
+        String json = produto.getEstoqueDetalhado();
+        if (delta == 0 || json == null || json.trim().isEmpty()) {
+            return;
+        }
+        try {
+            Map<String, Integer> estoque = objectMapper.readValue(json, new TypeReference<Map<String, Integer>>() {});
+            if (estoque == null || estoque.isEmpty()) {
+                return;
+            }
+            if (delta > 0) {
+                String primeira = estoque.keySet().iterator().next();
+                estoque.put(primeira, (estoque.get(primeira) != null ? estoque.get(primeira) : 0) + delta);
+            } else {
+                int total = estoque.values().stream().mapToInt(v -> v != null ? v : 0).sum();
+                int precisa = -delta;
+                if (total < precisa) {
+                    throw new IllegalArgumentException("Estoque insuficiente para '" + produto.getNome()
+                            + "'. Disponível: " + total + ", solicitado: " + precisa + ".");
+                }
+                for (Map.Entry<String, Integer> entry : estoque.entrySet()) {
+                    int saldo = entry.getValue() != null ? entry.getValue() : 0;
+                    int tirar = Math.min(saldo, precisa);
+                    entry.setValue(saldo - tirar);
+                    precisa -= tirar;
+                    if (precisa == 0) break;
+                }
+            }
             produto.setEstoqueDetalhado(objectMapper.writeValueAsString(estoque));
             produtoRepository.saveAndFlush(produto);
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
-            System.err.println("Erro ao decrementar estoque de produto avulso: " + e.getMessage());
+            throw new IllegalStateException("Falha ao atualizar o estoque do produto: " + e.getMessage(), e);
         }
     }
 
