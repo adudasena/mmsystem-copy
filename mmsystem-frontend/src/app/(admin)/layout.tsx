@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import MenuLateral from '@/components/MenuLateral';
+import WhatsAppAvisoConexao from '@/components/WhatsAppAvisoConexao';
 
 const PERFIS_ADMIN = ['ROLE_PROPRIETARIA', 'ROLE_FUNCIONARIO', 'PROPRIETARIA', 'FUNCIONARIO'];
 
@@ -59,6 +60,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </header>
 
           <main className="lg:pl-72 min-h-screen min-w-0 overflow-x-hidden">
+            <WhatsAppAvisoConexao />
             {children}
           </main>
         </>

@@ -11,6 +11,7 @@ import {
   CreditCard,
   ShoppingBag,
   Users,
+  MessageCircle,
   Store,
   LogOut,
   X,
@@ -38,6 +39,7 @@ const MenuLateral = ({ aberto = false, onFechar }: MenuLateralProps) => {
     { nome: 'Condicionais', rota: '/condicionais', icone: RefreshCw },
     { nome: 'Pagamentos', rota: '/pagamentos', icone: CreditCard },
     { nome: 'Clientes', rota: '/usuarios', icone: Users },
+    { nome: 'WhatsApp', rota: '/whatsapp', icone: MessageCircle },
   ];
 
   const handleLogout = () => {

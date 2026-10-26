@@ -1,6 +1,8 @@
 package com.adudasena.mmsystem.service;
 
+import com.adudasena.mmsystem.dto.WhatsAppConexaoDTO;
 import com.adudasena.mmsystem.dto.WhatsAppMensagemDTO;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +13,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Service
@@ -23,6 +26,7 @@ public class WhatsAppService {
     private final String instance;
     private final String apiKey;
     private final RestClient restClient;
+    private final RestClient restClientQr;
     private final WhatsAppAntiSpamService antiSpamService;
 
     public WhatsAppService(
@@ -41,6 +45,11 @@ public class WhatsAppService {
         requestFactory.setConnectTimeout(Duration.ofSeconds(3));
         requestFactory.setReadTimeout(Duration.ofSeconds(5));
         this.restClient = RestClient.builder().requestFactory(requestFactory).build();
+
+        SimpleClientHttpRequestFactory qrFactory = new SimpleClientHttpRequestFactory();
+        qrFactory.setConnectTimeout(Duration.ofSeconds(5));
+        qrFactory.setReadTimeout(Duration.ofSeconds(25));
+        this.restClientQr = RestClient.builder().requestFactory(qrFactory).build();
     }
 
     public boolean isEnabled() {
@@ -127,5 +136,186 @@ public class WhatsAppService {
             logger.warn("Falha ao enviar WhatsApp via Evolution API: {}", e.getMessage());
             return false;
         }
+    }
+
+    public WhatsAppConexaoDTO statusConexao() {
+        if (!isEnabled()) {
+            return desligado();
+        }
+        try {
+            JsonNode body = getJson("/instance/connectionState/" + instance);
+            String estadoEvolution = extrairEstado(body);
+            return deEstadoEvolution(estadoEvolution, null);
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 404) {
+                return new WhatsAppConexaoDTO(true, "DESCONECTADO",
+                        "O WhatsApp da loja ainda não foi pareado. Gere o QR e leia com o celular da loja.", null);
+            }
+            logger.warn("Evolution recusou status da conexão: status={} body={}",
+                    e.getStatusCode().value(), e.getResponseBodyAsString());
+            return new WhatsAppConexaoDTO(true, "ERRO",
+                    "Não foi possível consultar a Evolution. Tente de novo em instantes.", null);
+        } catch (Exception e) {
+            logger.warn("Falha ao consultar conexão WhatsApp: {}", e.getMessage());
+            return new WhatsAppConexaoDTO(true, "ERRO",
+                    "A Evolution não respondeu. Confira se o serviço está no ar.", null);
+        }
+    }
+
+    public WhatsAppConexaoDTO gerarQr() {
+        if (!isEnabled()) {
+            return desligado();
+        }
+        try {
+            JsonNode body = conectarInstancia();
+            String qr = extrairQr(body);
+            String estadoEvolution = extrairEstado(body);
+            if (qr == null && ("open".equalsIgnoreCase(estadoEvolution) || body.path("instance").path("state").asText("").equalsIgnoreCase("open"))) {
+                return deEstadoEvolution("open", null);
+            }
+            if (qr != null) {
+                return new WhatsAppConexaoDTO(true, "CONECTANDO",
+                        "Leia o QR no WhatsApp do celular da loja: Aparelhos conectados → Conectar um aparelho.", qr);
+            }
+            return deEstadoEvolution(estadoEvolution.isBlank() ? "connecting" : estadoEvolution, null);
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 404) {
+                return criarInstanciaEConectar();
+            }
+            logger.warn("Evolution recusou o QR: status={} body={}",
+                    e.getStatusCode().value(), e.getResponseBodyAsString());
+            return new WhatsAppConexaoDTO(true, "ERRO",
+                    "Não foi possível gerar o QR. Tente de novo.", null);
+        } catch (Exception e) {
+            logger.warn("Falha ao gerar QR WhatsApp: {}", e.getMessage());
+            return new WhatsAppConexaoDTO(true, "ERRO",
+                    "A Evolution não respondeu ao pedir o QR. Confira se o serviço está no ar.", null);
+        }
+    }
+
+    private WhatsAppConexaoDTO criarInstanciaEConectar() {
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("instanceName", instance);
+            payload.put("qrcode", true);
+            payload.put("integration", "WHATSAPP-BAILEYS");
+            JsonNode criado = restClientQr.post()
+                    .uri(baseUrl() + "/instance/create")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("apikey", apiKey)
+                    .body(payload)
+                    .retrieve()
+                    .body(JsonNode.class);
+            String qr = extrairQr(criado);
+            if (qr != null) {
+                return new WhatsAppConexaoDTO(true, "CONECTANDO",
+                        "Leia o QR no WhatsApp do celular da loja: Aparelhos conectados → Conectar um aparelho.", qr);
+            }
+            JsonNode body = conectarInstancia();
+            qr = extrairQr(body);
+            if (qr != null) {
+                return new WhatsAppConexaoDTO(true, "CONECTANDO",
+                        "Leia o QR no WhatsApp do celular da loja: Aparelhos conectados → Conectar um aparelho.", qr);
+            }
+            return deEstadoEvolution(extrairEstado(body), null);
+        } catch (RestClientResponseException e) {
+            logger.warn("Falha ao criar instância Evolution: status={} body={}",
+                    e.getStatusCode().value(), e.getResponseBodyAsString());
+            return new WhatsAppConexaoDTO(true, "ERRO",
+                    "Não foi possível criar a conexão na Evolution. Tente de novo.", null);
+        } catch (Exception e) {
+            logger.warn("Falha ao criar instância Evolution: {}", e.getMessage());
+            return new WhatsAppConexaoDTO(true, "ERRO",
+                    "A Evolution não respondeu ao criar a conexão.", null);
+        }
+    }
+
+    private JsonNode conectarInstancia() {
+        return restClientQr.get()
+                .uri(baseUrl() + "/instance/connect/" + instance)
+                .header("apikey", apiKey)
+                .retrieve()
+                .body(JsonNode.class);
+    }
+
+    private JsonNode getJson(String caminho) {
+        return restClient.get()
+                .uri(baseUrl() + caminho)
+                .header("apikey", apiKey)
+                .retrieve()
+                .body(JsonNode.class);
+    }
+
+    private String baseUrl() {
+        return evolutionUrl.replaceAll("/$", "");
+    }
+
+    private WhatsAppConexaoDTO desligado() {
+        return new WhatsAppConexaoDTO(false, "DESLIGADO",
+                "O WhatsApp da loja ainda não está ligado neste servidor.", null);
+    }
+
+    private WhatsAppConexaoDTO deEstadoEvolution(String estadoEvolution, String qr) {
+        String estado = (estadoEvolution == null ? "" : estadoEvolution).trim().toLowerCase();
+        return switch (estado) {
+            case "open" -> new WhatsAppConexaoDTO(true, "CONECTADO",
+                    "WhatsApp da loja conectado. Avisos e confirmações podem sair daqui.", qr);
+            case "connecting" -> new WhatsAppConexaoDTO(true, "CONECTANDO",
+                    "Aguardando a leitura do QR no celular da loja.", qr);
+            default -> new WhatsAppConexaoDTO(true, "DESCONECTADO",
+                    "WhatsApp da loja desconectado. Abra esta aba e gere o QR para parear de novo.", qr);
+        };
+    }
+
+    private static String extrairEstado(JsonNode body) {
+        if (body == null || body.isNull()) {
+            return "";
+        }
+        if (body.hasNonNull("state")) {
+            return body.get("state").asText("");
+        }
+        JsonNode instanceNode = body.path("instance");
+        if (instanceNode.hasNonNull("state")) {
+            return instanceNode.get("state").asText("");
+        }
+        if (instanceNode.hasNonNull("status")) {
+            return instanceNode.get("status").asText("");
+        }
+        return "";
+    }
+
+    private static String extrairQr(JsonNode body) {
+        if (body == null || body.isNull()) {
+            return null;
+        }
+        String direto = textoQr(body.get("base64"));
+        if (direto != null) {
+            return direto;
+        }
+        JsonNode qrcode = body.get("qrcode");
+        if (qrcode != null && !qrcode.isNull()) {
+            if (qrcode.isTextual()) {
+                return textoQr(qrcode);
+            }
+            String aninhado = textoQr(qrcode.get("base64"));
+            if (aninhado != null) {
+                return aninhado;
+            }
+        }
+        return null;
+    }
+
+    private static String textoQr(JsonNode node) {
+        if (node == null || !node.isTextual()) {
+            return null;
+        }
+        String valor = node.asText("").trim();
+        if (valor.isEmpty()) {
+            return null;
+        }
+        if (valor.startsWith("data:image")) {
+            return valor;
+        }
+        return "data:image/png;base64," + valor;
     }
 }

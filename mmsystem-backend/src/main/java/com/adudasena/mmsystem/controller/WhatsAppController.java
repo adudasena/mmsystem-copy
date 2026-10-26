@@ -1,5 +1,6 @@
 package com.adudasena.mmsystem.controller;
 
+import com.adudasena.mmsystem.dto.WhatsAppConexaoDTO;
 import com.adudasena.mmsystem.dto.WhatsAppMensagemDTO;
 import com.adudasena.mmsystem.service.WhatsAppAntiSpamService;
 import com.adudasena.mmsystem.service.WhatsAppService;
@@ -22,6 +23,16 @@ public class WhatsAppController {
     public ResponseEntity<Map<String, Object>> webhook(@RequestBody(required = false) Map<String, Object> payload) {
         antiSpamService.processarWebhook(payload);
         return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    @GetMapping("/conexao")
+    public ResponseEntity<WhatsAppConexaoDTO> conexao() {
+        return ResponseEntity.ok(whatsAppService.statusConexao());
+    }
+
+    @PostMapping("/conexao/qr")
+    public ResponseEntity<WhatsAppConexaoDTO> gerarQr() {
+        return ResponseEntity.ok(whatsAppService.gerarQr());
     }
 
     @PostMapping("/enviar")

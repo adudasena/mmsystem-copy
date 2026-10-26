@@ -88,6 +88,35 @@ class SecurityChecklistTest {
     }
 
     @Test
+    void conexaoWhatsAppSemTokenRetorna401() throws Exception {
+        mockMvc.perform(get("/whatsapp/conexao"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/whatsapp/conexao/qr"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void conexaoWhatsAppComTokenRetornaStatusDesligado() throws Exception {
+        String body = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", "admin@teste.com",
+                                "senha", "senha123"
+                        ))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String token = objectMapper.readTree(body).get("token").asText();
+
+        mockMvc.perform(get("/whatsapp/conexao").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.configurado").value(false))
+                .andExpect(jsonPath("$.estado").value("DESLIGADO"));
+    }
+
+    @Test
     void catalogoVitrineEhPublico() throws Exception {
         mockMvc.perform(get("/vitrine/produtos"))
                 .andExpect(status().isOk());
