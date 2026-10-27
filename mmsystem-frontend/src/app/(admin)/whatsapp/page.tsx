@@ -4,6 +4,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { MessageCircle, RefreshCw, Smartphone, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '@/services/api';
+import SystemModal from '@/components/SystemModal';
 
 interface WhatsAppConexao {
   configurado: boolean;
@@ -24,6 +25,7 @@ const TelaWhatsApp: React.FC = () => {
   const [carregando, setCarregando] = useState<boolean>(true);
   const [gerando, setGerando] = useState<boolean>(false);
   const [desconectando, setDesconectando] = useState<boolean>(false);
+  const [modalDesconectar, setModalDesconectar] = useState<boolean>(false);
   const [erro, setErro] = useState<string>('');
 
   const aplicar = useCallback((dados: WhatsAppConexao) => {
@@ -53,9 +55,6 @@ const TelaWhatsApp: React.FC = () => {
   }, [aplicar, falhou]);
 
   const desconectar = useCallback(() => {
-    if (!window.confirm('Desconectar o WhatsApp da loja? Avisos deixam de sair até ler o QR de novo.')) {
-      return;
-    }
     setDesconectando(true);
     setErro('');
     api.post<WhatsAppConexao>('/whatsapp/conexao/desconectar')
@@ -127,7 +126,7 @@ const TelaWhatsApp: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={desconectar}
+                onClick={() => setModalDesconectar(true)}
                 disabled={desconectando}
                 className="mm-btn-secondary w-full sm:w-auto"
               >
@@ -173,6 +172,21 @@ const TelaWhatsApp: React.FC = () => {
           A chave da Evolution fica só no backend. Esta tela nunca fala com a API do WhatsApp direto.
         </p>
       </div>
+
+      <SystemModal
+        isOpen={modalDesconectar}
+        type="confirm"
+        title="Desconectar WhatsApp da loja"
+        onClose={() => setModalDesconectar(false)}
+        onConfirm={desconectar}
+        confirmText="Desconectar"
+        cancelText="Manter conectado"
+        confirmVariant="danger"
+      >
+        <p className="text-sm text-gray-700">
+          Avisos e confirmações deixam de sair até você ler o QR de novo neste painel.
+        </p>
+      </SystemModal>
     </div>
   );
 };
