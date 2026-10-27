@@ -23,6 +23,7 @@ const TelaWhatsApp: React.FC = () => {
   const [conexao, setConexao] = useState<WhatsAppConexao>(estadoVazio);
   const [carregando, setCarregando] = useState<boolean>(true);
   const [gerando, setGerando] = useState<boolean>(false);
+  const [desconectando, setDesconectando] = useState<boolean>(false);
   const [erro, setErro] = useState<string>('');
 
   const aplicar = useCallback((dados: WhatsAppConexao) => {
@@ -49,6 +50,18 @@ const TelaWhatsApp: React.FC = () => {
       .then((res) => aplicar(res.data))
       .catch(() => falhou('Não foi possível gerar o QR. Tente de novo.'))
       .finally(() => setGerando(false));
+  }, [aplicar, falhou]);
+
+  const desconectar = useCallback(() => {
+    if (!window.confirm('Desconectar o WhatsApp da loja? Avisos deixam de sair até ler o QR de novo.')) {
+      return;
+    }
+    setDesconectando(true);
+    setErro('');
+    api.post<WhatsAppConexao>('/whatsapp/conexao/desconectar')
+      .then((res) => aplicar(res.data))
+      .catch(() => falhou('Não foi possível desconectar.'))
+      .finally(() => setDesconectando(false));
   }, [aplicar, falhou]);
 
   useEffect(() => {
@@ -107,10 +120,20 @@ const TelaWhatsApp: React.FC = () => {
           <p className="text-sm text-gray-700 font-sans">{conexao.mensagem}</p>
 
           {conectado && (
-            <div className="mm-alert-ok">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>Avisos e confirmações saem deste aparelho enquanto a sessão estiver aberta.</span>
-            </div>
+            <>
+              <div className="mm-alert-ok">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Avisos e confirmações saem deste aparelho enquanto a sessão estiver aberta.</span>
+              </div>
+              <button
+                type="button"
+                onClick={desconectar}
+                disabled={desconectando}
+                className="mm-btn-secondary w-full sm:w-auto"
+              >
+                {desconectando ? 'Desconectando…' : 'Desconectar'}
+              </button>
+            </>
           )}
 
           {!conectado && !desligado && (

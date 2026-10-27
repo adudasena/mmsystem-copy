@@ -93,6 +93,8 @@ class SecurityChecklistTest {
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(post("/whatsapp/conexao/qr"))
                 .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/whatsapp/conexao/desconectar"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

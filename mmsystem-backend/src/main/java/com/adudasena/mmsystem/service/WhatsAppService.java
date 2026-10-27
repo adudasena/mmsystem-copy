@@ -162,6 +162,30 @@ public class WhatsAppService {
         }
     }
 
+    public WhatsAppConexaoDTO desconectar() {
+        if (!isEnabled()) {
+            return desligado();
+        }
+        try {
+            restClientQr.delete()
+                    .uri(baseUrl() + "/instance/logout/" + instance)
+                    .header("apikey", apiKey)
+                    .retrieve()
+                    .toBodilessEntity();
+            return new WhatsAppConexaoDTO(true, "DESCONECTADO",
+                    "WhatsApp da loja desconectado. Gere o QR para parear de novo.", null);
+        } catch (RestClientResponseException e) {
+            logger.warn("Evolution recusou o logout: status={} body={}",
+                    e.getStatusCode().value(), e.getResponseBodyAsString());
+            return new WhatsAppConexaoDTO(true, "ERRO",
+                    "Não foi possível desconectar. Tente de novo.", null);
+        } catch (Exception e) {
+            logger.warn("Falha ao desconectar WhatsApp: {}", e.getMessage());
+            return new WhatsAppConexaoDTO(true, "ERRO",
+                    "A Evolution não respondeu ao desconectar.", null);
+        }
+    }
+
     public WhatsAppConexaoDTO gerarQr() {
         if (!isEnabled()) {
             return desligado();

@@ -35,6 +35,11 @@ public class WhatsAppController {
         return ResponseEntity.ok(whatsAppService.gerarQr());
     }
 
+    @PostMapping("/conexao/desconectar")
+    public ResponseEntity<WhatsAppConexaoDTO> desconectar() {
+        return ResponseEntity.ok(whatsAppService.desconectar());
+    }
+
     @PostMapping("/enviar")
     public ResponseEntity<Map<String, Object>> enviar(@Valid @RequestBody WhatsAppMensagemDTO dto) {
         boolean enviado = whatsAppService.enviar(dto);
