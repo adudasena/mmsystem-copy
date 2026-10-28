@@ -107,7 +107,6 @@ export default function VitrineProdutos() {
   const [compraDireta, setCompraDireta] = useState<boolean>(false);
   const [finalizando, setFinalizando] = useState<boolean>(false);
   const [telefoneLoja, setTelefoneLoja] = useState<string>('');
-  const [telefoneLojaDaApi, setTelefoneLojaDaApi] = useState<boolean>(false);
   const [erroContatoLoja, setErroContatoLoja] = useState<string>('');
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const [captchaCarregando, setCaptchaCarregando] = useState<boolean>(false);
@@ -141,7 +140,6 @@ export default function VitrineProdutos() {
           const telApi = resLoja?.data?.telefone || '';
           const tel = telApi || process.env.NEXT_PUBLIC_WHATSAPP_LOJA || '';
           setTelefoneLoja(tel);
-          setTelefoneLojaDaApi(Boolean(telApi.replace(/\D/g, '')));
           if (!telApi) {
             setErroContatoLoja(resLoja
               ? 'WhatsApp da loja ainda não está cadastrado.'
@@ -413,6 +411,7 @@ export default function VitrineProdutos() {
     message: string;
     type?: ModalType;
     confirmText?: string;
+    cancelText?: string;
     onConfirm?: () => void;
   }>({
     isOpen: false,
@@ -639,6 +638,9 @@ export default function VitrineProdutos() {
       const idTxt = compraDireta
         ? (idPedido ? ` Pedido #${idPedido} já aparece em Pedidos.` : '')
         : (idCondicional ? ` Sacola #${idCondicional} já aparece em Condicionais.` : '');
+      const mensagemWhats = montarMensagemLoja(idPedido, idCondicional);
+      const telLoja = telefoneLoja || process.env.NEXT_PUBLIC_WHATSAPP_LOJA || '';
+      const podeAbrirWhats = Boolean(telLoja.replace(/\D/g, ''));
 
       setCarrinho([]);
       setNomeCliente('');
@@ -649,28 +651,18 @@ export default function VitrineProdutos() {
       // O estoque mudou no servidor: atualiza a vitrine para refletir o que saiu
       void sincronizarEstoqueVitrine(false);
 
-      if (!telefoneLojaDaApi) {
-        const fallbackTel = telefoneLoja || process.env.NEXT_PUBLIC_WHATSAPP_LOJA || '';
-        const podeAbrirWhats = Boolean(fallbackTel.replace(/\D/g, ''));
-        setModalSistema({
-          isOpen: true,
-          type: 'warning',
-          title: compraDireta ? 'Pedido salvo' : 'Sacola salva',
-          confirmText: podeAbrirWhats ? 'Abrir WhatsApp' : 'Ok',
-          message: `Registro feito no sistema.${idTxt} Não achamos o WhatsApp da loja na API.`,
-          onConfirm: podeAbrirWhats
-            ? () => abrirWhatsAppLoja(montarMensagemLoja(idPedido, idCondicional), fallbackTel)
-            : undefined,
-        });
-        return;
-      }
-
       setModalSistema({
         isOpen: true,
         type: 'success',
         title: compraDireta ? 'Pedido registrado!' : 'Sacola solicitada!',
-        confirmText: 'Ok',
-        message: `Pronto. A loja já vê o pedido no painel.${idTxt}`,
+        confirmText: podeAbrirWhats ? 'Abrir WhatsApp' : 'Ok',
+        cancelText: podeAbrirWhats ? 'Fechar' : undefined,
+        message: podeAbrirWhats
+          ? `Pronto. A loja já vê no painel.${idTxt} Abra o WhatsApp para mandar a mensagem da compra.`
+          : `Pronto. A loja já vê o pedido no painel.${idTxt}`,
+        onConfirm: podeAbrirWhats
+          ? () => abrirWhatsAppLoja(mensagemWhats, telLoja)
+          : undefined,
       });
     } catch (err) {
       const erroAxios = err as AxiosError<ApiErrorResponse>;
@@ -1335,6 +1327,7 @@ export default function VitrineProdutos() {
         message={modalSistema.message}
         type={modalSistema.type}
         confirmText={modalSistema.confirmText}
+        cancelText={modalSistema.cancelText}
         onConfirm={modalSistema.onConfirm}
         onClose={() => setModalSistema((prev) => ({ ...prev, isOpen: false }))}
       />
