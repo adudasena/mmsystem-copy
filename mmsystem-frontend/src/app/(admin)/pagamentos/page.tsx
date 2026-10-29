@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
-import { Pencil, Trash2, AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Pencil, Trash2, AlertCircle, CheckCircle2, RotateCcw, MessageSquare } from 'lucide-react';
 import api from '@/services/api';
 import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import { formatErrorMessage } from '@/utils/errorUtils';
 import { formatarData } from '@/utils/formatters';
+import ModalWhatsAppMensagem from '@/components/ModalWhatsAppMensagem';
 
 // ─── Interfaces / Tipagens ──────────────────────────────────────────────────
 export interface PedidoRef {
@@ -22,6 +23,8 @@ export interface Pagamento {
   dataVencimento?: string | null;
   valor: number | string;
   status: 'PENDENTE' | 'APROVADO' | 'CANCELADO' | 'ESTORNADO' | string;
+  clienteNome?: string;
+  clienteTelefone?: string;
 }
 
 export interface FormPagamentoData {
@@ -83,7 +86,11 @@ const TelaPagamentos: React.FC = () => {
 
   // Mensagens de Feedback
   const [mensagemSucesso, setMensagemSucesso] = useState<string>('');
+  const [mensagemAviso, setMensagemAviso] = useState<string>('');
   const [errosValidacao, setErrosValidacao] = useState<string[]>([]);
+  const [modalWhats, setModalWhats] = useState<{ aberto: boolean; telefone: string; mensagem: string }>({
+    aberto: false, telefone: '', mensagem: '',
+  });
 
   // Modais e Estados de Edição
   const [modalFormAberto, setModalFormAberto] = useState<boolean>(false);
@@ -311,8 +318,9 @@ const TelaPagamentos: React.FC = () => {
     const matchId = String(pag.id).includes(termo);
     const matchPedido = pag.pedido?.id ? String(pag.pedido.id).includes(termo) : false;
     const matchMetodo = pag.metodoPagamento?.toLowerCase().includes(termo);
+    const matchCliente = (pag.clienteNome || '').toLowerCase().includes(termo);
 
-    return atendeStatus && (matchId || matchPedido || matchMetodo);
+    return atendeStatus && (matchId || matchPedido || matchMetodo || matchCliente);
   });
 
   return (
@@ -338,6 +346,12 @@ const TelaPagamentos: React.FC = () => {
           <div className="mm-alert-ok">
             <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
             <span>{mensagemSucesso}</span>
+          </div>
+        )}
+        {mensagemAviso && (
+          <div className="mm-alert-warn">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{mensagemAviso}</span>
           </div>
         )}
 
@@ -468,6 +482,28 @@ const TelaPagamentos: React.FC = () => {
                               </button>
                             ) : (
                               <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nome = pag.clienteNome || 'Cliente';
+                                    const valor = Number(pag.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                                    const metodo = rotuloMetodoPagamento(pag.metodoPagamento, pag.parcelas);
+                                    const pedidoTxt = pag.pedido?.id ? ` do pedido *#${pag.pedido.id}*` : '';
+                                    const aprovado = pag.status === 'APROVADO' || pag.status === 'PAGO';
+                                    const texto = aprovado
+                                      ? `Olá, ${nome}!\n\nConfirmamos o recebimento de *R$ ${valor}* (${metodo})${pedidoTxt} na *Maria Morena*.\n\nObrigada!`
+                                      : `Olá, ${nome}!\n\nLembrete da *Maria Morena*: o pagamento de *R$ ${valor}* (${metodo})${pedidoTxt} está com vencimento em *${formatarData(pag.dataVencimento)}* e status *${pag.status}*.\n\nQualquer dúvida, fale com a gente.`;
+                                    setModalWhats({
+                                      aberto: true,
+                                      telefone: pag.clienteTelefone || '',
+                                      mensagem: texto,
+                                    });
+                                  }}
+                                  className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2.5 h-8 rounded-lg text-xs font-semibold shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer"
+                                  title="Enviar mensagem no WhatsApp"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5 text-white" /> Whats
+                                </button>
                                 <button
                                   onClick={() => prepararEdicao(pag)}
                                   className="p-2 rounded-lg text-gray-500 hover:text-brand-900 hover:bg-brand-100/70 transition cursor-pointer"
@@ -702,6 +738,24 @@ const TelaPagamentos: React.FC = () => {
             </div>
           </div>
         )}
+
+        <ModalWhatsAppMensagem
+          isOpen={modalWhats.aberto}
+          titulo="Mensagem de pagamento"
+          telefone={modalWhats.telefone}
+          mensagemInicial={modalWhats.mensagem}
+          onClose={() => setModalWhats({ aberto: false, telefone: '', mensagem: '' })}
+          onEnviado={(aviso) => {
+            setMensagemAviso('');
+            setMensagemSucesso(aviso);
+            setTimeout(() => setMensagemSucesso(''), 5000);
+          }}
+          onAviso={(aviso) => {
+            setMensagemSucesso('');
+            setMensagemAviso(aviso);
+            setTimeout(() => setMensagemAviso(''), 8000);
+          }}
+        />
 
       </div>
     </div>

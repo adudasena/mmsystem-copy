@@ -14,12 +14,16 @@ public record PagamentoResponseDTO(
         LocalDate dataVencimento,
         String status,
         PedidoResumoDTO pedido,
+        String clienteNome,
+        String clienteTelefone,
         LocalDateTime deletedAt
 ) {
     public static PagamentoResponseDTO from(Pagamento pagamento) {
         if (pagamento == null) {
             return null;
         }
+        var pedido = pagamento.getPedido();
+        var cliente = pedido != null ? pedido.getCliente() : null;
         return new PagamentoResponseDTO(
                 pagamento.getId(),
                 pagamento.getValor(),
@@ -27,7 +31,9 @@ public record PagamentoResponseDTO(
                 pagamento.getParcelas(),
                 pagamento.getDataVencimento(),
                 pagamento.getStatus() != null ? pagamento.getStatus().name() : null,
-                PedidoResumoDTO.from(pagamento.getPedido()),
+                PedidoResumoDTO.from(pedido),
+                cliente != null ? cliente.getNome() : null,
+                cliente != null ? cliente.getTelefone() : null,
                 pagamento.getDeletedAt()
         );
     }

@@ -18,9 +18,18 @@ export function textoConfirmacaoWhatsApp(resultado: ResultadoWhatsApp): string {
     return 'Mensagem enviada no WhatsApp da cliente.';
   }
   if (resultado === 'fallback') {
-    return 'O sistema não enviou sozinho. Abriu o WhatsApp Web para você confirmar.';
+    return 'A Evolution não enviou. Você pode abrir o WhatsApp da cliente pelo wa.me.';
   }
   return 'Esta cliente não tem WhatsApp cadastrado.';
+}
+
+/** wa.me da cliente. Só use se a Evolution tiver falhado. */
+export function abrirWhatsAppCliente(telefone: string | undefined, mensagem: string): boolean {
+  const tel = (telefone || '').replace(/\D/g, '');
+  if (!tel) return false;
+  const comDdi = tel.startsWith('55') ? tel : `55${tel}`;
+  window.open(`https://wa.me/${comDdi}?text=${encodeURIComponent(mensagem)}`, '_blank');
+  return true;
 }
 
 export async function enviarWhatsApp(telefone: string | undefined, mensagem: string): Promise<ResultadoWhatsApp> {
@@ -37,8 +46,7 @@ export async function enviarWhatsApp(telefone: string | undefined, mensagem: str
       return 'enviado';
     }
   } catch {
-    // fallback abaixo
+    // a tela decide se mostra wa.me
   }
-  window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(mensagem)}`, '_blank');
   return 'fallback';
 }

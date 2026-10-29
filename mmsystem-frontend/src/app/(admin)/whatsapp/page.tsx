@@ -29,7 +29,13 @@ const TelaWhatsApp: React.FC = () => {
   const [erro, setErro] = useState<string>('');
 
   const aplicar = useCallback((dados: WhatsAppConexao) => {
-    setConexao(dados);
+    setConexao((prev) => {
+      const conectou = dados.estado === 'CONECTADO';
+      return {
+        ...dados,
+        qrBase64: conectou ? null : (dados.qrBase64 || prev.qrBase64),
+      };
+    });
     setErro('');
     setCarregando(false);
   }, []);
@@ -68,9 +74,9 @@ const TelaWhatsApp: React.FC = () => {
   }, [consultar]);
 
   useEffect(() => {
-    const conectando = conexao.estado === 'CONECTANDO' || Boolean(conexao.qrBase64);
+    const aguardandoLeitura = Boolean(conexao.qrBase64) && conexao.estado !== 'CONECTADO';
     const desconectado = conexao.estado === 'DESCONECTADO' || conexao.estado === 'ERRO';
-    const intervaloMs = conectando ? 3000 : desconectado ? 15000 : 20000;
+    const intervaloMs = aguardandoLeitura ? 4000 : desconectado ? 15000 : 20000;
     const id = window.setInterval(() => {
       api.get<WhatsAppConexao>('/whatsapp/conexao')
         .then((res) => aplicar(res.data))
@@ -78,6 +84,16 @@ const TelaWhatsApp: React.FC = () => {
     }, intervaloMs);
     return () => window.clearInterval(id);
   }, [conexao.estado, conexao.qrBase64, aplicar]);
+
+  useEffect(() => {
+    if (!conexao.qrBase64 || conexao.estado === 'CONECTADO') return;
+    const id = window.setInterval(() => {
+      api.post<WhatsAppConexao>('/whatsapp/conexao/qr', {}, { timeout: 30000 })
+        .then((res) => aplicar(res.data))
+        .catch(() => { /* mantém o QR atual se o refresh falhar */ });
+    }, 20000);
+    return () => window.clearInterval(id);
+  }, [conexao.qrBase64, conexao.estado, aplicar]);
 
   const conectado = conexao.estado === 'CONECTADO';
   const desligado = conexao.estado === 'DESLIGADO';
@@ -150,7 +166,7 @@ const TelaWhatsApp: React.FC = () => {
                 alt="QR Code para conectar o WhatsApp da loja"
                 className="w-64 h-64 bg-white rounded-2xl border border-gray-200 p-2"
               />
-              <p className="text-xs text-gray-400 font-sans">O QR expira em cerca de 30 segundos. Gere de novo se a leitura falhar.</p>
+              <p className="text-xs text-gray-400 font-sans">O QR fica na tela e se renova sozinho a cada 20 segundos até você ler ou gerar outro.</p>
             </div>
           )}
 

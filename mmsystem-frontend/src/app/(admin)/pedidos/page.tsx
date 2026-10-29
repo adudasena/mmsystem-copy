@@ -8,7 +8,7 @@ import Paginacao from '@/components/Paginacao';
 import SelectProdutoFilter from '@/components/SelectProdutoFilter';
 import { formatErrorMessage } from '@/utils/errorUtils';
 import { formatarData } from '@/utils/formatters';
-import { enviarWhatsApp, textoConfirmacaoWhatsApp } from '@/utils/whatsapp';
+import ModalWhatsAppMensagem from '@/components/ModalWhatsAppMensagem';
 
 // ─── Auxiliar de UUID ────────────────────────────────────────────────────────
 const gerarUuid = (): string => {
@@ -110,6 +110,9 @@ const TelaPedidos: React.FC = () => {
   const [modalFormAberto, setModalFormAberto] = useState<boolean>(false);
   const [modalDetalhesAberto, setModalDetalhesAberto] = useState<boolean>(false);
   const [modalExcluir, setModalExcluir] = useState<ModalExcluirState>({ aberto: false, id: null });
+  const [modalWhats, setModalWhats] = useState<{ aberto: boolean; telefone: string; mensagem: string }>({
+    aberto: false, telefone: '', mensagem: '',
+  });
 
   const [pedidoSelecionado, setPedidoSelecionado] = useState<Pedido | null>(null);
   const [editandoId, setEditandoId] = useState<number | null>(null);
@@ -412,10 +415,9 @@ const TelaPedidos: React.FC = () => {
     }
   };
 
-  const dispararWhatsAppComprovante = async (pedido: Pedido): Promise<void> => {
+  const abrirWhatsAppPedido = (pedido: Pedido): void => {
     const nomeCliente = pedido.cliente?.nome || 'Cliente';
     const telefone = pedido.cliente?.telefone?.replace(/\D/g, '') || '';
-
     const texto =
       `Olá, ${nomeCliente}!\n\n` +
       `Seu pedido *#${pedido.id}* na *Maria Morena* foi registrado!\n` +
@@ -423,20 +425,7 @@ const TelaPedidos: React.FC = () => {
       `*Total:* R$ ${Number(pedido.valorTotal).toFixed(2).replace('.', ',')}\n` +
       `*Status:* ${ROTULO_STATUS_PEDIDO[pedido.status] || pedido.status}\n\n` +
       `Obrigada pela preferência!`;
-
-    const resultado = await enviarWhatsApp(telefone, texto);
-    const textoAviso = textoConfirmacaoWhatsApp(resultado);
-    if (resultado === 'enviado') {
-      setMensagemAviso('');
-      setMensagemSucesso(textoAviso);
-    } else {
-      setMensagemSucesso('');
-      setMensagemAviso(textoAviso);
-    }
-    setTimeout(() => {
-      setMensagemSucesso('');
-      setMensagemAviso('');
-    }, 5000);
+    setModalWhats({ aberto: true, telefone, mensagem: texto });
   };
 
   const abrirDetalhes = (pedido: Pedido): void => {
@@ -584,7 +573,7 @@ const TelaPedidos: React.FC = () => {
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <button
-                                onClick={() => dispararWhatsAppComprovante(p)}
+                                onClick={() => abrirWhatsAppPedido(p)}
                                 className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2.5 h-8 rounded-lg text-xs font-semibold shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer"
                                 title="Enviar comprovante no WhatsApp"
                               >
@@ -907,6 +896,24 @@ const TelaPedidos: React.FC = () => {
             </div>
           </div>
         )}
+
+        <ModalWhatsAppMensagem
+          isOpen={modalWhats.aberto}
+          titulo="Comprovante do pedido"
+          telefone={modalWhats.telefone}
+          mensagemInicial={modalWhats.mensagem}
+          onClose={() => setModalWhats({ aberto: false, telefone: '', mensagem: '' })}
+          onEnviado={(aviso) => {
+            setMensagemAviso('');
+            setMensagemSucesso(aviso);
+            setTimeout(() => setMensagemSucesso(''), 5000);
+          }}
+          onAviso={(aviso) => {
+            setMensagemSucesso('');
+            setMensagemAviso(aviso);
+            setTimeout(() => setMensagemAviso(''), 8000);
+          }}
+        />
 
       </div>
     </div>

@@ -9,7 +9,7 @@ import Paginacao from '@/components/Paginacao';
 import SystemModal from '@/components/SystemModal';
 import { formatErrorMessage } from '@/utils/errorUtils';
 import { formatarData, rotuloStatus } from '@/utils/formatters';
-import { enviarWhatsApp, textoConfirmacaoWhatsApp } from '@/utils/whatsapp';
+import ModalWhatsAppMensagem from '@/components/ModalWhatsAppMensagem';
 import CampoAjuda from '@/components/CampoAjuda';
 
 // ─── Interfaces e Tipagens ─────────────────────────────────────────────────
@@ -125,6 +125,9 @@ const TelaCondicionais: React.FC = () => {
   const [sacolaParaBaixa, setSacolaParaBaixa] = useState<Condicional | null>(null);
   const [itensBaixa, setItensBaixa] = useState<ItemBaixaTriagem[]>([]); 
   const [modalExcluir, setModalExcluir] = useState<ModalExcluirState>({ aberto: false, id: null });
+  const [modalWhats, setModalWhats] = useState<{ aberto: boolean; telefone: string; mensagem: string }>({
+    aberto: false, telefone: '', mensagem: '',
+  });
 
   const [errosValidacao, setErrosValidacao] = useState<string[]>([]);
   const [mensagemSucesso, setMensagemSucesso] = useState<string>('');
@@ -511,29 +514,15 @@ const TelaCondicionais: React.FC = () => {
     return { status: 'NO_PRAZO', texto: `${diffDias} ${diffDias === 1 ? 'dia restante' : 'dias restantes'}`, dias: diffDias };
   };
 
-  const enviarCobrancaWhatsApp = async (c: Condicional) => {
+  const abrirWhatsAppCondicional = (c: Condicional) => {
     const nome = c.usuario?.nome || c.cliente?.nome || 'Cliente';
     const tel = (c.usuario?.telefone || c.cliente?.telefone || '').replace(/\D/g, '');
     const prazo = calcularPrazo(c.dataRetorno);
-
     const msg = `Olá, ${nome}!\n\n` +
       `Passando para lembrar da sua sacola condicional *#${c.id}* da *Maria Morena*.\n` +
       `*Data limite para retorno:* ${c.dataRetorno} (${prazo.texto}).\n\n` +
       `Já decidiu quais peças vai levar para arrasar? Se precisar de mais tempo, nos avise!`;
-
-    const resultado = await enviarWhatsApp(tel, msg);
-    const textoAviso = textoConfirmacaoWhatsApp(resultado);
-    if (resultado === 'enviado') {
-      setMensagemAviso('');
-      setMensagemSucesso(textoAviso);
-    } else {
-      setMensagemSucesso('');
-      setMensagemAviso(textoAviso);
-    }
-    setTimeout(() => {
-      setMensagemSucesso('');
-      setMensagemAviso('');
-    }, 5000);
+    setModalWhats({ aberto: true, telefone: tel, mensagem: msg });
   };
 
   // ─── Filtro Local dos Condicionais ───────────────────────────────────────
@@ -738,7 +727,7 @@ const TelaCondicionais: React.FC = () => {
                             ) : c.status === 'ABERTA' ? (
                               <>
                                 <button
-                                  onClick={() => enviarCobrancaWhatsApp(c)}
+                                  onClick={() => abrirWhatsAppCondicional(c)}
                                   className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-2.5 h-8 rounded-lg text-xs font-semibold shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer"
                                   title="Enviar lembrete no WhatsApp"
                                 >
@@ -1090,6 +1079,24 @@ const TelaCondicionais: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ModalWhatsAppMensagem
+        isOpen={modalWhats.aberto}
+        titulo="Lembrete da sacola"
+        telefone={modalWhats.telefone}
+        mensagemInicial={modalWhats.mensagem}
+        onClose={() => setModalWhats({ aberto: false, telefone: '', mensagem: '' })}
+        onEnviado={(aviso) => {
+          setMensagemAviso('');
+          setMensagemSucesso(aviso);
+          setTimeout(() => setMensagemSucesso(''), 5000);
+        }}
+        onAviso={(aviso) => {
+          setMensagemSucesso('');
+          setMensagemAviso(aviso);
+          setTimeout(() => setMensagemAviso(''), 8000);
+        }}
+      />
     </div>
   );
 };
