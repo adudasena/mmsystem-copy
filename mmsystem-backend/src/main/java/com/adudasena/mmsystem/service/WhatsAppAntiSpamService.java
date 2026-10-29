@@ -22,7 +22,7 @@ public class WhatsAppAntiSpamService {
 
     public WhatsAppAntiSpamService(
             UsuarioRepository usuarioRepository,
-            @Value("${app.whatsapp.max-envios-sem-resposta:3}") int maxEnvios,
+            @Value("${app.whatsapp.max-envios-sem-resposta:5}") int maxEnvios,
             @Value("${app.whatsapp.pausa-horas:24}") int pausaHoras
     ) {
         this.usuarioRepository = usuarioRepository;
@@ -76,73 +76,97 @@ public class WhatsAppAntiSpamService {
         if (payload == null) {
             return;
         }
-        String telefone = extrairTelefone(payload);
+        Map<String, Object> chave = chaveMensagem(payload);
+        if (chave == null) {
+            return;
+        }
+        if (ehVerdadeiro(chave.get("fromMe"))) {
+            return;
+        }
+        String telefone = jidParaTelefone(chave.get("remoteJid"));
         if (telefone == null || telefone.isBlank()) {
             return;
         }
-        Object fromMe = buscar(payload, "fromMe");
-        if (Boolean.TRUE.equals(fromMe)) {
-            return;
-        }
         registrarResposta(telefone);
+        logger.info("Resposta da cliente no WhatsApp: pausa/contador zerados ({})", mascara(telefone));
     }
 
     private Usuario localizar(String telefone) {
         if (telefone == null || telefone.isBlank()) {
             return null;
         }
-        String digits = telefone.replaceAll("\\D", "");
-        if (digits.startsWith("55") && digits.length() >= 12) {
-            digits = digits.substring(2);
-        }
-        if (digits.length() < 10) {
-            return null;
-        }
-        String chave = digits.length() > 11 ? digits.substring(digits.length() - 11) : digits;
-        Usuario direto = usuarioRepository.findByTelefone(chave).orElse(null);
-        if (direto != null) {
-            return direto;
-        }
         for (Usuario candidato : usuarioRepository.findAll()) {
-            String cand = candidato.getTelefone() == null ? "" : candidato.getTelefone().replaceAll("\\D", "");
-            if (cand.startsWith("55") && cand.length() >= 12) {
-                cand = cand.substring(2);
-            }
-            String candChave = cand.length() > 11 ? cand.substring(cand.length() - 11) : cand;
-            if (!candChave.isEmpty() && candChave.equals(chave)) {
+            if (mesmoWhatsApp(telefone, candidato.getTelefone())) {
                 return candidato;
             }
         }
         return null;
     }
 
-    @SuppressWarnings("unchecked")
-    private static String extrairTelefone(Map<String, Object> payload) {
-        Object remote = buscar(payload, "remoteJid");
-        if (remote instanceof String s && !s.isBlank()) {
-            return s.split("@")[0];
+    static boolean mesmoWhatsApp(String a, String b) {
+        String x = nacionais(a);
+        String y = nacionais(b);
+        if (x.length() < 10 || y.length() < 10) {
+            return false;
         }
+        if (x.equals(y)) {
+            return true;
+        }
+        // BR: DDD + 9 + 8 dígitos vs DDD + 8 (WhatsApp às vezes omite o 9)
+        String dddX = x.substring(0, 2);
+        String dddY = y.substring(0, 2);
+        return dddX.equals(dddY) && ultimos8(x).equals(ultimos8(y));
+    }
+
+    private static String nacionais(String telefone) {
+        String d = telefone == null ? "" : telefone.replaceAll("\\D", "");
+        if (d.startsWith("55") && d.length() >= 12) {
+            d = d.substring(2);
+        }
+        if (d.length() > 11) {
+            d = d.substring(d.length() - 11);
+        }
+        return d;
+    }
+
+    private static String ultimos8(String nacionais) {
+        return nacionais.length() <= 8 ? nacionais : nacionais.substring(nacionais.length() - 8);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> chaveMensagem(Map<String, Object> payload) {
         Object data = payload.get("data");
-        if (data instanceof Map<?, ?> map) {
-            return extrairTelefone((Map<String, Object>) map);
+        if (data instanceof java.util.List<?> lista && !lista.isEmpty() && lista.get(0) instanceof Map<?, ?> primeiro) {
+            return chaveMensagem((Map<String, Object>) primeiro);
+        }
+        if (data instanceof Map<?, ?> mapaData) {
+            Map<String, Object> aninhado = chaveMensagem((Map<String, Object>) mapaData);
+            if (aninhado != null) {
+                return aninhado;
+            }
+        }
+        Object key = payload.get("key");
+        if (key instanceof Map<?, ?> mapaKey) {
+            return (Map<String, Object>) mapaKey;
         }
         return null;
     }
 
-    @SuppressWarnings("unchecked")
-    private static Object buscar(Map<String, Object> map, String chave) {
-        if (map.containsKey(chave)) {
-            return map.get(chave);
+    private static String jidParaTelefone(Object remoteJid) {
+        if (!(remoteJid instanceof String s) || s.isBlank()) {
+            return null;
         }
-        for (Object valor : map.values()) {
-            if (valor instanceof Map<?, ?> nested) {
-                Object achado = buscar((Map<String, Object>) nested, chave);
-                if (achado != null) {
-                    return achado;
-                }
-            }
+        if (s.contains("@g.us") || s.contains("status@broadcast")) {
+            return null;
         }
-        return null;
+        return s.split("@")[0];
+    }
+
+    private static boolean ehVerdadeiro(Object valor) {
+        if (Boolean.TRUE.equals(valor)) {
+            return true;
+        }
+        return valor instanceof String s && "true".equalsIgnoreCase(s.trim());
     }
 
     private static String mascara(String telefone) {
