@@ -18,7 +18,7 @@ export function textoConfirmacaoWhatsApp(resultado: ResultadoWhatsApp): string {
     return 'Mensagem enviada no WhatsApp da cliente.';
   }
   if (resultado === 'fallback') {
-    return 'A Evolution não enviou. Você pode abrir o WhatsApp da cliente pelo wa.me.';
+    return 'O WhatsApp da loja está desconectado. Confira a conexão na aba WhatsApp.';
   }
   return 'Esta cliente não tem WhatsApp cadastrado.';
 }

@@ -198,7 +198,7 @@ const TelaWhatsApp: React.FC = () => {
 
         <p className="text-xs text-gray-400 font-sans flex items-center gap-1.5">
           <MessageCircle className="w-3.5 h-3.5" />
-          A chave da Evolution fica só no backend. Esta tela nunca fala com a API do WhatsApp direto.
+          Os avisos saem pelo celular da loja. Mantenha o WhatsApp nesse aparelho.
         </p>
       </div>
 

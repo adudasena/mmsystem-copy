@@ -64,7 +64,7 @@ const ModalWhatsAppMensagem: React.FC<ModalWhatsAppMensagemProps> = ({
       return;
     }
     setFalhaApi(true);
-    const aviso = motivo || 'A Evolution não enviou. Você pode abrir o WhatsApp da cliente pelo wa.me.';
+    const aviso = motivo || 'O WhatsApp da loja está desconectado. Confira a conexão na aba WhatsApp.';
     setErroLocal(aviso);
     onAviso?.(aviso);
   };
@@ -87,7 +87,7 @@ const ModalWhatsAppMensagem: React.FC<ModalWhatsAppMensagemProps> = ({
           <div className="flex-1 min-w-0 pt-0.5">
             <h3 className="font-display text-lg font-semibold text-brand-900 leading-snug">{titulo}</h3>
             <p className="mt-1 text-xs text-gray-500 font-sans">
-              Confira o texto, edite se quiser e envie pela Evolution. O wa.me só aparece se a API falhar.
+              Confira o texto, edite se quiser e envie pelo WhatsApp da loja.
             </p>
           </div>
           <button
@@ -109,7 +109,7 @@ const ModalWhatsAppMensagem: React.FC<ModalWhatsAppMensagemProps> = ({
           )}
           {falhaApi && (
             <div className="mm-alert-warn text-xs">
-              A Evolution não enviou. Use o botão abaixo só neste caso.
+              Clique em Enviar manualmente para abrir a conversa no WhatsApp da cliente.
             </div>
           )}
           <label className="mm-label">Prévia da mensagem</label>
@@ -131,7 +131,7 @@ const ModalWhatsAppMensagem: React.FC<ModalWhatsAppMensagemProps> = ({
               onClick={() => abrirWhatsAppCliente(telefone, texto.trim())}
               className="mm-btn-secondary"
             >
-              Abrir wa.me
+              Enviar manualmente
             </button>
           )}
           <button type="button" onClick={() => void enviar()} disabled={enviando} className="mm-btn-primary">

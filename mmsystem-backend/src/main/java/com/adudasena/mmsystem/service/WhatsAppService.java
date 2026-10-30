@@ -127,11 +127,11 @@ public class WhatsAppService {
             logger.warn("WhatsApp recusado pela Evolution: status={} body={}",
                     e.getStatusCode().value(), e.getResponseBodyAsString());
             return new WhatsAppEnvioResultadoDTO(false,
-                    "A Evolution recusou o envio (HTTP " + e.getStatusCode().value() + "). Confira se o WhatsApp da loja está conectado.");
+                    "O WhatsApp da loja está desconectado. Confira a conexão na aba WhatsApp.");
         } catch (Exception e) {
             logger.warn("Falha ao enviar WhatsApp via Evolution API: {}", e.getMessage());
             return new WhatsAppEnvioResultadoDTO(false,
-                    "A Evolution não respondeu a tempo. Tente de novo.");
+                    "Não deu para enviar agora. Confira se o WhatsApp da loja está conectado.");
         }
     }
 
