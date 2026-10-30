@@ -22,7 +22,7 @@ public class WhatsAppAntiSpamService {
 
     public WhatsAppAntiSpamService(
             UsuarioRepository usuarioRepository,
-            @Value("${app.whatsapp.max-envios-sem-resposta:5}") int maxEnvios,
+            @Value("${app.whatsapp.max-envios-sem-resposta:10}") int maxEnvios,
             @Value("${app.whatsapp.pausa-horas:24}") int pausaHoras
     ) {
         this.usuarioRepository = usuarioRepository;

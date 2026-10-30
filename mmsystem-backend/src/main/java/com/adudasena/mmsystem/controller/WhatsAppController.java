@@ -1,6 +1,7 @@
 package com.adudasena.mmsystem.controller;
 
 import com.adudasena.mmsystem.dto.WhatsAppConexaoDTO;
+import com.adudasena.mmsystem.dto.WhatsAppEnvioResultadoDTO;
 import com.adudasena.mmsystem.dto.WhatsAppMensagemDTO;
 import com.adudasena.mmsystem.service.WhatsAppAntiSpamService;
 import com.adudasena.mmsystem.service.WhatsAppService;
@@ -42,14 +43,16 @@ public class WhatsAppController {
 
     @PostMapping("/enviar")
     public ResponseEntity<Map<String, Object>> enviar(@Valid @RequestBody WhatsAppMensagemDTO dto) {
-        boolean enviado = whatsAppService.enviar(dto);
-        if (enviado) {
+        WhatsAppEnvioResultadoDTO resultado = whatsAppService.enviarDetalhe(dto);
+        if (resultado.enviado()) {
             return ResponseEntity.ok(Map.of("enviado", true, "canal", "EVOLUTION"));
         }
         return ResponseEntity.ok(Map.of(
                 "enviado", false,
                 "canal", "FALLBACK",
-                "mensagem", "Evolution API não configurada ou indisponível. Use o WhatsApp Web."
+                "mensagem", resultado.motivo() != null
+                        ? resultado.motivo()
+                        : "Não foi possível enviar pela Evolution."
         ));
     }
 }

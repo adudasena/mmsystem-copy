@@ -1,6 +1,7 @@
 package com.adudasena.mmsystem.service;
 
 import com.adudasena.mmsystem.dto.WhatsAppConexaoDTO;
+import com.adudasena.mmsystem.dto.WhatsAppEnvioResultadoDTO;
 import com.adudasena.mmsystem.dto.WhatsAppMensagemDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
@@ -68,12 +69,9 @@ public class WhatsAppService {
         if (!isEnabled()) {
             return ResultadoNumero.INDETERMINADO;
         }
-        String numero = telefone == null ? "" : telefone.replaceAll("\\D", "");
+        String numero = numeroEvolution(telefone);
         if (numero.isBlank()) {
             return ResultadoNumero.NAO_EXISTE;
-        }
-        if (numero.length() <= 11 && !numero.startsWith("55")) {
-            numero = "55" + numero;
         }
         try {
             String url = evolutionUrl.replaceAll("/$", "") + "/chat/whatsappNumbers/" + instance;
@@ -98,23 +96,25 @@ public class WhatsAppService {
     }
 
     public boolean enviar(WhatsAppMensagemDTO dto) {
+        return enviarDetalhe(dto).enviado();
+    }
+
+    public WhatsAppEnvioResultadoDTO enviarDetalhe(WhatsAppMensagemDTO dto) {
         if (!isEnabled()) {
-            return false;
+            return new WhatsAppEnvioResultadoDTO(false, "WhatsApp da loja não está ligado neste servidor.");
         }
-        String numero = dto.telefone() == null ? "" : dto.telefone().replaceAll("\\D", "");
+        String numero = numeroEvolution(dto.telefone());
         if (numero.isBlank()) {
             logger.warn("WhatsApp não enviado: telefone em branco.");
-            return false;
+            return new WhatsAppEnvioResultadoDTO(false, "Telefone em branco.");
         }
-        if (!antiSpamService.podeEnviar(numero)) {
-            return false;
-        }
-        if (numero.length() <= 11 && !numero.startsWith("55")) {
-            numero = "55" + numero;
+        if (!antiSpamService.podeEnviar(dto.telefone())) {
+            return new WhatsAppEnvioResultadoDTO(false,
+                    "Este número está em pausa anti-spam. Espere a cliente responder ou zere o bloqueio no banco.");
         }
         try {
             String url = evolutionUrl.replaceAll("/$", "") + "/message/sendText/" + instance;
-            restClient.post()
+            restClientQr.post()
                     .uri(url)
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("apikey", apiKey)
@@ -122,20 +122,32 @@ public class WhatsAppService {
                     .retrieve()
                     .toBodilessEntity();
             antiSpamService.registrarEnvioAutomatico(dto.telefone());
-            return true;
+            return new WhatsAppEnvioResultadoDTO(true, null);
         } catch (RestClientResponseException e) {
-            if (e.getStatusCode().is4xxClientError()) {
-                logger.warn("WhatsApp recusado (número inválido ou Evolution recusou): status={} body={}",
-                        e.getStatusCode().value(), e.getResponseBodyAsString());
-            } else {
-                logger.warn("Evolution API indisponível: status={} body={}",
-                        e.getStatusCode().value(), e.getResponseBodyAsString());
-            }
-            return false;
+            logger.warn("WhatsApp recusado pela Evolution: status={} body={}",
+                    e.getStatusCode().value(), e.getResponseBodyAsString());
+            return new WhatsAppEnvioResultadoDTO(false,
+                    "A Evolution recusou o envio (HTTP " + e.getStatusCode().value() + "). Confira se o WhatsApp da loja está conectado.");
         } catch (Exception e) {
             logger.warn("Falha ao enviar WhatsApp via Evolution API: {}", e.getMessage());
-            return false;
+            return new WhatsAppEnvioResultadoDTO(false,
+                    "A Evolution não respondeu a tempo. Tente de novo.");
         }
+    }
+
+    /** DDD+8 dígitos vira DDD+9+8; Evolution espera 55 + 11 dígitos. */
+    static String numeroEvolution(String telefone) {
+        String numero = telefone == null ? "" : telefone.replaceAll("\\D", "");
+        if (numero.startsWith("55") && numero.length() >= 12) {
+            numero = numero.substring(2);
+        }
+        if (numero.length() == 10) {
+            numero = numero.substring(0, 2) + "9" + numero.substring(2);
+        }
+        if (numero.length() == 11) {
+            return "55" + numero;
+        }
+        return numero;
     }
 
     public WhatsAppConexaoDTO statusConexao() {

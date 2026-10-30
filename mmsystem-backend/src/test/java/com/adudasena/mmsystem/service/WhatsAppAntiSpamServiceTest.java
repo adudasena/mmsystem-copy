@@ -14,4 +14,10 @@ class WhatsAppAntiSpamServiceTest {
         assertTrue(WhatsAppAntiSpamService.mesmoWhatsApp("5541999887766", "41999887766"));
         assertFalse(WhatsAppAntiSpamService.mesmoWhatsApp("43999998888", "44999998888"));
     }
+
+    @Test
+    void numeroEvolutionIncluiNoveEDdi() {
+        org.junit.jupiter.api.Assertions.assertEquals("5543999502889", WhatsAppService.numeroEvolution("4399502889"));
+        org.junit.jupiter.api.Assertions.assertEquals("5543999188802", WhatsAppService.numeroEvolution("43999188802"));
+    }
 }

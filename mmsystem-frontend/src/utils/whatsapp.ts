@@ -32,21 +32,24 @@ export function abrirWhatsAppCliente(telefone: string | undefined, mensagem: str
   return true;
 }
 
-export async function enviarWhatsApp(telefone: string | undefined, mensagem: string): Promise<ResultadoWhatsApp> {
+export async function enviarWhatsApp(
+  telefone: string | undefined,
+  mensagem: string
+): Promise<{ resultado: ResultadoWhatsApp; motivo?: string }> {
   const tel = (telefone || '').replace(/\D/g, '');
   if (!tel) {
-    return 'sem-telefone';
+    return { resultado: 'sem-telefone' };
   }
   try {
-    const res = await api.post<{ enviado: boolean }>('/whatsapp/enviar', {
+    const res = await api.post<{ enviado: boolean; mensagem?: string }>('/whatsapp/enviar', {
       telefone: tel,
       mensagem,
-    });
+    }, { timeout: 30000 });
     if (res.data?.enviado) {
-      return 'enviado';
+      return { resultado: 'enviado' };
     }
+    return { resultado: 'fallback', motivo: res.data?.mensagem };
   } catch {
-    // a tela decide se mostra wa.me
+    return { resultado: 'fallback', motivo: 'Não foi possível falar com o servidor.' };
   }
-  return 'fallback';
 }

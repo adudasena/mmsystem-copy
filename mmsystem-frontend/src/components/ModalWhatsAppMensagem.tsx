@@ -52,7 +52,7 @@ const ModalWhatsAppMensagem: React.FC<ModalWhatsAppMensagemProps> = ({
     setEnviando(true);
     setErroLocal('');
     setFalhaApi(false);
-    const resultado = await enviarWhatsApp(tel, texto.trim());
+    const { resultado, motivo } = await enviarWhatsApp(tel, texto.trim());
     setEnviando(false);
     if (resultado === 'enviado') {
       onEnviado?.('Mensagem enviada no WhatsApp da cliente.');
@@ -64,7 +64,9 @@ const ModalWhatsAppMensagem: React.FC<ModalWhatsAppMensagemProps> = ({
       return;
     }
     setFalhaApi(true);
-    onAviso?.('A Evolution não enviou. Você pode abrir o WhatsApp da cliente pelo wa.me.');
+    const aviso = motivo || 'A Evolution não enviou. Você pode abrir o WhatsApp da cliente pelo wa.me.';
+    setErroLocal(aviso);
+    onAviso?.(aviso);
   };
 
   return (
