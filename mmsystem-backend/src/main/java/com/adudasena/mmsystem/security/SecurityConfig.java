@@ -72,6 +72,8 @@ public class SecurityConfig {
                         .requestMatchers("/vitrine/**").permitAll()
                         .requestMatchers("/whatsapp/webhook").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/whatsapp/conexao/qr", "/whatsapp/conexao/desconectar")
+                            .hasRole("PROPRIETARIA")
                         .anyRequest().hasAnyRole("PROPRIETARIA", "FUNCIONARIO")
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

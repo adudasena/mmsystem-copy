@@ -27,6 +27,12 @@ const TelaWhatsApp: React.FC = () => {
   const [desconectando, setDesconectando] = useState<boolean>(false);
   const [modalDesconectar, setModalDesconectar] = useState<boolean>(false);
   const [erro, setErro] = useState<string>('');
+  const [ehProprietaria, setEhProprietaria] = useState<boolean>(false);
+
+  useEffect(() => {
+    const perfil = (localStorage.getItem('mm_perfil') || '').toUpperCase();
+    setEhProprietaria(perfil === 'ROLE_PROPRIETARIA' || perfil === 'PROPRIETARIA');
+  }, []);
 
   const aplicar = useCallback((dados: WhatsAppConexao) => {
     setConexao((prev) => {
@@ -86,26 +92,26 @@ const TelaWhatsApp: React.FC = () => {
   }, [conexao.estado, conexao.qrBase64, aplicar]);
 
   useEffect(() => {
-    if (!conexao.qrBase64 || conexao.estado === 'CONECTADO') return;
+    if (!ehProprietaria || !conexao.qrBase64 || conexao.estado === 'CONECTADO') return;
     const id = window.setInterval(() => {
       api.post<WhatsAppConexao>('/whatsapp/conexao/qr', {}, { timeout: 30000 })
         .then((res) => aplicar(res.data))
         .catch(() => { /* mantém o QR atual se o refresh falhar */ });
     }, 20000);
     return () => window.clearInterval(id);
-  }, [conexao.qrBase64, conexao.estado, aplicar]);
+  }, [ehProprietaria, conexao.qrBase64, conexao.estado, aplicar]);
 
   const conectado = conexao.estado === 'CONECTADO';
   const desligado = conexao.estado === 'DESLIGADO';
 
   return (
     <div className="mm-page">
-      <div className="mm-page-inner max-w-3xl">
-        <div>
-          <h1 className="mm-title">WhatsApp da loja</h1>
-          <p className="mm-subtitle">
-            Pareamento com o WhatsApp Web pela Evolution. É o mesmo celular da loja — sem gambiarra fora do sistema.
-          </p>
+      <div className="mm-page-inner">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="mm-title">WhatsApp da loja</h1>
+            <p className="mm-subtitle">Pareamento com o WhatsApp Web da loja.</p>
+          </div>
         </div>
 
         {erro && (
@@ -135,23 +141,24 @@ const TelaWhatsApp: React.FC = () => {
           <p className="text-sm text-gray-700 font-sans">{conexao.mensagem}</p>
 
           {conectado && (
-            <>
-              <div className="mm-alert-ok">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>Avisos e confirmações saem deste aparelho enquanto a sessão estiver aberta.</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setModalDesconectar(true)}
-                disabled={desconectando}
-                className="mm-btn-secondary w-full sm:w-auto"
-              >
-                {desconectando ? 'Desconectando…' : 'Desconectar'}
-              </button>
-            </>
+            <div className="mm-alert-ok">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Avisos e confirmações saem deste aparelho enquanto a sessão estiver aberta.</span>
+            </div>
           )}
 
-          {!conectado && !desligado && (
+          {ehProprietaria && conectado && (
+            <button
+              type="button"
+              onClick={() => setModalDesconectar(true)}
+              disabled={desconectando}
+              className="mm-btn-secondary w-full sm:w-auto"
+            >
+              {desconectando ? 'Desconectando…' : 'Desconectar'}
+            </button>
+          )}
+
+          {ehProprietaria && !conectado && !desligado && (
             <ol className="text-sm text-gray-600 font-sans list-decimal pl-5 space-y-1.5">
               <li>No celular da loja abra o WhatsApp.</li>
               <li>Toque em <strong>Aparelhos conectados</strong> → <strong>Conectar um aparelho</strong>.</li>
@@ -159,7 +166,7 @@ const TelaWhatsApp: React.FC = () => {
             </ol>
           )}
 
-          {conexao.qrBase64 && (
+          {ehProprietaria && conexao.qrBase64 && (
             <div className="flex flex-col items-center gap-3 py-2">
               <img
                 src={conexao.qrBase64}
@@ -170,7 +177,7 @@ const TelaWhatsApp: React.FC = () => {
             </div>
           )}
 
-          {!conectado && !desligado && (
+          {ehProprietaria && !conectado && !desligado && (
             <button
               type="button"
               onClick={gerarQr}
@@ -180,6 +187,12 @@ const TelaWhatsApp: React.FC = () => {
               <Smartphone className="w-4 h-4" />
               {gerando ? 'Gerando QR…' : conexao.qrBase64 ? 'Gerar QR de novo' : 'Mostrar QR para conectar'}
             </button>
+          )}
+
+          {!ehProprietaria && (
+            <p className="text-xs text-gray-500 font-sans">
+              Só a proprietária pode parear ou desconectar o celular da loja.
+            </p>
           )}
         </div>
 
@@ -200,7 +213,7 @@ const TelaWhatsApp: React.FC = () => {
         confirmVariant="danger"
       >
         <p className="text-sm text-gray-700">
-          Avisos e confirmações deixam de sair até você ler o QR de novo neste painel.
+          O celular da loja sai do WhatsApp Web. Avisos automáticos param até você parear de novo com o QR.
         </p>
       </SystemModal>
     </div>
