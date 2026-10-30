@@ -56,7 +56,23 @@ public class CondicionalService {
     }
 
     public Page<Condicional> listarTodos(Pageable pageable) {
-        return repository.findByDeletedAtIsNull(pageable);
+        return listarTodos(pageable, null);
+    }
+
+    public Page<Condicional> listarTodos(Pageable pageable, String status) {
+        if (status == null || status.isBlank() || "TODOS".equalsIgnoreCase(status)) {
+            return repository.findByDeletedAtIsNull(pageable);
+        }
+        if ("ABERTA".equalsIgnoreCase(status) || "ATIVAS".equalsIgnoreCase(status)) {
+            return repository.findByDeletedAtIsNullAndStatusIgnoreCase("ABERTA", pageable);
+        }
+        if ("FINALIZADA".equalsIgnoreCase(status)
+                || "FINALIZADAS".equalsIgnoreCase(status)
+                || "HISTORICO".equalsIgnoreCase(status)) {
+            return repository.findByDeletedAtIsNullAndStatusIgnoreCaseIn(
+                    List.of("FINALIZADA", "DEVOLVIDA"), pageable);
+        }
+        return repository.findByDeletedAtIsNullAndStatusIgnoreCase(status, pageable);
     }
 
     public Condicional buscarPorId(Long id) {
@@ -256,13 +272,13 @@ public class CondicionalService {
     }
 
     @Transactional
-    public void restaurar(Long id) {
+    public Condicional restaurar(Long id) {
         Condicional condicional = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Condicional não encontrada: " + id));
         if (condicional.getDeletedAt() != null && condicional.getItens() != null) {
             // Reabre a sacola: as peças em condicional voltam a sair do estoque (com validação de saldo).
             for (ItemCondicional item : condicional.getItens()) {
-                if ("EM_CONDICIONAL".equalsIgnoreCase(item.getStatusItem())) {
+                if ("EM_CONDICIONAL".equalsIgnoreCase(item.getStatusItem()) && item.getProduto() != null) {
                     validarEstoqueDisponivel(item.getProduto(), item.getCorEscolhida(),
                             item.getTamanhoEscolhido(), item.getQuantidade());
                     alterarEstoqueProduto(item.getProduto(), item.getCorEscolhida(),
@@ -271,7 +287,7 @@ public class CondicionalService {
             }
         }
         condicional.setDeletedAt(null);
-        repository.save(condicional);
+        return repository.save(condicional);
     }
 
     @Transactional

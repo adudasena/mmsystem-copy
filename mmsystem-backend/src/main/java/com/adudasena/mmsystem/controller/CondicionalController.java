@@ -27,10 +27,11 @@ public class CondicionalController {
     @GetMapping
     public ResponseEntity<Page<CondicionalResponseDTO>> listarTodos(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(required = false) String status
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        return ResponseEntity.ok(service.listarTodos(pageable).map(CondicionalResponseDTO::from));
+        return ResponseEntity.ok(service.listarTodos(pageable, status).map(CondicionalResponseDTO::from));
     }
 
     @GetMapping("/excluidos")
@@ -71,8 +72,7 @@ public class CondicionalController {
     }
 
     @PutMapping("/{id}/restaurar")
-    public ResponseEntity<Void> restaurar(@PathVariable Long id) {
-        service.restaurar(id);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<CondicionalResponseDTO> restaurar(@PathVariable Long id) {
+        return ResponseEntity.ok(CondicionalResponseDTO.from(service.restaurar(id)));
     }
 }

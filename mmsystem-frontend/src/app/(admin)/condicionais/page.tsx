@@ -148,7 +148,9 @@ const TelaCondicionais: React.FC = () => {
     try {
       const url = tipoAba === 'excluidas'
         ? `/condicionais/excluidos?page=${pagina}&size=${tamanhoPagina}`
-        : `/condicionais?page=${pagina}&size=${tamanhoPagina}`;
+        : tipoAba === 'ativas'
+          ? `/condicionais?page=${pagina}&size=${tamanhoPagina}&status=ABERTA`
+          : `/condicionais?page=${pagina}&size=${tamanhoPagina}&status=FINALIZADAS`;
 
       const resCond = await api.get<PageSpring<Condicional> | Condicional[]>(url);
       if (resCond.data && Array.isArray((resCond.data as PageSpring<Condicional>).content)) {
@@ -168,13 +170,19 @@ const TelaCondicionais: React.FC = () => {
 
   const restaurarCondicional = async (id: number): Promise<void> => {
     try {
-      await api.put(`/condicionais/${id}/restaurar`);
+      const res = await api.put<Condicional>(`/condicionais/${id}/restaurar`);
+      const status = (res.data?.status || 'ABERTA').toUpperCase();
+      const destino = status === 'ABERTA' ? 'ativas' : 'finalizadas';
       setMensagemSucesso('Sacola condicional restaurada com sucesso!');
-      buscarCondicionais(paginaAtual, abaAtiva);
+      if (abaAtiva === destino) {
+        buscarCondicionais(0, destino);
+      } else {
+        setAbaAtiva(destino);
+      }
       setTimeout(() => setMensagemSucesso(''), 4000);
     } catch (err) {
       console.error('Erro ao restaurar condicional:', err);
-      setErrosValidacao(['Não foi possível restaurar a sacola condicional.']);
+      setErrosValidacao([formatErrorMessage(err, 'Não foi possível restaurar a sacola condicional.')]);
     }
   };
 
@@ -201,7 +209,7 @@ const TelaCondicionais: React.FC = () => {
     const carregarDadosInicial = async () => {
       try {
         const [resCond, resCli, resProd, resFiltro] = await Promise.allSettled([
-          api.get<PageSpring<Condicional> | Condicional[]>(`/condicionais?page=0&size=${tamanhoPagina}`),
+          api.get<PageSpring<Condicional> | Condicional[]>(`/condicionais?page=0&size=${tamanhoPagina}&status=ABERTA`),
           api.get<PageSpring<Usuario> | Usuario[]>('/usuarios?size=1000'),
           api.get<ProdutoCondicional[]>('/produtos/opcoes'),
           api.get<string[]>('/condicionais/opcoes-filtro'),
