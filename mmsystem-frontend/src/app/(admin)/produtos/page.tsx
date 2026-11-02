@@ -9,13 +9,22 @@ import BarraBuscaFiltro from '@/components/BarraBuscaFiltro';
 import Paginacao from '@/components/Paginacao';
 import CampoAjuda from '@/components/CampoAjuda';
 import GuiaCadastroProduto from '@/components/GuiaCadastroProduto';
+import SystemModal from '@/components/SystemModal';
 import { formatErrorMessage } from '@/utils/errorUtils';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────
+interface AtributoOpcao {
+  id?: number;
+  nome: string;
+}
+
 interface Cor {
+  id?: number;
   nome: string;
   hex: string;
 }
+
+type TipoAtributo = 'categoria' | 'tamanho' | 'cor';
 
 interface Produto {
   id?: number;
@@ -74,8 +83,8 @@ const somaEstoque = (estoque: Record<string, number>): number =>
   Object.values(estoque).reduce((a, b) => a + b, 0);
 
 interface AtributosDoBanco {
-  categorias: string[];
-  tamanhos: string[];
+  categorias: AtributoOpcao[];
+  tamanhos: AtributoOpcao[];
   cores: Cor[];
 }
 
@@ -86,9 +95,9 @@ const buscarAtributosDoBanco = async (): Promise<AtributosDoBanco> => {
     api.get<{ id: number; nome: string; hexCode?: string }[]>('/api/atributos/cores'),
   ]);
   return {
-    categorias: Array.isArray(resCat.data) ? resCat.data.map((c) => c.nome) : [],
-    tamanhos: Array.isArray(resTam.data) ? resTam.data.map((t) => t.nome) : [],
-    cores: Array.isArray(resCor.data) ? resCor.data.map((c) => ({ nome: c.nome, hex: c.hexCode || '#000000' })) : [],
+    categorias: Array.isArray(resCat.data) ? resCat.data.map((c) => ({ id: c.id, nome: c.nome })) : [],
+    tamanhos: Array.isArray(resTam.data) ? resTam.data.map((t) => ({ id: t.id, nome: t.nome })) : [],
+    cores: Array.isArray(resCor.data) ? resCor.data.map((c) => ({ id: c.id, nome: c.nome, hex: c.hexCode || '#000000' })) : [],
   };
 };
 
@@ -121,6 +130,10 @@ const TelaProdutos: React.FC = () => {
   const [modalEstoqueAberto, setModalEstoqueAberto] = useState<boolean>(false);
   const [modalDetalhes, setModalDetalhes] = useState<ModalDetalhes>({ aberto: false, dados: null });
   const [modalExcluir, setModalExcluir] = useState<ModalExcluir>({ aberto: false, id: null });
+  const [modalAtributo, setModalAtributo] = useState<{ aberto: boolean; tipo: TipoAtributo; id: number; nome: string }>({
+    aberto: false, tipo: 'cor', id: 0, nome: '',
+  });
+  const [ehProprietaria, setEhProprietaria] = useState<boolean>(false);
 
   const [produto, setProduto] = useState<Produto>({
     nome: '', categoria: '', descricao: '', preco: '',
@@ -129,8 +142,8 @@ const TelaProdutos: React.FC = () => {
   });
 
   // ─── Opções customizáveis ──────────────────────────────────────────────────
-  const [tamanhos, setTamanhos] = useState<string[]>([]);
-  const [categorias, setCategorias] = useState<string[]>([]);
+  const [tamanhos, setTamanhos] = useState<AtributoOpcao[]>([]);
+  const [categorias, setCategorias] = useState<AtributoOpcao[]>([]);
   const [listaCores, setListaCores] = useState<Cor[]>([]);
   const [estadoAtributos, setEstadoAtributos] = useState<'carregando' | 'ok' | 'erro'>('carregando');
 
@@ -162,6 +175,11 @@ const TelaProdutos: React.FC = () => {
     setTamanhos(a.tamanhos);
     setListaCores(a.cores);
     setEstadoAtributos('ok');
+  }, []);
+
+  useEffect(() => {
+    const perfil = (localStorage.getItem('mm_perfil') || '').toUpperCase();
+    setEhProprietaria(perfil === 'ROLE_PROPRIETARIA' || perfil === 'PROPRIETARIA');
   }, []);
 
   const falhaAoCarregarAtributos = useCallback((erro: unknown): void => {
@@ -246,7 +264,7 @@ const TelaProdutos: React.FC = () => {
       setErrosValidacao(['A categoria deve ter no máximo 40 caracteres.']);
       return;
     }
-    const existente = jaExisteAtributo(categorias, catFormatada);
+    const existente = jaExisteAtributo(categorias.map((c) => c.nome), catFormatada);
     if (existente) {
       setProduto({ ...produto, categoria: existente });
       setNovaCategoriaTexto('');
@@ -254,9 +272,11 @@ const TelaProdutos: React.FC = () => {
       return;
     }
     try {
-      const res = await api.post<{ nome?: string }>('/api/atributos/categorias', { nome: catFormatada });
+      const res = await api.post<{ id?: number; nome?: string }>('/api/atributos/categorias', { nome: catFormatada });
       const nomeSalvo = res.data?.nome || catFormatada;
-      setCategorias((prev) => (jaExisteAtributo(prev, nomeSalvo) ? prev : [...prev, nomeSalvo]));
+      setCategorias((prev) => (jaExisteAtributo(prev.map((c) => c.nome), nomeSalvo)
+        ? prev
+        : [...prev, { id: res.data?.id, nome: nomeSalvo }]));
       setProduto({ ...produto, categoria: nomeSalvo });
       setNovaCategoriaTexto('');
       setErrosValidacao([]);
@@ -276,16 +296,18 @@ const TelaProdutos: React.FC = () => {
       setErrosValidacao(['Use só letras e números no tamanho (P, M, GG, 42).']);
       return;
     }
-    const existente = jaExisteAtributo(tamanhos, tam);
+    const existente = jaExisteAtributo(tamanhos.map((t) => t.nome), tam);
     if (existente) {
       setNovoTamanhoTexto('');
       setErrosValidacao([`Este tamanho já existe: ${existente}.`]);
       return;
     }
     try {
-      const res = await api.post<{ nome?: string }>('/api/atributos/tamanhos', { nome: tam });
+      const res = await api.post<{ id?: number; nome?: string }>('/api/atributos/tamanhos', { nome: tam });
       const nomeSalvo = res.data?.nome || tam;
-      setTamanhos((prev) => (jaExisteAtributo(prev, nomeSalvo) ? prev : [...prev, nomeSalvo]));
+      setTamanhos((prev) => (jaExisteAtributo(prev.map((t) => t.nome), nomeSalvo)
+        ? prev
+        : [...prev, { id: res.data?.id, nome: nomeSalvo }]));
       setNovoTamanhoTexto('');
       setErrosValidacao([]);
     } catch (err) {
@@ -307,17 +329,60 @@ const TelaProdutos: React.FC = () => {
       return;
     }
     try {
-      const res = await api.post<{ nome?: string; hexCode?: string }>('/api/atributos/cores', { nome, hexCode: novaCorHex });
+      const res = await api.post<{ id?: number; nome?: string; hexCode?: string }>('/api/atributos/cores', { nome, hexCode: novaCorHex });
       const nomeSalvo = res.data?.nome || nome;
       const hexSalvo = res.data?.hexCode || novaCorHex;
       setListaCores((prev) =>
-        jaExisteAtributo(prev.map((c) => c.nome), nomeSalvo) ? prev : [...prev, { nome: nomeSalvo, hex: hexSalvo }]
+        jaExisteAtributo(prev.map((c) => c.nome), nomeSalvo)
+          ? prev
+          : [...prev, { id: res.data?.id, nome: nomeSalvo, hex: hexSalvo }]
       );
       setNovaCorNome('');
       setNovaCorHex('#000000');
       setErrosValidacao([]);
     } catch (err) {
       setErrosValidacao([formatErrorMessage(err, 'Não foi possível cadastrar a cor.')]);
+    }
+  };
+
+  const rotuloAtributo = (tipo: TipoAtributo): string => {
+    if (tipo === 'categoria') return 'categoria';
+    if (tipo === 'tamanho') return 'tamanho';
+    return 'cor';
+  };
+
+  const pedirExclusaoAtributo = (tipo: TipoAtributo, id: number, nome: string): void => {
+    setModalAtributo({ aberto: true, tipo, id, nome });
+  };
+
+  const confirmarExclusaoAtributo = async (): Promise<void> => {
+    const { tipo, id, nome } = modalAtributo;
+    const caminho = tipo === 'categoria' ? 'categorias' : tipo === 'tamanho' ? 'tamanhos' : 'cores';
+    try {
+      await api.delete(`/api/atributos/${caminho}/${id}`);
+      if (tipo === 'categoria') {
+        setCategorias((prev) => prev.filter((c) => c.id !== id));
+        setProduto((prev) => (prev.categoria === nome ? { ...prev, categoria: '' } : prev));
+      } else if (tipo === 'tamanho') {
+        setTamanhos((prev) => prev.filter((t) => t.id !== id));
+        setProduto((prev) => ({
+          ...prev,
+          tamanhosSelecionados: prev.tamanhosSelecionados.filter((t) => t !== nome),
+        }));
+      } else {
+        setListaCores((prev) => prev.filter((c) => c.id !== id));
+        setProduto((prev) => ({
+          ...prev,
+          coresSelecionadas: prev.coresSelecionadas.filter((c) => c !== nome),
+        }));
+      }
+      setModalAtributo({ aberto: false, tipo: 'cor', id: 0, nome: '' });
+      setErrosValidacao([]);
+      setMensagemSucesso(`A ${rotuloAtributo(tipo)} saiu da lista. Peças já cadastradas não mudam.`);
+      setTimeout(() => setMensagemSucesso(''), 4000);
+    } catch (err) {
+      setErrosValidacao([formatErrorMessage(err, 'Não foi possível excluir da lista.')]);
+      setModalAtributo({ aberto: false, tipo: 'cor', id: 0, nome: '' });
     }
   };
 
@@ -543,12 +608,14 @@ const TelaProdutos: React.FC = () => {
   });
 
   // Valores gravados no produto que saíram das listas continuam visíveis para poder desmarcar
-  const categoriasVisiveis = produto.categoria && !categorias.includes(produto.categoria)
-    ? [...categorias, produto.categoria]
+  const nomesCategorias = categorias.map((c) => c.nome);
+  const categoriasVisiveis: AtributoOpcao[] = produto.categoria && !nomesCategorias.includes(produto.categoria)
+    ? [...categorias, { nome: produto.categoria }]
     : categorias;
-  const tamanhosVisiveis = [
+  const nomesTamanhos = tamanhos.map((t) => t.nome);
+  const tamanhosVisiveis: AtributoOpcao[] = [
     ...tamanhos,
-    ...produto.tamanhosSelecionados.filter((t) => !tamanhos.includes(t)),
+    ...produto.tamanhosSelecionados.filter((t) => !nomesTamanhos.includes(t)).map((nome) => ({ nome })),
   ];
   const coresVisiveis: Cor[] = [
     ...listaCores,
@@ -625,14 +692,29 @@ const TelaProdutos: React.FC = () => {
                   Categoria
                   <CampoAjuda texto="Agrupa na vitrine (Vestidos, Saias…). Uma categoria por tipo de peça." />
                 </label>
+                <div className="flex gap-2">
                 <select
                   value={produto.categoria}
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => setProduto({ ...produto, categoria: e.target.value })}
-                  className="mm-input"
+                  className="mm-input flex-1"
                 >
                   <option value="">{estadoAtributos === 'carregando' ? 'Carregando...' : 'Selecione...'}</option>
-                  {categoriasVisiveis.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                  {categoriasVisiveis.map(cat => <option key={cat.id ?? cat.nome} value={cat.nome}>{cat.nome}</option>)}
                 </select>
+                {ehProprietaria && categorias.find((c) => c.nome === produto.categoria)?.id && (
+                  <button
+                    type="button"
+                    title="Excluir esta categoria da lista"
+                    onClick={() => {
+                      const cat = categorias.find((c) => c.nome === produto.categoria);
+                      if (cat?.id) pedirExclusaoAtributo('categoria', cat.id, cat.nome);
+                    }}
+                    className="mm-btn-secondary w-11 px-0 shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                </div>
               </div>
               <div>
                 <label className="mm-label flex items-center gap-1.5">Nova categoria</label>
@@ -738,18 +820,33 @@ const TelaProdutos: React.FC = () => {
                 </p>
               )}
               {tamanhosVisiveis.map(t => (
+                <span key={t.id ?? t.nome} className="relative inline-flex">
                 <button
-                  key={t} type="button"
+                  type="button"
                   onClick={() => {
-                    const novos = produto.tamanhosSelecionados.includes(t)
-                      ? produto.tamanhosSelecionados.filter(x => x !== t)
-                      : [...produto.tamanhosSelecionados, t];
+                    const novos = produto.tamanhosSelecionados.includes(t.nome)
+                      ? produto.tamanhosSelecionados.filter(x => x !== t.nome)
+                      : [...produto.tamanhosSelecionados, t.nome];
                     setProduto({ ...produto, tamanhosSelecionados: novos });
                   }}
-                  className={`w-9 h-9 text-[11px] font-semibold border rounded-xl transition-all cursor-pointer ${produto.tamanhosSelecionados.includes(t) ? 'bg-brand-900 text-white border-brand-900' : 'bg-white text-gray-400 border-gray-200 hover:border-gray-400'}`}
+                  className={`w-9 h-9 text-[11px] font-semibold border rounded-xl transition-all cursor-pointer ${produto.tamanhosSelecionados.includes(t.nome) ? 'bg-brand-900 text-white border-brand-900' : 'bg-white text-gray-400 border-gray-200 hover:border-gray-400'}`}
                 >
-                  {t}
+                  {t.nome}
                 </button>
+                {ehProprietaria && t.id && (
+                  <button
+                    type="button"
+                    title={`Excluir tamanho ${t.nome}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      pedirExclusaoAtributo('tamanho', t.id!, t.nome);
+                    }}
+                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-white border border-gray-300 text-[9px] leading-none text-gray-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
+                  >
+                    ×
+                  </button>
+                )}
+                </span>
               ))}
             </div>
             <div className="flex gap-2 border-t border-gray-100 pt-3">
@@ -779,7 +876,7 @@ const TelaProdutos: React.FC = () => {
                 </p>
               )}
               {coresVisiveis.map(c => (
-                <label key={c.nome} className="flex items-center gap-2 cursor-pointer select-none min-w-0">
+                <label key={c.id ?? c.nome} className="flex items-center gap-2 cursor-pointer select-none min-w-0">
                   <input
                     type="checkbox"
                     className="w-3.5 h-3.5 accent-brand-900 shrink-0"
@@ -792,7 +889,21 @@ const TelaProdutos: React.FC = () => {
                     }}
                   />
                   <div className="w-3.5 h-3.5 rounded-full border border-gray-300 shrink-0" style={{ backgroundColor: c.hex }} />
-                  <span className="text-xs text-gray-600 font-sans truncate">{c.nome}</span>
+                  <span className="text-xs text-gray-600 font-sans truncate flex-1">{c.nome}</span>
+                  {ehProprietaria && c.id && (
+                    <button
+                      type="button"
+                      title={`Excluir cor ${c.nome}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        pedirExclusaoAtributo('cor', c.id!, c.nome);
+                      }}
+                      className="text-gray-400 hover:text-red-600 shrink-0 p-0.5"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
                 </label>
               ))}
             </div>
@@ -1080,6 +1191,20 @@ const TelaProdutos: React.FC = () => {
         </div>
       )}
       <GuiaCadastroProduto ativo={guiaAtivo} onPular={encerrarGuia} onConcluir={encerrarGuia} />
+      <SystemModal
+        isOpen={modalAtributo.aberto}
+        type="confirm"
+        title={`Excluir ${rotuloAtributo(modalAtributo.tipo)} da lista`}
+        confirmText="Excluir da lista"
+        cancelText="Manter"
+        confirmVariant="danger"
+        onClose={() => setModalAtributo({ aberto: false, tipo: 'cor', id: 0, nome: '' })}
+        onConfirm={() => void confirmarExclusaoAtributo()}
+      >
+        <p className="text-sm text-gray-700">
+          “{modalAtributo.nome}” some das opções de cadastro. Produtos que já usam esse valor continuam iguais.
+        </p>
+      </SystemModal>
       </div>
     </div>
   );

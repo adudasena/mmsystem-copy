@@ -74,6 +74,8 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.POST, "/whatsapp/conexao/qr", "/whatsapp/conexao/desconectar")
                             .hasRole("PROPRIETARIA")
+                        .requestMatchers(HttpMethod.DELETE, "/api/atributos/**")
+                            .hasRole("PROPRIETARIA")
                         .anyRequest().hasAnyRole("PROPRIETARIA", "FUNCIONARIO")
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
