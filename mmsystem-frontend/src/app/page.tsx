@@ -780,28 +780,42 @@ export default function VitrineProdutos() {
         {/* CATEGORIAS */}
         <div className="sticky top-[60px] z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-3 mt-2 bg-fundo/85 backdrop-blur-md">
           <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Categorias">
-            {['', ...categoriasVitrine].map((cat) => {
-              const ativa = categoriaFiltro === cat;
-              return (
-                <button
-                  key={cat || 'todas'}
-                  type="button"
-                  role="tab"
-                  aria-selected={ativa}
-                  onClick={() => setCategoriaFiltro(cat)}
-                  className={`shrink-0 px-4 h-10 rounded-full text-sm font-semibold border transition ${
-                    ativa
-                      ? 'bg-brand-900 text-white border-brand-900 shadow-sm'
-                      : 'bg-white text-gray-700 border-gray-200 hover:border-brand-300 hover:bg-brand-50'
-                  }`}
-                >
-                  {cat || 'Todas'}
-                </button>
-              );
-            })}
+            {loading && categoriasVitrine.length === 0 ? (
+              [88, 72, 104, 80, 96].map((largura, i) => (
+                <span
+                  key={i}
+                  className="shrink-0 h-10 rounded-full bg-gray-200/90 animate-pulse"
+                  style={{ width: largura }}
+                  aria-hidden
+                />
+              ))
+            ) : (
+              ['', ...categoriasVitrine].map((cat) => {
+                const ativa = categoriaFiltro === cat;
+                return (
+                  <button
+                    key={cat || 'todas'}
+                    type="button"
+                    role="tab"
+                    aria-selected={ativa}
+                    onClick={() => setCategoriaFiltro(cat)}
+                    className={`shrink-0 px-4 h-10 rounded-full text-sm font-semibold border transition ${
+                      ativa
+                        ? 'bg-brand-900 text-white border-brand-900 shadow-sm'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-brand-300 hover:bg-brand-50'
+                    }`}
+                  >
+                    {cat || 'Todas'}
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
 
+        {loading && (
+          <div className="h-4 w-24 rounded bg-gray-200/90 animate-pulse mb-4 mt-1" aria-hidden />
+        )}
         {!loading && !erro && (
           <p className="text-sm text-gray-500 mb-4 mt-1">
             {produtosFiltrados.length} {produtosFiltrados.length === 1 ? 'peça' : 'peças'}
@@ -809,16 +823,21 @@ export default function VitrineProdutos() {
           </p>
         )}
 
-        {/* FEEDBACKS */}
         {loading && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-4" aria-busy="true" aria-label="Buscando as peças da loja">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6" aria-busy="true" aria-label="Carregando as peças da loja">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl overflow-hidden border border-gray-200/70 animate-pulse">
-                <div className="aspect-[3/4] bg-gray-100" />
-                <div className="p-4 space-y-2.5">
-                  <div className="h-3.5 w-3/4 rounded bg-gray-100" />
+              <div key={i} className="bg-white rounded-2xl overflow-hidden border border-gray-200/70 flex flex-col animate-pulse">
+                <div className="relative aspect-[3/4] bg-gray-100">
+                  <span className="absolute top-2.5 left-2.5 h-6 w-16 rounded-full bg-gray-200/90" />
+                </div>
+                <div className="p-3.5 sm:p-4 flex flex-col flex-1 gap-2">
+                  <div className="h-4 w-4/5 rounded bg-gray-200/90" />
                   <div className="h-3 w-full rounded bg-gray-100" />
-                  <div className="h-9 w-full rounded-xl bg-gray-100 mt-4" />
+                  <div className="h-3 w-2/3 rounded bg-gray-100" />
+                  <div className="mt-auto pt-3.5 space-y-3">
+                    <div className="h-6 w-24 rounded bg-gray-200/90" />
+                    <div className="h-10 w-full rounded-xl bg-gray-100" />
+                  </div>
                 </div>
               </div>
             ))}

@@ -66,6 +66,11 @@ const TelaUsuarios: React.FC = () => {
     telefone: '',
     perfil: 'CLIENTE',
   });
+  const [formEdicao, setFormEdicao] = useState<FormDataUsuario>({
+    nome: '',
+    telefone: '',
+    perfil: 'CLIENTE',
+  });
 
   // ─── Função de Busca Paginada ──────────────────────────────────────────────
   const buscarClientesPagina = async (pagina: number = 0, tipoAba: 'ATIVOS' | 'EXCLUIDOS' = abaAtiva): Promise<void> => {
@@ -131,54 +136,62 @@ const TelaUsuarios: React.FC = () => {
     }
   };
 
-  // Prepara o formulário para edição
   const handleEditar = (cliente: Usuario): void => {
+    setErro('');
     setClienteEmEdicao(cliente);
-    setFormData({
+    setFormEdicao({
       nome: cliente.nome || '',
       telefone: cliente.telefone ? formatarTelefoneInput(cliente.telefone) : '',
       perfil: cliente.perfil || 'CLIENTE',
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCancelarEdicao = (): void => {
     setClienteEmEdicao(null);
-    setFormData({ nome: '', telefone: '', perfil: 'CLIENTE' });
+    setFormEdicao({ nome: '', telefone: '', perfil: 'CLIENTE' });
   };
 
-  // Submissão (Cadastrar ou Atualizar)
-  const handleSubmit = async (e: FormEvent): Promise<void> => {
-    e.preventDefault();
+  const handleChangeEdicao = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
+    const { name, value } = e.target;
+    if (name === 'telefone') {
+      setFormEdicao((prev) => ({ ...prev, telefone: formatarTelefoneInput(value) }));
+    } else if (name === 'nome') {
+      setFormEdicao((prev) => ({ ...prev, nome: formatarNomePessoa(value) }));
+    } else {
+      setFormEdicao((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const salvarCliente = async (dados: FormDataUsuario, idEdicao?: number): Promise<void> => {
     setMensagemSucesso('');
     setErro('');
 
-    const erroNome = validarNomePessoa(formData.nome);
+    const erroNome = validarNomePessoa(dados.nome);
     if (erroNome) {
       setErro(erroNome);
       return;
     }
-    const erroTel = validarWhatsApp(formData.telefone);
+    const erroTel = validarWhatsApp(dados.telefone);
     if (erroTel) {
       setErro(erroTel);
       return;
     }
 
     const dadosParaEnvio = {
-      ...formData,
-      telefone: formData.telefone.replace(/\D/g, ''),
+      ...dados,
+      telefone: dados.telefone.replace(/\D/g, ''),
     };
 
     try {
-      if (clienteEmEdicao) {
-        await api.put(`/usuarios/${clienteEmEdicao.id}`, dadosParaEnvio);
+      if (idEdicao) {
+        await api.put(`/usuarios/${idEdicao}`, dadosParaEnvio);
         setMensagemSucesso('Cliente atualizado com sucesso!');
+        handleCancelarEdicao();
       } else {
         await api.post('/usuarios', dadosParaEnvio);
         setMensagemSucesso('Cliente cadastrado com sucesso!');
+        setFormData({ nome: '', telefone: '', perfil: 'CLIENTE' });
       }
-
-      handleCancelarEdicao();
       buscarClientesPagina(paginaAtual);
       setTimeout(() => setMensagemSucesso(''), 4000);
     } catch (err) {
@@ -186,6 +199,17 @@ const TelaUsuarios: React.FC = () => {
       const msg = formatErrorMessage(err, 'Falha ao salvar. Verifique se o WhatsApp já existe na base.');
       setErro(msg);
     }
+  };
+
+  const handleSubmit = async (e: FormEvent): Promise<void> => {
+    e.preventDefault();
+    await salvarCliente(formData);
+  };
+
+  const handleSubmitEdicao = async (e: FormEvent): Promise<void> => {
+    e.preventDefault();
+    if (!clienteEmEdicao) return;
+    await salvarCliente(formEdicao, clienteEmEdicao.id);
   };
 
   // Modal de confirmação do sistema
@@ -291,19 +315,8 @@ const TelaUsuarios: React.FC = () => {
           <div className="mm-card p-6">
             <div className="flex justify-between items-center mb-5">
               <h2 className="font-display text-xl font-semibold text-brand-900">
-                {clienteEmEdicao
-                  ? `Editar Cliente (#${clienteEmEdicao.id})`
-                  : 'Cadastrar Novo Cliente'}
+                Cadastrar Novo Cliente
               </h2>
-              {clienteEmEdicao && (
-                <button
-                  type="button"
-                  onClick={handleCancelarEdicao}
-                  className="text-[11px] text-red-600 font-semibold hover:underline cursor-pointer"
-                >
-                  Cancelar
-                </button>
-              )}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -343,7 +356,7 @@ const TelaUsuarios: React.FC = () => {
                 type="submit"
                 className="mm-btn-primary w-full"
               >
-                {clienteEmEdicao ? 'Atualizar Cliente' : 'Salvar Cliente'}
+                Salvar Cliente
               </button>
             </form>
           </div>
@@ -464,6 +477,75 @@ const TelaUsuarios: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {clienteEmEdicao && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-brand-950/50 backdrop-blur-sm animate-fadeIn"
+          onClick={handleCancelarEdicao}
+        >
+          <div
+            className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-subir"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 pt-6 pb-2 flex items-start justify-between gap-4">
+              <h3 className="font-display text-lg font-semibold text-brand-900">
+                Editar cliente #{clienteEmEdicao.id}
+              </h3>
+              <button
+                type="button"
+                onClick={handleCancelarEdicao}
+                className="text-gray-400 hover:text-gray-700 transition p-1.5 -mr-2 -mt-1 rounded-lg hover:bg-gray-100"
+                aria-label="Fechar"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleSubmitEdicao} className="px-6 py-4 space-y-4">
+              {erro && (
+                <div className="bg-red-100 border border-red-400 text-red-800 px-3 py-2 rounded-xl text-xs font-semibold">
+                  {erro}
+                </div>
+              )}
+              <div>
+                <label className="mm-label">Nome Completo *</label>
+                <input
+                  type="text"
+                  name="nome"
+                  required
+                  value={formEdicao.nome}
+                  onChange={handleChangeEdicao}
+                  placeholder="Ex: Maria Silva"
+                  maxLength={40}
+                  className="mm-input"
+                />
+              </div>
+              <div>
+                <label className="mm-label">WhatsApp / Telefone *</label>
+                <input
+                  type="text"
+                  name="telefone"
+                  required
+                  maxLength={15}
+                  value={formEdicao.telefone}
+                  onChange={handleChangeEdicao}
+                  placeholder="(43) 99999-8888"
+                  className="mm-input"
+                />
+              </div>
+              <div className="flex justify-end gap-2.5 pt-2 pb-2">
+                <button type="button" onClick={handleCancelarEdicao} className="mm-btn-secondary">
+                  Cancelar
+                </button>
+                <button type="submit" className="mm-btn-primary">
+                  Atualizar Cliente
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL DE CONFIRMAÇÃO DE SOFT DELETE */}
       <SystemModal
