@@ -2,6 +2,7 @@ package com.adudasena.mmsystem.service;
 
 import com.adudasena.mmsystem.dto.AvisosVencimentoResultadoDTO;
 import com.adudasena.mmsystem.dto.WhatsAppMensagemDTO;
+import com.adudasena.mmsystem.enums.MetodoPagamento;
 import com.adudasena.mmsystem.enums.StatusPagamento;
 import com.adudasena.mmsystem.model.Condicional;
 import com.adudasena.mmsystem.model.Pagamento;
@@ -121,6 +122,9 @@ public class AvisosVencimentoService {
     }
 
     private static boolean pagamentoPendenteAviso(Pagamento p) {
+        if (p.getMetodoPagamento() == MetodoPagamento.CARTAO_CREDITO) {
+            return false;
+        }
         if (p.getStatus() == StatusPagamento.APROVADO || p.getStatus() == StatusPagamento.PAGO
                 || p.getStatus() == StatusPagamento.CANCELADO || p.getStatus() == StatusPagamento.ESTORNADO) {
             return false;

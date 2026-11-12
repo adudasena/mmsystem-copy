@@ -638,6 +638,9 @@ const TelaPagamentos: React.FC = () => {
 
                 {formPagamento.metodoPagamento === 'CARTAO_CREDITO' && (
                   <div>
+                    <p className="mb-3 text-[11px] leading-relaxed text-sky-800 bg-sky-50 border border-sky-200 rounded-lg px-3 py-2">
+                      O valor entra na fatura do cartão. A loja não cobra este lançamento e ele não aparece em vencidos.
+                    </p>
                     <label className="mm-label">
                       Parcelas *
                     </label>

@@ -110,6 +110,27 @@ class AvisosVencimentoServiceTest {
         assertEquals(0, r.enviados());
     }
 
+    @Test
+    void naoCobraCartaoDeCreditoMesmoComDataPassada() {
+        Usuario cliente = usuarioRepository.save(clienteTeste("cartao.aviso@teste.com"));
+        Pedido pedido = pedido(cliente, StatusPedido.AGUARDANDO_PAGAMENTO);
+
+        Pagamento cartao = new Pagamento();
+        cartao.setPedido(pedido);
+        cartao.setValor(new BigDecimal("189.90"));
+        cartao.setMetodoPagamento(MetodoPagamento.CARTAO_CREDITO);
+        cartao.setParcelas(3);
+        cartao.setDataVencimento(LocalDate.now().minusDays(20));
+        cartao.setStatus(StatusPagamento.PENDENTE);
+        pagamentoRepository.save(cartao);
+
+        AvisosVencimentoResultadoDTO r = avisosVencimentoService.processarAvisosDoDia();
+
+        assertEquals(0, r.pagamentosAtrasados());
+        assertEquals(0, r.pagamentosVencendo());
+        assertEquals(0, r.enviados());
+    }
+
     private Usuario clienteTeste(String email) {
         Usuario cliente = new Usuario();
         cliente.setNome("Ana Cliente");

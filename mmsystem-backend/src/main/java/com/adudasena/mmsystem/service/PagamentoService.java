@@ -52,18 +52,20 @@ public class PagamentoService {
 
     @Transactional(readOnly = true)
     public Page<Pagamento> listarFiadosVencidos(Pageable pageable) {
-        return pagamentoRepository.findByDeletedAtIsNullAndStatusAndDataVencimentoLessThanEqual(
+        return pagamentoRepository.findByDeletedAtIsNullAndStatusAndDataVencimentoLessThanEqualAndMetodoPagamentoNot(
                 StatusPagamento.PENDENTE,
                 hojeBrasil(),
+                MetodoPagamento.CARTAO_CREDITO,
                 pageable
         );
     }
 
     @Transactional(readOnly = true)
     public long contarFiadosVencidos() {
-        return pagamentoRepository.countByDeletedAtIsNullAndStatusAndDataVencimentoLessThanEqual(
+        return pagamentoRepository.countByDeletedAtIsNullAndStatusAndDataVencimentoLessThanEqualAndMetodoPagamentoNot(
                 StatusPagamento.PENDENTE,
-                hojeBrasil()
+                hojeBrasil(),
+                MetodoPagamento.CARTAO_CREDITO
         );
     }
 

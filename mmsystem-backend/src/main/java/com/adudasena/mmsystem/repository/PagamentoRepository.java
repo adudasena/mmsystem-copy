@@ -1,5 +1,6 @@
 package com.adudasena.mmsystem.repository;
 
+import com.adudasena.mmsystem.enums.MetodoPagamento;
 import com.adudasena.mmsystem.enums.StatusPagamento;
 import com.adudasena.mmsystem.model.Pagamento;
 import org.springframework.data.domain.Page;
@@ -16,15 +17,17 @@ public interface PagamentoRepository extends JpaRepository<Pagamento, Long> {
     List<Pagamento> findByDeletedAtIsNotNull();
     Page<Pagamento> findByDeletedAtIsNotNull(Pageable pageable);
 
-    Page<Pagamento> findByDeletedAtIsNullAndStatusAndDataVencimentoLessThanEqual(
+    Page<Pagamento> findByDeletedAtIsNullAndStatusAndDataVencimentoLessThanEqualAndMetodoPagamentoNot(
             StatusPagamento status,
             LocalDate dataLimite,
+            MetodoPagamento metodoPagamento,
             Pageable pageable
     );
 
-    long countByDeletedAtIsNullAndStatusAndDataVencimentoLessThanEqual(
+    long countByDeletedAtIsNullAndStatusAndDataVencimentoLessThanEqualAndMetodoPagamentoNot(
             StatusPagamento status,
-            LocalDate dataLimite
+            LocalDate dataLimite,
+            MetodoPagamento metodoPagamento
     );
 
     @Query("SELECT DISTINCT p.status FROM Pagamento p WHERE p.deletedAt IS NULL")
