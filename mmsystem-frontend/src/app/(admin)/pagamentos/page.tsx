@@ -246,6 +246,9 @@ const TelaPagamentos: React.FC = () => {
     if (!formPagamento.valor || Number(formPagamento.valor) <= 0) {
       erros.push('Informe um valor de lançamento válido e maior que R$ 0,00.');
     }
+    if (!formPagamento.fkPedidoId) {
+      erros.push('Selecione o pedido deste pagamento.');
+    }
     if (!formPagamento.metodoPagamento) {
       erros.push('Selecione o método de pagamento.');
     }
@@ -263,7 +266,7 @@ const TelaPagamentos: React.FC = () => {
 
     try {
       const payload = {
-        fkPedidoId: formPagamento.fkPedidoId ? Number(formPagamento.fkPedidoId) : null,
+        fkPedidoId: Number(formPagamento.fkPedidoId),
         valor: Number(formPagamento.valor),
         metodoPagamento: formPagamento.metodoPagamento,
         parcelas: formPagamento.metodoPagamento === 'CARTAO_CREDITO' ? Number(formPagamento.parcelas || 1) : null,
@@ -569,7 +572,7 @@ const TelaPagamentos: React.FC = () => {
 
                 <div>
                   <label className="mm-label">
-                    Vincular ao Pedido (Opcional)
+                    Pedido *
                   </label>
                   <select
                     value={formPagamento.fkPedidoId}
@@ -584,7 +587,7 @@ const TelaPagamentos: React.FC = () => {
                     }}
                     className="mm-input"
                   >
-                    <option value="">Sem Pedido Vinculado (Avulso)</option>
+                    <option value="">Selecione o pedido</option>
                     {pedidosOpcoes.map((ped) => (
                       <option key={ped.id} value={ped.id}>
                         Pedido #{ped.id} {ped.valorTotal ? `— R$ ${Number(ped.valorTotal).toFixed(2)}` : ''}

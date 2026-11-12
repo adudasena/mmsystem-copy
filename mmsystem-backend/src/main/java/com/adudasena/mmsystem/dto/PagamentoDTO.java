@@ -20,6 +20,8 @@ public class PagamentoDTO {
     private Integer parcelas;
     private LocalDate dataVencimento;
     private String status;
+
+    @NotNull(message = "Todo pagamento precisa estar vinculado a um pedido.")
     private Long fkPedidoId;
 
     public PagamentoDTO() {}

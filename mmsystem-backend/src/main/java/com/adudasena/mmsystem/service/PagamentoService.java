@@ -155,12 +155,13 @@ public class PagamentoService {
             pagamento.setParcelas(null);
         }
 
-        if (dto.getFkPedidoId() != null) {
-            Pedido pedido = pedidoRepository.findById(dto.getFkPedidoId()).orElse(null);
-            pagamento.setPedido(pedido);
-        } else {
-            pagamento.setPedido(null);
+        if (dto.getFkPedidoId() == null) {
+            throw new IllegalArgumentException("Todo pagamento precisa estar vinculado a um pedido.");
         }
+        Pedido pedido = pedidoRepository.findById(dto.getFkPedidoId())
+                .filter(p -> p.getDeletedAt() == null)
+                .orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado para vincular o pagamento."));
+        pagamento.setPedido(pedido);
     }
 
     private void sincronizarPedido(Pagamento pagamento) {

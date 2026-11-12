@@ -36,8 +36,8 @@ public class Pagamento {
     @Column(nullable = false)
     private StatusPagamento status;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "fk_pedido_id", nullable = true)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "fk_pedido_id", nullable = false)
     @JsonIgnoreProperties({"itens", "pagamentos", "cliente", "condicional", "hibernateLazyInitializer", "handler"})
     private Pedido pedido;
 
